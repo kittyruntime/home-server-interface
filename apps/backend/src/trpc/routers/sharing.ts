@@ -273,7 +273,7 @@ export const sharingRouter = router({
     }
     access.sort((a, b) => a.username.localeCompare(b.username))
     const dir = facts.dirs.get(s.place.path) ?? null
-    const recent = await listEvents(ctx.prisma, viewer, { share: name, limit: 10 })
+    const recent = await listEvents(ctx.prisma, viewer, { share: name, limit: 40 })
     return {
       share: {
         id: s.id, name, placeName: s.place.name, placePath: s.place.path, enabled: s.enabled,

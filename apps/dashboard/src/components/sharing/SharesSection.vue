@@ -2,6 +2,7 @@
 import { computed, onMounted, ref, useTemplateRef } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useElementSize } from '@vueuse/core'
+import { PlusIcon } from '@lucide/vue'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -9,6 +10,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import LoadingState from '../ui/LoadingState.vue'
+import BusyLabel from '../ui/BusyLabel.vue'
 import Modal from '../ui/Modal.vue'
 import ShareList from './ShareList.vue'
 import ShareDetail from './ShareDetail.vue'
@@ -66,6 +68,14 @@ onMounted(() => { void refresh(); void refreshHolds() })
 // null = closed; id null = create
 const editor = ref<{ id: string | null; placeId: string; smbName: string; readOnly: boolean; guestOk: boolean; hidden: boolean } | null>(null)
 const saving = ref(false)
+const OPTIONS = ['readOnly', 'guestOk', 'hidden'] as const
+// The name the share gets when the field stays empty.
+const placeholderName = computed(() => {
+  const e = editor.value
+  if (!e) return ''
+  if (e.id !== null) return shares.value.find(s => s.id === e.id)?.placeName ?? ''
+  return places.value.find(p => p.id === e.placeId)?.name ?? ''
+})
 const editorError = ref('')
 
 function openCreate() {
@@ -80,7 +90,7 @@ function openEdit(s: ShareDetailData['share']) {
 
 async function save() {
   const e = editor.value
-  if (!e) return
+  if (!e || saving.value) return
   saving.value = true
   editorError.value = ''
   try {
@@ -114,7 +124,10 @@ async function onRemoved() {
   <div ref="root" class="@container">
     <div class="mb-4 flex items-center justify-between gap-3">
       <h2 class="text-lg font-semibold text-base-content">{{ t('sharing.list.title') }}</h2>
-      <Button v-if="installed && availablePlaces.length > 0" size="sm" @click="openCreate">{{ t('sharing.list.newShare') }}</Button>
+      <Button v-if="installed && !loading" size="sm" :disabled="availablePlaces.length === 0"
+        :title="availablePlaces.length === 0 ? t('sharing.list.allShared') : undefined" @click="openCreate">
+        <PlusIcon class="size-4" />{{ t('sharing.list.newShare') }}
+      </Button>
     </div>
 
     <Alert v-if="error" variant="destructive" class="mb-4"><AlertDescription>{{ error }}</AlertDescription></Alert>
@@ -142,32 +155,40 @@ async function onRemoved() {
       <p v-else-if="!narrow" class="p-6 text-sm text-base-content/70">{{ t('sharing.detail.select') }}</p>
     </Card>
 
-    <Modal v-if="editor" panel-class="w-full max-w-sm" @close="editor = null">
+    <Modal v-if="editor" panel-class="w-full max-w-md" @close="editor = null">
       <template #header>
         <h3 class="text-sm font-semibold text-base-content">{{ editor.id === null ? t('sharing.detail.newTitle') : t('sharing.detail.editTitle') }}</h3>
       </template>
-      <div class="space-y-4 p-6">
-        <div v-if="editor.id === null">
-          <p class="eyebrow mb-2">{{ t('sharing.detail.place') }}</p>
+      <form id="share-editor" class="space-y-5 p-6" @submit.prevent="save">
+        <label v-if="editor.id === null" class="block space-y-1.5">
+          <span class="text-sm font-medium text-base-content">{{ t('sharing.detail.place') }}</span>
           <NativeSelect v-model="editor.placeId" wrapper-class="w-full">
             <NativeSelectOption v-for="p in availablePlaces" :key="p.id" :value="p.id">{{ p.name }} · {{ p.path }}</NativeSelectOption>
           </NativeSelect>
-        </div>
-        <div>
-          <p class="eyebrow mb-2">{{ t('sharing.detail.shareName') }}</p>
-          <Input v-model="editor.smbName" type="text" :placeholder="t('sharing.detail.shareNamePlaceholder')" class="w-full font-mono" />
-          <p class="mt-1 text-xs text-base-content/70">{{ t('sharing.detail.shareNameHelp') }}</p>
-        </div>
-        <label class="flex cursor-pointer items-center gap-2 text-sm text-base-content/80"><Checkbox v-model="editor.readOnly" />{{ t('sharing.detail.readOnlyOption') }}</label>
-        <label class="flex cursor-pointer items-center gap-2 text-sm text-base-content/80"><Checkbox v-model="editor.guestOk" />{{ t('sharing.detail.guestOption') }}</label>
-        <label class="flex cursor-pointer items-center gap-2 text-sm text-base-content/80"><Checkbox v-model="editor.hidden" />{{ t('sharing.detail.hiddenOption') }}</label>
+        </label>
+        <label class="block space-y-1.5">
+          <span class="text-sm font-medium text-base-content">{{ t('sharing.detail.shareName') }}</span>
+          <Input v-model="editor.smbName" type="text" maxlength="32" pattern="[A-Za-z0-9][A-Za-z0-9._\-]*" autocomplete="off" spellcheck="false"
+            :placeholder="placeholderName" class="w-full font-mono" />
+          <span class="block text-xs text-base-content/70">{{ t('sharing.detail.shareNameHelp') }}</span>
+        </label>
+        <fieldset class="space-y-3">
+          <legend class="sr-only">{{ t('sharing.detail.options') }}</legend>
+          <label v-for="o in OPTIONS" :key="o" class="flex cursor-pointer items-start gap-3">
+            <Checkbox v-model="editor[o]" class="mt-0.5" />
+            <span class="min-w-0">
+              <span class="block text-sm text-base-content">{{ t(`sharing.detail.${o}Option`) }}</span>
+              <span class="block text-xs text-base-content/70">{{ t(`sharing.detail.${o}Help`) }}</span>
+            </span>
+          </label>
+        </fieldset>
         <Alert v-if="editorError" variant="destructive"><AlertDescription>{{ editorError }}</AlertDescription></Alert>
-      </div>
+      </form>
       <template #footer>
-        <div class="flex justify-end gap-2">
+        <div class="ml-auto flex gap-2">
           <Button variant="ghost" size="sm" @click="editor = null">{{ t('sharing.detail.cancel') }}</Button>
-          <Button size="sm" :disabled="saving || (editor.id === null && !editor.placeId)" @click="save">
-            {{ editor.id === null ? t('sharing.detail.create') : t('sharing.detail.save') }}
+          <Button type="submit" form="share-editor" size="sm" :disabled="saving || (editor.id === null && !editor.placeId)">
+            <BusyLabel :busy="saving">{{ editor.id === null ? t('sharing.detail.create') : t('sharing.detail.save') }}</BusyLabel>
           </Button>
         </div>
       </template>

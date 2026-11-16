@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import type { Component } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { FolderIcon, ScrollTextIcon, SettingsIcon } from '@lucide/vue'
@@ -26,6 +26,8 @@ function openJournal(share: string) {
   journalShare.value = share
   active.value = 'journal'
 }
+// The journal opens unfiltered from the menu; "See all" filters it once.
+watch(active, v => { if (v !== 'journal') journalShare.value = undefined })
 const navItems = computed(() => (Object.keys(icons) as SectionId[]).map(id => ({ id, label: t(`sharing.nav.${id}`), icon: icons[id] })))
 
 const service = ref<SharingService | null>(null)
@@ -52,18 +54,22 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
 </script>
 
 <template>
-  <div v-if="!isAdmin" class="h-full overflow-y-auto">
-    <div class="max-w-3xl p-4 sm:p-8"><MySharesSection /></div>
+  <div v-if="!isAdmin" class="@container h-full overflow-y-auto">
+    <div class="max-w-3xl p-4 @2xl:p-8"><MySharesSection /></div>
   </div>
-  <div v-else class="flex h-full flex-col sm:flex-row">
-    <SectionNav v-model="active" :items="navItems" />
+  <div v-else class="@container h-full">
+  <!-- The layout follows this panel's width (a desktop window or the
+       classic view), not the screen's. -->
+  <div class="flex h-full flex-col @2xl:flex-row">
+    <SectionNav v-model="active" :items="navItems" container />
     <div class="flex-1 overflow-y-auto">
-      <div class="max-w-5xl space-y-5 p-4 sm:p-8">
+      <div class="max-w-5xl space-y-6 p-4 @2xl:p-8">
         <ServiceBanner :service="service" :loading="serviceLoading" @refresh="loadService" />
         <SharesSection v-if="active === 'shares'" :service="service" @changed="loadService" @see-all="openJournal" />
         <JournalSection v-else-if="active === 'journal'" :service="service" :initial-share="journalShare" />
         <SettingsSection v-else-if="active === 'settings'" :key="service?.settings.updatedAt?.toString()" :service="service" @changed="loadService" />
       </div>
     </div>
+  </div>
   </div>
 </template>
