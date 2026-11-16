@@ -8,4 +8,5 @@ model Share {
   guestOk   Boolean  @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  hidden    Boolean  @default(false) // left out of network browsing
 }
