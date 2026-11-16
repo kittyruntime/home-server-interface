@@ -32,7 +32,7 @@ const allApps: { id: AppId; adminOnly: boolean; capability?: string }[] = [
   { id: 'storage', adminOnly: true, capability: 'storage' },
   { id: 'store',   adminOnly: true },
   { id: 'monitor', adminOnly: true },
-  { id: 'sharing', adminOnly: true },
+  { id: 'sharing', adminOnly: false },
   { id: 'assistant', adminOnly: true, capability: 'assistant' },
   { id: 'settings', adminOnly: false },
 ]

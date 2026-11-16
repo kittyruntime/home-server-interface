@@ -538,6 +538,19 @@ smb_feature() {
   vm_ssh 'cmp -s /etc/hostname /srv/vm-mirror/from-smb/hello.txt' || fail "the file written over SMB differs"
   vm_ssh "smbclient //127.0.0.1/mirror -U 'vmuser%wrong-password' -c ls" >/dev/null 2>&1 && fail "the share took a wrong password"
   log "SMB: vmuser writes its own files, a wrong password is refused"
+
+  # The Sharing app's journal shows both, with the reason of the refusal.
+  local events="" i
+  for i in $(seq 1 15); do
+    events=$(api_get sharing.events '{"user":"vmuser","limit":50}')
+    python3 -c 'import json,sys; e=json.load(sys.stdin)["items"]
+ok=any(x["kind"]=="connect" and x["result"]=="ok" and x["share"]=="mirror" for x in e)
+bad=any(x["kind"]=="auth" and x["result"]=="refused" and x["reason"]=="wrong_password" for x in e)
+sys.exit(0 if ok and bad else 1)' <<<"$events" && break
+    sleep 1
+  done
+  [[ $i -lt 15 ]] || { echo "$events"; vm_ssh 'tail -n 40 /var/log/hsi/samba/smbd.log' || true; fail "the journal misses vmuser's connection or its refused password"; }
+  log "SMB: the journal shows the connection and the wrong password"
 }
 
 stack_state() { vm_ssh "docker compose ls -a --format json" | python3 -c 'import json,sys; s=[x for x in json.load(sys.stdin) if x["Name"]==sys.argv[1]]; print(s[0]["Status"] if s else "absent")' "$1"; }

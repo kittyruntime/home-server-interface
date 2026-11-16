@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"os"
+	"path/filepath"
 	"strconv"
 	"sync"
 )
@@ -13,6 +14,7 @@ var (
 	hostSmbdInstalled = smbdInstalled
 	hostWriteFile     = writeSmbFile
 	errNotExist       = os.ErrNotExist
+	hostMkdirPrivate  = func(path string) error { return os.MkdirAll(path, 0o750) }
 )
 
 // smbMu serializes every write of the Samba configuration: automatic syncs
@@ -27,7 +29,8 @@ func writeSmbFile(path, content string) error {
 
 func planSmbSync(raw json.RawMessage) (*opPlan, *fsError) {
 	var req struct {
-		Shares []shareDef `json:"shares"`
+		Shares   []shareDef  `json:"shares"`
+		Settings smbSettings `json:"settings"`
 	}
 	if err := json.Unmarshal(raw, &req); err != nil {
 		return nil, badRequest(err)
@@ -35,7 +38,7 @@ func planSmbSync(raw json.RawMessage) (*opPlan, *fsError) {
 	if !hostSmbdInstalled() {
 		return nil, &fsError{Code: "SMBD_MISSING", Message: "samba is not installed"}
 	}
-	conf, err := renderSmbConf(req.Shares)
+	conf, err := renderSmbConf(req.Shares, req.Settings)
 	if err != nil {
 		return nil, &fsError{Code: "ERR", Message: err.Error()}
 	}
@@ -45,6 +48,11 @@ func planSmbSync(raw json.RawMessage) (*opPlan, *fsError) {
 	obs := map[string]string{"smb.conf": current, "dropIn": strconv.FormatBool(dropIn)}
 
 	var steps []planStep
+	if logDir := filepath.Dir(smbLogPath); req.Settings.Audit && !hostExists(logDir) {
+		steps = append(steps, planStep{Kind: "create", Target: logDir,
+			Summary: "Create the folder that keeps the Samba connection journal",
+			run:     func() (string, error) { return "", hostMkdirPrivate(logDir) }})
+	}
 	if !dropIn {
 		steps = append(steps, planStep{Kind: "create", Target: dropInPath,
 			Summary: "Install the systemd drop-in that points smbd at HSI's smb.conf (the samba package's own file stays untouched)",

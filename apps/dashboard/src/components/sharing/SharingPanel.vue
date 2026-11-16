@@ -1,43 +1,75 @@
 <script setup lang="ts">
-import { useI18n } from 'vue-i18n'
-import SectionNav from '@/components/ui/SectionNav.vue'
-import { CircleCheckIcon, FolderIcon, WifiIcon } from '@lucide/vue'
-import { ref, computed } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import type { Component } from 'vue'
+import { useI18n } from 'vue-i18n'
+import { FolderIcon, ScrollTextIcon, SettingsIcon } from '@lucide/vue'
+import SectionNav from '@/components/ui/SectionNav.vue'
+import ServiceBanner from './ServiceBanner.vue'
 import SharesSection from './SharesSection.vue'
-import ConnectionsSection from './ConnectionsSection.vue'
-import DiagnosticsSection from './DiagnosticsSection.vue'
+import JournalSection from './JournalSection.vue'
+import SettingsSection from './SettingsSection.vue'
+import MySharesSection from './MySharesSection.vue'
+import { trpc } from '../../lib/trpc'
+import { useAuth } from '../../lib/auth'
+import type { SharingService } from '../../lib/sharing-types'
 
 const { t } = useI18n()
+const { isAdmin } = useAuth()
 
-type SectionId = 'shares' | 'connections' | 'diagnostics'
-
-interface NavItem { id: SectionId; label: string }
-
-const nav: NavItem[] = [
-  { id: 'shares',      label: 'shares' },
-  { id: 'connections', label: 'connections' },
-  { id: 'diagnostics', label: 'diagnostics' },
-]
-
+type SectionId = 'shares' | 'journal' | 'settings'
 const active = ref<SectionId>('shares')
+const icons: Record<SectionId, Component> = { shares: FolderIcon, journal: ScrollTextIcon, settings: SettingsIcon }
 
-const navItems = computed(() => nav.map(n => ({ ...n, label: t(`sharing.nav.${n.label}`), icon: ({ shares: FolderIcon, connections: WifiIcon, diagnostics: CircleCheckIcon } as Record<SectionId, Component>)[n.id] })))
+// "See all" in a share opens the journal on that share.
+const journalShare = ref<string | undefined>(undefined)
+function openJournal(share: string) {
+  journalShare.value = share
+  active.value = 'journal'
+}
+// The journal opens unfiltered from the menu; "See all" filters it once.
+watch(active, v => { if (v !== 'journal') journalShare.value = undefined })
+const navItems = computed(() => (Object.keys(icons) as SectionId[]).map(id => ({ id, label: t(`sharing.nav.${id}`), icon: icons[id] })))
+
+const service = ref<SharingService | null>(null)
+const serviceLoading = ref(true)
+let timer: ReturnType<typeof setInterval> | null = null
+
+async function loadService() {
+  serviceLoading.value = true
+  try {
+    service.value = await trpc.sharing.service.query()
+  } catch {
+    service.value = null
+  } finally {
+    serviceLoading.value = false
+  }
+}
+
+onMounted(() => {
+  if (!isAdmin.value) return
+  void loadService()
+  timer = setInterval(() => { if (!document.hidden) void loadService() }, 15000)
+})
+onUnmounted(() => { if (timer) clearInterval(timer) })
 </script>
 
 <template>
-  <div class="flex flex-col sm:flex-row h-full">
-
-    <SectionNav v-model="active" :items="navItems" />
-
-    <!-- Content -->
+  <div v-if="!isAdmin" class="@container h-full overflow-y-auto">
+    <div class="max-w-3xl p-4 @2xl:p-8"><MySharesSection /></div>
+  </div>
+  <div v-else class="@container h-full">
+  <!-- The layout follows this panel's width (a desktop window or the
+       classic view), not the screen's. -->
+  <div class="flex h-full flex-col @2xl:flex-row">
+    <SectionNav v-model="active" :items="navItems" container />
     <div class="flex-1 overflow-y-auto">
-      <div class="p-4 sm:p-8 max-w-4xl">
-        <SharesSection      v-if="active === 'shares'" />
-        <ConnectionsSection v-else-if="active === 'connections'" />
-        <DiagnosticsSection v-else-if="active === 'diagnostics'" />
+      <div class="max-w-5xl space-y-6 p-4 @2xl:p-8">
+        <ServiceBanner :service="service" :loading="serviceLoading" @refresh="loadService" />
+        <SharesSection v-if="active === 'shares'" :service="service" @changed="loadService" @see-all="openJournal" />
+        <JournalSection v-else-if="active === 'journal'" :service="service" :initial-share="journalShare" />
+        <SettingsSection v-else-if="active === 'settings'" :key="service?.settings.updatedAt?.toString()" :service="service" @changed="loadService" />
       </div>
     </div>
-
+  </div>
   </div>
 </template>

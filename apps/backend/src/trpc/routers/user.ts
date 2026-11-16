@@ -3,7 +3,7 @@ import { TRPCError } from "@trpc/server"
 import { router, protectedProcedure, userManagerProcedure, adminProcedure, CAPABILITIES } from "../index"
 import { userSelect, changePassword, reLinuxUsername, getIdentityStatus, assertCreatable, createUserRecord } from "../../services/user.service"
 import { requestSync } from "../../nats"
-import { desiredShareDefs, syncPlaceAccess, withShareLock } from "../../services/sharing.service"
+import { currentSmbSettings, desiredShareDefs, syncPlaceAccess, withShareLock } from "../../services/sharing.service"
 import { planAuditMeta } from "../../services/storage-plan"
 import {
   USER_OPS, applyUserCreate, applyUserDelete, previewUserCreate, previewUserDelete,
@@ -89,6 +89,7 @@ async function prepareUserPlan(ctx: Context, caller: Caller, op: UserOp, raw: un
     smbdInstalled: () => requestSync<{ smbdInstalled: boolean }>("root.sharing.checkPrereqs", {}).then(r => r.smbdInstalled),
     shareDefs: () => desiredShareDefs(ctx.prisma, undefined, { withoutUser: username }),
     currentShareDefs: () => desiredShareDefs(ctx.prisma),
+    smbSettings: () => currentSmbSettings(ctx.prisma),
     serialize: withShareLock,
     resync: () => syncSharesBestEffort(ctx.prisma),
     commit,

@@ -17,6 +17,7 @@ export interface UserPlanDeps {
   shareDefs(): Promise<unknown[]>
   /** Share definitions as they are now. */
   currentShareDefs(): Promise<unknown[]>
+  smbSettings?(): Promise<unknown>
   serialize<T>(fn: () => Promise<T>): Promise<T>
   resync(): Promise<void>
   commit(): Promise<unknown>
@@ -82,7 +83,7 @@ async function deletePreviews(username: string, deps: UserPlanDeps) {
   const shares = await deps.shareDefs()
   const named = JSON.stringify(shares) !== JSON.stringify(await deps.currentShareDefs())
   if (named && await deps.smbdInstalled()) {
-    const input = { shares }
+    const input = { shares, settings: await deps.smbSettings?.() }
     smb = { ...await preview(deps, "smb.sync", input), input }
   }
   const group = await preview(deps, "group.leave", { username })

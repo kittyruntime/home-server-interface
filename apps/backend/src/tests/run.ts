@@ -1417,7 +1417,7 @@ await testAppPlanBuilders()
 async function testSharePlans() {
   const sp = await import("../services/sharing-plan")
   const row = (id: string, over: Partial<import("../services/sharing-plan").ShareRow> = {}) =>
-    ({ id, placeId: `p-${id}`, smbName: null, readOnly: false, guestOk: false, enabled: true, place: { name: id, path: `/srv/${id}` }, ...over })
+    ({ id, placeId: `p-${id}`, smbName: null, readOnly: false, guestOk: false, enabled: true, hidden: false, place: { name: id, path: `/srv/${id}` }, ...over })
   const rows = [row("a"), row("b", { enabled: false })]
 
   // Overlay: nothing written, the change is visible.
@@ -3937,3 +3937,297 @@ async function testTaskGetIsOwnerOnly() {
   assert.equal((await tasksRouter.createCaller(ctx("admin", true)).get({ jobId: job.id })).status, "completed")
 }
 await testTaskGetIsOwnerOnly()
+
+// SMB journal (Sharing app): an in-memory stand-in for the three tables.
+function fakeSmbDb(init: { events?: any[]; blocks?: any[]; settings?: any } = {}) {
+  const db = { events: [...(init.events ?? [])], blocks: [...(init.blocks ?? [])], settings: { id: 1, netbiosName: "", workgroup: "", minProtocol: "SMB2", encryption: "off", discoveryWsd: false, discoveryMdns: false, autoBlock: true, blockThreshold: 10, blockWindowMin: 10, blockForMin: 30, eventCursor: "", ...init.settings } }
+  const atGte = (w: any, e: any) => !w?.at?.gte || e.at >= w.at.gte
+  const prisma: any = {
+    smbSettings: {
+      upsert: async () => db.settings,
+      findUnique: async () => db.settings,
+      update: async ({ data }: any) => Object.assign(db.settings, data),
+    },
+    shareEvent: {
+      createMany: async ({ data }: any) => { db.events.push(...data); return { count: data.length } },
+      findMany: async ({ where }: any = {}) => db.events.filter(e => (!where?.result || e.result === where.result) && atGte(where, e)),
+      deleteMany: async ({ where }: any) => { const n = db.events.length; db.events = db.events.filter(e => !(e.at < where.at.lt)); return { count: n - db.events.length } },
+    },
+    smbBlock: {
+      findMany: async ({ where }: any = {}) => db.blocks.filter(b => !where?.until?.gt || b.until > where.until.gt),
+      upsert: async ({ where, create, update }: any) => { const b = db.blocks.find(x => x.ip === where.ip); if (b) Object.assign(b, update); else db.blocks.push(create); return create },
+      deleteMany: async ({ where }: any) => { const n = db.blocks.length; db.blocks = db.blocks.filter(b => !(where?.until?.lt ? b.until < where.until.lt : where?.until?.lte ? b.until <= where.until.lte : where?.ip ? b.ip === where.ip : true)); return { count: n - db.blocks.length } },
+      updateMany: async ({ where, data }: any) => { const hit = db.blocks.filter(b => b.ip === where.ip && (!where.until?.gt || b.until > where.until.gt)); hit.forEach(b => Object.assign(b, data)); return { count: hit.length } },
+    },
+  }
+  return { db, prisma }
+}
+
+async function testSmbSettingsPayload() {
+  const { workerSmbSettings } = await import("../services/smb-events.service")
+  const now = new Date("2026-11-16T12:00:00Z")
+  const { prisma } = fakeSmbDb({
+    settings: { minProtocol: "SMB3", netbiosName: "NAS" },
+    blocks: [{ ip: "192.168.1.9", until: new Date(now.getTime() + 60_000) }, { ip: "192.168.1.8", until: new Date(now.getTime() - 1) }],
+  })
+  const s = await workerSmbSettings(prisma, { audit: true, now })
+  assert.equal(s.minProtocol, "SMB3")
+  assert.equal(s.netbiosName, "NAS")
+  assert.equal(s.audit, true)
+  assert.deepEqual(s.hostsDeny, ["192.168.1.9"], "an expired block is not written")
+  const patched = await workerSmbSettings(prisma, { audit: false, now, patch: { encryption: "required" } })
+  assert.equal(patched.encryption, "required", "a planned change is previewed before it is stored")
+}
+await testSmbSettingsPayload()
+
+async function testSmbSyncCarriesSettingsAndHidden() {
+  const sp = await import("../services/sharing-plan")
+  const row = { id: "s1", placeId: "p1", smbName: null, readOnly: false, guestOk: false, enabled: true, hidden: false, place: { name: "Films", path: "/srv/Films" } }
+  assert.equal(sp.overlayShares([row], { kind: "update", id: "s1", patch: { hidden: true } })[0].hidden, true)
+  assert.deepEqual(sp.overlayShares([row], { kind: "settings", patch: { minProtocol: "SMB3" } }), [row])
+  let sent: any = null
+  const deps: any = {
+    smbdInstalled: async () => true, defs: async () => [{ name: "Films", hidden: true }],
+    smbSettings: async () => ({ minProtocol: "SMB3" }),
+    worker: async (_s: string, p: any) => { sent = p; return { steps: [], fingerprint: "f" } },
+  }
+  await sp.previewShareChange("smb.settings", "SMB", deps)
+  assert.equal(sent.input.settings.minProtocol, "SMB3")
+  assert.equal(sent.input.shares[0].hidden, true)
+}
+await testSmbSyncCarriesSettingsAndHidden()
+
+async function testPullSmbEventsAdvancesCursor() {
+  const { pullSmbEvents } = await import("../services/smb-events.service")
+  const { db, prisma } = fakeSmbDb()
+  const asked: any[] = []
+  const worker: any = async (_s: string, p: any) => {
+    asked.push(p)
+    return { available: true, cursor: { inode: 1, offset: 200 }, events: [
+      { at: "2026-11-16T12:00:00Z", kind: "auth", result: "ok", user: "Alice", ip: "192.168.1.5", machine: "PC" },
+      { at: "2026-11-16T12:00:01Z", kind: "connect", result: "refused", reason: "no_access", user: "bob", share: "Films" },
+    ] }
+  }
+  assert.equal(await pullSmbEvents(prisma, worker), 2)
+  assert.equal(db.events.length, 2)
+  assert.ok(db.events[0].at instanceof Date)
+  assert.equal(db.events[0].user, "alice", "Samba accounts ignore case: the journal keeps the account name")
+  assert.equal(db.events[1].ip, "", "missing fields are stored empty")
+  assert.deepEqual(JSON.parse(db.settings.eventCursor), { inode: 1, offset: 200 })
+  await pullSmbEvents(prisma, worker)
+  assert.deepEqual(asked[1].cursor, { inode: 1, offset: 200 })
+  assert.equal(asked[0].cursor, undefined, "the first pull starts from the beginning")
+}
+await testPullSmbEventsAdvancesCursor()
+
+async function testPruneKeepsThirtyDays() {
+  const { pruneSmbEvents } = await import("../services/smb-events.service")
+  const now = new Date("2026-11-16T12:00:00Z")
+  const day = 86_400_000
+  const { db, prisma } = fakeSmbDb({
+    events: [{ at: new Date(now.getTime() - 31 * day) }, { at: new Date(now.getTime() - 29 * day) }],
+    blocks: [{ ip: "1.2.3.3", until: new Date(now.getTime() - 2 * day) }, { ip: "1.2.3.4", until: new Date(now.getTime() - 1) }, { ip: "1.2.3.5", until: new Date(now.getTime() + day) }],
+  })
+  await pruneSmbEvents(prisma, now)
+  assert.equal(db.events.length, 1)
+  assert.deepEqual(db.blocks.map(b => b.ip), ["1.2.3.4", "1.2.3.5"], "a block lifted lately is kept to know when it was lifted")
+}
+await testPruneKeepsThirtyDays()
+
+async function testAutoBlockThreshold() {
+  const { applyAutoBlock } = await import("../services/smb-events.service")
+  const now = new Date("2026-11-16T12:00:00Z")
+  const refusals = (ip: string, n: number, minutesAgo: number) =>
+    Array.from({ length: n }, () => ({ at: new Date(now.getTime() - minutesAgo * 60_000), result: "refused", reason: "wrong_password", ip }))
+  const { db, prisma } = fakeSmbDb({ events: [
+    ...refusals("192.168.1.9", 10, 2), ...refusals("192.168.1.8", 9, 2), ...refusals("192.168.1.7", 10, 30),
+  ] })
+  assert.deepEqual(await applyAutoBlock(prisma, now), ["192.168.1.9"])
+  assert.equal(db.blocks[0].until.getTime(), now.getTime() + 30 * 60_000)
+  assert.deepEqual(await applyAutoBlock(prisma, now), [], "an address already blocked is not new")
+  const off = fakeSmbDb({ events: refusals("192.168.1.9", 20, 1), settings: { autoBlock: false } })
+  assert.deepEqual(await applyAutoBlock(off.prisma, now), [])
+}
+await testAutoBlockThreshold()
+
+async function testAutoBlockNeverBlocksLoopback() {
+  const { applyAutoBlock } = await import("../services/smb-events.service")
+  const now = new Date("2026-11-16T12:00:00Z")
+  const ev = (ip: string) => Array.from({ length: 50 }, () => ({ at: now, result: "refused", reason: "wrong_password", ip }))
+  const { prisma } = fakeSmbDb({ events: [...ev("127.0.0.1"), ...ev("::1"), ...ev(""), ...ev("fe80::1%eth0"), ...ev("1.2.3.4 ALL")] })
+  assert.deepEqual(await applyAutoBlock(prisma, now), [], "loopback, a zone or junk is never blocked")
+  const { normalizeIp } = await import("../services/smb-events.service")
+  assert.equal(normalizeIp("FE80:0:0::1"), "fe80::1", "written the way the worker writes it")
+  assert.equal(normalizeIp("::ffff:192.168.1.9"), "192.168.1.9")
+}
+await testAutoBlockNeverBlocksLoopback()
+
+async function testBlockingMarksCallerAddress() {
+  const { listBlocks } = await import("../services/smb-events.service")
+  const now = new Date("2026-11-16T12:00:00Z")
+  const { prisma } = fakeSmbDb({ blocks: [{ ip: "192.168.1.9", until: new Date(now.getTime() + 1000) }, { ip: "192.168.1.8", until: new Date(now.getTime() + 1000) }] })
+  const rows = await listBlocks(prisma, "::ffff:192.168.1.9", now)
+  assert.deepEqual(rows.map(r => [r.ip, r.mine]), [["192.168.1.8", false], ["192.168.1.9", true]])
+}
+await testBlockingMarksCallerAddress()
+
+async function testAutoBlockCountsOnlyPasswordFailures() {
+  const { applyAutoBlock } = await import("../services/smb-events.service")
+  const now = new Date("2026-11-16T12:00:00Z")
+  const ev = (reason: string, n: number) => Array.from({ length: n }, () => ({ at: now, result: "refused", reason, ip: "192.168.1.9" }))
+  // A PC signed in under a name the NAS does not know gets guest access; one
+  // already blocked keeps knocking; neither is guessing a password.
+  const { prisma } = fakeSmbDb({ events: [...ev("unknown_user", 20), ...ev("blocked", 20), ...ev("no_access", 20)] })
+  assert.deepEqual(await applyAutoBlock(prisma, now), [])
+  const bad = fakeSmbDb({ events: [...ev("wrong_password", 5), ...ev("account_disabled", 5)] })
+  assert.deepEqual(await applyAutoBlock(bad.prisma, now), ["192.168.1.9"])
+}
+await testAutoBlockCountsOnlyPasswordFailures()
+
+async function testAutoBlockNotAgainAfterLift() {
+  const { applyAutoBlock, liftBlock, listBlocks } = await import("../services/smb-events.service")
+  const now = new Date("2026-11-16T12:00:00Z")
+  const ip = "192.168.1.9"
+  const at = (msAgo: number, n: number) => Array.from({ length: n }, () => ({ at: new Date(now.getTime() - msAgo), result: "refused", reason: "wrong_password", ip }))
+  // Expired a minute ago: the refusals that caused it do not block it again.
+  const expired = fakeSmbDb({ events: at(3 * 60_000, 10), blocks: [{ ip, until: new Date(now.getTime() - 60_000) }] })
+  assert.deepEqual(await applyAutoBlock(expired.prisma, now), [])
+  expired.db.events.push(...at(30_000, 10))
+  assert.deepEqual(await applyAutoBlock(expired.prisma, now), [ip], "new failures after the lift still count")
+  // Unblocked by hand: same.
+  const manual = fakeSmbDb({ events: at(60_000, 10), blocks: [{ ip, until: new Date(now.getTime() + 30 * 60_000) }] })
+  await liftBlock(manual.prisma, ip, now)
+  assert.deepEqual(await listBlocks(manual.prisma, undefined, now), [])
+  assert.deepEqual(await applyAutoBlock(manual.prisma, new Date(now.getTime() + 1000)), [])
+}
+await testAutoBlockNotAgainAfterLift()
+
+async function testJournalResyncsOnDrift() {
+  const { smbDrift, noteRenderedSmb } = await import("../services/smb-events.service")
+  const now = new Date("2026-11-16T12:00:00Z")
+  const { db, prisma } = fakeSmbDb({ blocks: [{ ip: "1.2.3.4", until: new Date(now.getTime() - 1) }] })
+  assert.equal(await smbDrift(prisma, false, now), false, "never rendered, nothing to write (Samba missing): no retry loop")
+  db.blocks.push({ ip: "1.2.3.9", until: new Date(now.getTime() + 60_000) })
+  assert.equal(await smbDrift(prisma, false, now), true, "never rendered (the startup sync failed) but a block waits: write it")
+  db.blocks.pop()
+  assert.equal(await smbDrift(prisma, true, now), true, "never rendered but audit lines are due: write them")
+  noteRenderedSmb({ hostsDeny: ["1.2.3.4"], audit: true })
+  assert.equal(await smbDrift(prisma, true, now), true, "an expired block still in smb.conf")
+  noteRenderedSmb({ hostsDeny: [], audit: true })
+  assert.equal(await smbDrift(prisma, true, now), false)
+  assert.equal(await smbDrift(prisma, false, now), true, "audit support changed")
+}
+await testJournalResyncsOnDrift()
+
+async function testAuditSupportIsNotStuckOnFalse() {
+  const { smbAuditSupported } = await import("../services/smb-events.service")
+  let installed = false
+  const state = async () => ({ installed, audit: true }) as any
+  assert.equal(await smbAuditSupported(state), false)
+  installed = true // Samba installed while HSI runs
+  assert.equal(await smbAuditSupported(state), true)
+}
+await testAuditSupportIsNotStuckOnFalse()
+
+async function testRepairNeedsTheSambaPasswordWritten() {
+  const { sambaPasswordWritten } = await import("../services/user.service")
+  assert.equal(sambaPasswordWritten({ smbOk: true }), true)
+  assert.equal(sambaPasswordWritten({ smbOk: false, smbSkipped: true }), false, "network sharing turned off for the account: not repaired")
+  assert.equal(sambaPasswordWritten({ smbOk: false }), false)
+}
+await testRepairNeedsTheSambaPasswordWritten()
+
+// Sharing app: what a signed-in user may see of SMB.
+function fakeSharingDb() {
+  const users = [
+    { id: "u-alice", username: "alice", isAdmin: false },
+    { id: "u-bob", username: "bob", isAdmin: false },
+    { id: "u-root", username: "admin", isAdmin: true },
+  ]
+  const shares = [
+    { id: "s-films", placeId: "p-films", smbName: null, enabled: true, readOnly: false, guestOk: false, hidden: false, createdAt: new Date(1), place: { name: "Films", path: "/srv/films" } },
+    { id: "s-docs", placeId: "p-docs", smbName: null, enabled: true, readOnly: false, guestOk: false, hidden: false, createdAt: new Date(2), place: { name: "Docs", path: "/srv/docs" } },
+    { id: "s-public", placeId: "p-public", smbName: null, enabled: true, readOnly: true, guestOk: true, hidden: false, createdAt: new Date(3), place: { name: "Public", path: "/srv/public" } },
+  ]
+  const userPerms: Record<string, any[]> = { "p-films": [{ canWrite: true, user: { username: "alice" } }] }
+  const groupPerms: Record<string, any[]> = { "p-docs": [{ canWrite: false, group: { members: [{ user: { username: "bob" } }] } }] }
+  const events = [
+    { id: "e1", at: new Date(3), kind: "auth", result: "refused", reason: "wrong_password", user: "alice", ip: "10.0.0.1", machine: "A", share: "" },
+    { id: "e2", at: new Date(2), kind: "connect", result: "ok", reason: "", user: "bob", ip: "10.0.0.2", machine: "B", share: "Docs" },
+  ]
+  let lastWhere: any = null
+  const prisma: any = {
+    user: {
+      findUnique: async ({ where }: any) => {
+        const u = users.find(x => x.id === where.id)
+        return u ? { ...u, isUserManager: u.isAdmin, mustChangePassword: false, capabilities: [] } : null
+      },
+      findMany: async ({ where }: any) => users.filter(u => !where?.isAdmin || u.isAdmin),
+    },
+    share: { findMany: async () => shares },
+    userPlacePermission: { findMany: async ({ where }: any) => userPerms[where.placeId] ?? [] },
+    groupPlacePermission: { findMany: async ({ where }: any) => groupPerms[where.placeId] ?? [] },
+    shareEvent: {
+      findMany: async ({ where }: any) => {
+        lastWhere = where
+        return events.filter(e => (!where?.user || e.user === where.user) && (!where?.share || e.share === where.share))
+      },
+    },
+  }
+  return { prisma, lastWhere: () => lastWhere }
+}
+
+async function testSharingNonAdminSeesOnlyOwnData() {
+  const view = await import("../services/sharing-view.service")
+  const { prisma, lastWhere } = fakeSharingDb()
+  const bob = await view.viewerOf(prisma, "u-bob")
+  const conns = [{ user: "alice", share: "Films" }, { user: "bob", share: "Docs" }]
+  assert.deepEqual(view.visibleSessions(conns, bob), [{ user: "bob", share: "Docs" }])
+  const page = await view.listEvents(prisma, bob, { user: "alice", limit: 50 })
+  assert.equal(lastWhere().user, "bob", "a non-admin's filter is forced to their own name")
+  assert.deepEqual(page.items.map((e: any) => e.id), ["e2"])
+  const mine = await view.reachableShares(prisma, bob)
+  assert.ok(!mine.some(s => s.name === "Films"), "bob cannot reach Films")
+  const admin = await view.viewerOf(prisma, "u-root")
+  assert.equal(view.visibleSessions(conns, admin).length, 2)
+  await view.listEvents(prisma, admin, { user: "alice", limit: 50 })
+  assert.equal(lastWhere().user, "alice", "an admin filters freely")
+}
+await testSharingNonAdminSeesOnlyOwnData()
+
+async function testMineIncludesGroupAndGuestShares() {
+  const view = await import("../services/sharing-view.service")
+  const { prisma } = fakeSharingDb()
+  const bob = await view.reachableShares(prisma, await view.viewerOf(prisma, "u-bob"))
+  assert.deepEqual(bob.map(s => [s.name, s.level, s.guestOk]), [["Docs", "read", false], ["Public", "read", true]])
+  const alice = await view.reachableShares(prisma, await view.viewerOf(prisma, "u-alice"))
+  assert.deepEqual(alice.map(s => [s.name, s.level]), [["Films", "write"], ["Public", "read"]])
+  const admin = await view.reachableShares(prisma, await view.viewerOf(prisma, "u-root"))
+  assert.deepEqual(admin.map(s => [s.name, s.level]), [["Films", "write"], ["Docs", "write"], ["Public", "read"]])
+}
+await testMineIncludesGroupAndGuestShares()
+
+async function testSharingAdminOnlyEndpoints() {
+  const { sharingRouter } = await import("../trpc/routers/sharing")
+  const { prisma } = fakeSharingDb()
+  const ctx: any = { user: { userId: "u-bob", isAdmin: false }, prisma, req: { ip: "127.0.0.1", headers: {} } }
+  const caller = sharingRouter.createCaller(ctx)
+  for (const call of [
+    () => caller.detail({ id: "s-docs" }), () => caller.disconnect({ pid: "1" }), () => caller.unblock({ ip: "10.0.0.1" }),
+    () => caller.serviceAction({ action: "restart" }), () => caller.blocks(), () => caller.service(),
+  ]) await assert.rejects(call, (e: any) => e.code === "FORBIDDEN")
+}
+await testSharingAdminOnlyEndpoints()
+
+async function testRepairPasswordVerifiesFirst() {
+  const view = await import("../services/sharing-view.service")
+  const { prisma } = fakeSharingDb()
+  const bob = await view.viewerOf(prisma, "u-bob")
+  const synced: string[] = []
+  const deps = { verify: async (_p: any, _id: string, pw: string) => pw === "right", sync: async (_p: any, _id: string, pw: string) => { synced.push(pw); return true } }
+  await assert.rejects(() => view.repairNetworkPassword(prisma, bob, "wrong", "10.0.0.9", deps), (e: any) => e.code === "UNAUTHORIZED")
+  assert.deepEqual(synced, [], "a wrong password never reaches the worker")
+  assert.deepEqual(await view.repairNetworkPassword(prisma, bob, "right", "10.0.0.9", deps), { ok: true })
+  assert.deepEqual(synced, ["right"])
+}
+await testRepairPasswordVerifiesFirst()

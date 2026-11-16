@@ -1,287 +1,194 @@
 <script setup lang="ts">
+import { computed, onMounted, ref, useTemplateRef } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Card } from '@/components/ui/card'
-import Tip from '../ui/Tip.vue'
-import { Checkbox } from '@/components/ui/checkbox'
-import LoadingState from '../ui/LoadingState.vue'
-import { ref, computed, onMounted } from 'vue'
-import { trpc } from '../../lib/trpc'
-import { useVolumeHolds, holdLabel } from '../../lib/volumes'
-import Modal from '../ui/Modal.vue'
-import { applyPlanned } from '../../lib/plan'
-import { Badge } from '@/components/ui/badge'
+import { useElementSize } from '@vueuse/core'
+import { PlusIcon } from '@lucide/vue'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
+import { Card } from '@/components/ui/card'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
+import LoadingState from '../ui/LoadingState.vue'
+import BusyLabel from '../ui/BusyLabel.vue'
+import Modal from '../ui/Modal.vue'
+import ShareList from './ShareList.vue'
+import ShareDetail from './ShareDetail.vue'
+import { trpc } from '../../lib/trpc'
+import { applyPlanned } from '../../lib/plan'
+import { useVolumeHolds } from '../../lib/volumes'
+import { connectInfo, type ShareDetailData, type ShareListRow, type SharingService } from '../../lib/sharing-types'
+
+const props = defineProps<{ service: SharingService | null }>()
+const emit = defineEmits<{ seeAll: [share: string]; changed: [] }>()
 
 const { t } = useI18n()
 
-
-type ShareRow = {
-  id: string
-  placeId: string
-  placeName: string
-  placePath: string
-  enabled: boolean
-  readOnly: boolean
-  guestOk: boolean
-  smbName: string | null
-  effectiveName: string
-  userCount: number
-  excludedUsernames: string[]
-}
-
 type PlaceRow = { id: string; name: string; path: string }
 
-const prereq  = ref<{ smbdInstalled: boolean } | null>(null)
-const shares  = ref<ShareRow[]>([])
-const places  = ref<PlaceRow[]>([])
+const shares = ref<ShareListRow[]>([])
+const places = ref<PlaceRow[]>([])
 const loading = ref(true)
-const error   = ref('')
+const error = ref('')
+const selectedId = ref<string | null>(null)
 
-// null = closed; { id: null } = create; { id: string } = edit
-const editor = ref<{
-  id: string | null
-  placeId: string
-  smbName: string
-  readOnly: boolean
-  guestOk: boolean
-} | null>(null)
-const saving      = ref(false)
-const editorError = ref('')
-const deleting    = ref<string | null>(null)
+const root = useTemplateRef<HTMLElement>('root')
+const { width } = useElementSize(root)
+// Below 48rem the list fills the space and the detail opens over it.
+const narrow = computed(() => width.value > 0 && width.value < 768)
+
+const installed = computed(() => props.service?.state?.installed ?? false)
+const connect = computed(() => connectInfo(props.service))
 
 const availablePlaces = computed(() => {
-  const sharedIds = new Set(shares.value.map(s => s.placeId))
-  return places.value.filter(p => !sharedIds.has(p.id))
+  const shared = new Set(shares.value.map(s => s.placeId))
+  return places.value.filter(p => !shared.has(p.id))
 })
 
+const { holdForPath, refreshHolds } = useVolumeHolds()
+const unavailable = (path: string) => holdForPath(path) !== undefined
+
 async function refresh() {
-  error.value = ''
   try {
-    const [p, s, pl] = await Promise.all([
-      trpc.sharing.checkPrereqs.query(),
-      trpc.sharing.list.query(),
-      trpc.place.list.query(),
-    ])
-    prereq.value = p
+    const [s, pl] = await Promise.all([trpc.sharing.list.query(), trpc.place.list.query()])
     shares.value = s
     places.value = pl as PlaceRow[]
-  } catch (e: unknown) {
-    error.value = (e as { message?: string })?.message ?? t('uis.sharing.SharesSection.failedToLoadShares')
+    error.value = ''
+    if (selectedId.value && !s.some(x => x.id === selectedId.value)) selectedId.value = null
+    if (!selectedId.value && !narrow.value) selectedId.value = s[0]?.id ?? null
+  } catch (e) {
+    error.value = (e as Error).message || t('sharing.errors.load')
   } finally {
     loading.value = false
   }
 }
 
-const { holdForPath, refreshHolds } = useVolumeHolds()
+onMounted(() => { void refresh(); void refreshHolds() })
 
-onMounted(() => {
-  void refresh()
-  void refreshHolds()
+// null = closed; id null = create
+const editor = ref<{ id: string | null; placeId: string; smbName: string; readOnly: boolean; guestOk: boolean; hidden: boolean } | null>(null)
+const saving = ref(false)
+const OPTIONS = ['readOnly', 'guestOk', 'hidden'] as const
+// The name the share gets when the field stays empty.
+const placeholderName = computed(() => {
+  const e = editor.value
+  if (!e) return ''
+  if (e.id !== null) return shares.value.find(s => s.id === e.id)?.placeName ?? ''
+  return places.value.find(p => p.id === e.placeId)?.name ?? ''
 })
+const editorError = ref('')
 
 function openCreate() {
   editorError.value = ''
-  editor.value = {
-    id: null,
-    placeId: availablePlaces.value[0]?.id ?? '',
-    smbName: '',
-    readOnly: false,
-    guestOk: false,
-  }
+  editor.value = { id: null, placeId: availablePlaces.value[0]?.id ?? '', smbName: '', readOnly: false, guestOk: false, hidden: false }
 }
 
-function openEdit(s: ShareRow) {
+function openEdit(s: ShareDetailData['share']) {
   editorError.value = ''
-  editor.value = {
-    id: s.id,
-    placeId: s.placeId,
-    smbName: s.smbName ?? '',
-    readOnly: s.readOnly,
-    guestOk: s.guestOk,
-  }
+  editor.value = { id: s.id, placeId: '', smbName: s.smbName ?? '', readOnly: s.readOnly, guestOk: s.guestOk, hidden: s.hidden }
 }
 
 async function save() {
-  if (!editor.value) return
+  const e = editor.value
+  if (!e || saving.value) return
   saving.value = true
   editorError.value = ''
   try {
-    if (editor.value.id === null) {
+    if (e.id === null) {
       await applyPlanned('share.create', {
-        placeId: editor.value.placeId,
-        smbName: editor.value.smbName.trim() || undefined,
-        readOnly: editor.value.readOnly,
-        guestOk: editor.value.guestOk,
-      }, { domain: 'sharing', title: t('uis.sharing.SharesSection.createTheShare'), actionLabel: t('uis.sharing.SharesSection.share') })
+        placeId: e.placeId, smbName: e.smbName.trim() || undefined, readOnly: e.readOnly, guestOk: e.guestOk, hidden: e.hidden,
+      }, { domain: 'sharing', title: t('sharing.detail.createPlan'), actionLabel: t('sharing.detail.create') })
     } else {
       await applyPlanned('share.update', {
-        id: editor.value.id,
-        smbName: editor.value.smbName.trim() || null,
-        readOnly: editor.value.readOnly,
-        guestOk: editor.value.guestOk,
-      }, { domain: 'sharing', title: t('uis.sharing.SharesSection.saveTheShare'), actionLabel: t('uis.sharing.SharesSection.save') })
+        id: e.id, smbName: e.smbName.trim() || null, readOnly: e.readOnly, guestOk: e.guestOk, hidden: e.hidden,
+      }, { domain: 'sharing', title: t('sharing.detail.savePlan'), actionLabel: t('sharing.detail.save') })
     }
     editor.value = null
     await refresh()
-  } catch (e: unknown) {
-    editorError.value = (e as { message?: string })?.message ?? t('uis.sharing.SharesSection.failedToSaveShare')
+    emit('changed')
+  } catch (err) {
+    editorError.value = (err as Error).message || t('sharing.errors.action')
   } finally {
     saving.value = false
   }
 }
 
-async function toggleEnabled(s: ShareRow) {
-  error.value = ''
-  try {
-    await applyPlanned('share.update', { id: s.id, enabled: !s.enabled }, {
-      domain: 'sharing',
-      title: s.enabled ? t('uis.sharing.SharesSection.disableTheShare', { p0: s.effectiveName }) : t('uis.sharing.SharesSection.enableTheShare', { p0: s.effectiveName }),
-      actionLabel: s.enabled ? t('uis.sharing.SharesSection.disable') : t('uis.sharing.SharesSection.enable'),
-      danger: s.enabled,
-    })
-    await refresh()
-  } catch (e: unknown) {
-    error.value = (e as { message?: string })?.message ?? t('uis.sharing.SharesSection.failedToUpdateShare')
-  }
-}
-
-async function removeShare(s: ShareRow) {
-  deleting.value = s.id
-  error.value = ''
-  try {
-    await applyPlanned('share.remove', { id: s.id }, {
-      domain: 'sharing', title: t('uis.sharing.SharesSection.stopSharingClientsLoseAccess', { p0: s.effectiveName }), actionLabel: t('uis.sharing.SharesSection.stopSharing'), danger: true,
-    })
-    await refresh()
-  } catch (e: unknown) {
-    error.value = (e as { message?: string })?.message ?? t('uis.sharing.SharesSection.failedToDeleteShare')
-  } finally {
-    deleting.value = null
-  }
+async function onRemoved() {
+  selectedId.value = null
+  await refresh()
+  emit('changed')
 }
 </script>
 
 <template>
-  <div>
-    <div class="flex items-center justify-between mb-6">
-      <div>
-        <p class="eyebrow mb-1">{{ t('ui.sharing.SharesSection.networkSharing') }}</p>
-        <h2 class="text-lg font-semibold text-base-content">{{ t('ui.sharing.SharesSection.smbShares') }}</h2>
-      </div>
-      <Button size="sm"
-        v-if="prereq?.smbdInstalled && availablePlaces.length > 0"
-        @click="openCreate"
-      >
-        {{ t('ui.sharing.SharesSection.newShare') }}
+  <div ref="root" class="@container">
+    <div class="mb-4 flex items-center justify-between gap-3">
+      <h2 class="text-lg font-semibold text-base-content">{{ t('sharing.list.title') }}</h2>
+      <Button v-if="installed && !loading" size="sm" :disabled="availablePlaces.length === 0"
+        :title="availablePlaces.length === 0 ? t('sharing.list.allShared') : undefined" @click="openCreate">
+        <PlusIcon class="size-4" />{{ t('sharing.list.newShare') }}
       </Button>
     </div>
 
-    <p v-if="error" class="status-text text-error mb-4">[ERR] {{ error }}</p>
+    <Alert v-if="error" variant="destructive" class="mb-4"><AlertDescription>{{ error }}</AlertDescription></Alert>
 
     <LoadingState v-if="loading" variant="compact" />
 
-    <!-- Samba missing: guide, never a cryptic error -->
-    <Card v-else-if="prereq && !prereq.smbdInstalled" class="block gap-0 py-0 overflow-hidden p-6">
-      <h3 class="text-sm font-semibold text-base-content mb-2">{{ t('ui.sharing.SharesSection.sambaIsNotInstalled') }}</h3>
-      <p class="text-sm text-base-content/80 mb-4">
-        {{ t('ui.sharing.SharesSection.smbSharingNeedsTheSamba') }}
-      </p>
-      <code class="inline-block px-3 py-2 rounded-lg bg-base-200 border border-base-300 text-sm font-mono text-base-content">
-        sudo apt install samba
-      </code>
-      <div class="mt-4">
-        <Button variant="outline" size="sm" @click="refresh">{{ t('ui.sharing.SharesSection.checkAgain') }}</Button>
-      </div>
+    <Card v-else-if="shares.length === 0" class="p-6 text-sm text-base-content/70">{{ t('sharing.list.empty') }}</Card>
+
+    <Card v-else class="gap-0 overflow-hidden py-0 @3xl:grid @3xl:grid-cols-[17rem_1fr]">
+      <ShareList
+        v-if="!narrow || !selectedId"
+        class="@3xl:border-r @3xl:border-base-300"
+        :shares="shares" :selected-id="selectedId" :unavailable="unavailable"
+        @select="id => selectedId = id"
+      />
+      <ShareDetail
+        v-if="selectedId"
+        :id="selectedId" :connect="connect" :narrow="narrow"
+        @back="selectedId = null"
+        @edit="openEdit"
+        @changed="refresh(); emit('changed')"
+        @removed="onRemoved"
+        @see-all="name => emit('seeAll', name)"
+      />
+      <p v-else-if="!narrow" class="p-6 text-sm text-base-content/70">{{ t('sharing.detail.select') }}</p>
     </Card>
 
-    <Card v-else-if="shares.length === 0" class="block gap-0 py-0 overflow-hidden p-6 text-sm text-base-content/70">
-      {{ t('ui.sharing.SharesSection.noSharesYetShareAn') }}
-    </Card>
-
-    <div v-else class="space-y-3">
-      <Card v-for="s in shares" :key="s.id" class="block gap-0 py-0 overflow-hidden p-4">
-        <div class="flex items-start justify-between gap-4">
-          <div class="min-w-0">
-            <div class="flex items-center gap-2 flex-wrap">
-              <span class="text-sm font-semibold text-base-content">{{ s.effectiveName }}</span>
-              <Badge :variant="s.enabled ? 'default' : 'secondary'">
-                {{ s.enabled ? 'Active' : 'Disabled' }}
-              </Badge>
-              <Badge variant="secondary" v-if="s.readOnly">{{ t('ui.sharing.SharesSection.readOnly') }}</Badge>
-              <Badge variant="secondary" v-if="s.guestOk">{{ t('ui.sharing.SharesSection.guest') }}</Badge>
-              <Tip v-if="holdForPath(s.placePath)" :text="holdLabel(holdForPath(s.placePath)!)"><Badge variant="outline" class="bg-error/10 text-error">{{ t('ui.sharing.SharesSection.unavailable') }}</Badge></Tip>
-            </div>
-            <p class="text-xs text-base-content/70 mt-1">
-              {{ s.placeName }} · <span>{{ s.placePath }}</span> {{ t('uip.sharing.SharesSection.user', { p0: s.userCount, p1: s.userCount === 1 ? '' : 's' }) }}
-            </p>
-            <p v-if="s.excludedUsernames.length > 0" class="status-text text-warning mt-2">
-              {{ t('uip.sharing.SharesSection.warnNoLinuxAccountFor', { p0: s.excludedUsernames.join(', ') }) }}
-            </p>
-          </div>
-          <div class="flex items-center gap-1.5 shrink-0">
-            <Button variant="ghost" size="xs" @click="toggleEnabled(s)">
-              {{ s.enabled ? 'Disable' : 'Enable' }}
-            </Button>
-            <Button variant="ghost" size="xs" @click="openEdit(s)">{{ t('ui.sharing.SharesSection.edit') }}</Button>
-            <Button variant="destructive" size="xs" :disabled="deleting === s.id" @click="removeShare(s)">
-              {{ t('ui.sharing.SharesSection.delete') }}
-            </Button>
-          </div>
-        </div>
-      </Card>
-    </div>
-
-    <!-- Create / edit modal -->
-    <Modal v-if="editor" panel-class="w-full max-w-sm" @close="editor = null">
+    <Modal v-if="editor" panel-class="w-full max-w-md" @close="editor = null">
       <template #header>
-        <h3 class="text-sm font-semibold text-base-content">
-          {{ editor.id === null ? 'New share' : 'Edit share' }}
-        </h3>
+        <h3 class="text-sm font-semibold text-base-content">{{ editor.id === null ? t('sharing.detail.newTitle') : t('sharing.detail.editTitle') }}</h3>
       </template>
-
-      <div class="p-6 space-y-4">
-        <div v-if="editor.id === null">
-          <p class="eyebrow mb-2">{{ t('ui.sharing.SharesSection.place') }}</p>
-          <NativeSelect wrapper-class="w-full" v-model="editor.placeId">
-            <NativeSelectOption v-for="p in availablePlaces" :key="p.id" :value="p.id">
-              {{ p.name }} · {{ p.path }}
-            </NativeSelectOption>
+      <form id="share-editor" class="space-y-5 p-6" @submit.prevent="save">
+        <label v-if="editor.id === null" class="block space-y-1.5">
+          <span class="text-sm font-medium text-base-content">{{ t('sharing.detail.place') }}</span>
+          <NativeSelect v-model="editor.placeId" wrapper-class="w-full">
+            <NativeSelectOption v-for="p in availablePlaces" :key="p.id" :value="p.id">{{ p.name }} · {{ p.path }}</NativeSelectOption>
           </NativeSelect>
-        </div>
-
-        <div>
-          <p class="eyebrow mb-2">{{ t('ui.sharing.SharesSection.shareName') }}</p>
-          <Input
-            v-model="editor.smbName"
-            type="text"
-            :placeholder="t('ui.sharing.SharesSection.defaultsToThePlaceName')"
-            class="w-full font-mono"
-          />
-          <p class="text-xs text-base-content/70 mt-1">{{ t('ui.sharing.SharesSection.lettersDigitsDotsDashesUnderscores') }}</p>
-        </div>
-
-        <label class="flex items-center gap-2 text-sm text-base-content/80 cursor-pointer">
-          <Checkbox v-model="editor.readOnly" />
-          {{ t('ui.sharing.SharesSection.readOnlyIgnoreWritePermissions') }}
         </label>
-        <label class="flex items-center gap-2 text-sm text-base-content/80 cursor-pointer">
-          <Checkbox v-model="editor.guestOk" />
-          {{ t('ui.sharing.SharesSection.allowGuestAccessNoAuthentication') }}
+        <label class="block space-y-1.5">
+          <span class="text-sm font-medium text-base-content">{{ t('sharing.detail.shareName') }}</span>
+          <Input v-model="editor.smbName" type="text" maxlength="32" pattern="[A-Za-z0-9][A-Za-z0-9._\-]*" autocomplete="off" spellcheck="false"
+            :placeholder="placeholderName" class="w-full font-mono" />
+          <span class="block text-xs text-base-content/70">{{ t('sharing.detail.shareNameHelp') }}</span>
         </label>
-
-        <p v-if="editorError" class="status-text text-error">[ERR] {{ editorError }}</p>
-      </div>
-
+        <fieldset class="space-y-3">
+          <legend class="sr-only">{{ t('sharing.detail.options') }}</legend>
+          <label v-for="o in OPTIONS" :key="o" class="flex cursor-pointer items-start gap-3">
+            <Checkbox v-model="editor[o]" class="mt-0.5" />
+            <span class="min-w-0">
+              <span class="block text-sm text-base-content">{{ t(`sharing.detail.${o}Option`) }}</span>
+              <span class="block text-xs text-base-content/70">{{ t(`sharing.detail.${o}Help`) }}</span>
+            </span>
+          </label>
+        </fieldset>
+        <Alert v-if="editorError" variant="destructive"><AlertDescription>{{ editorError }}</AlertDescription></Alert>
+      </form>
       <template #footer>
-        <div class="flex justify-end gap-2">
-          <Button variant="ghost" size="sm" @click="editor = null">{{ t('ui.sharing.SharesSection.cancel') }}</Button>
-          <Button size="sm"
-            :disabled="saving || (editor.id === null && !editor.placeId)"
-            @click="save"
-          >
-            {{ saving ? 'Saving…' : editor.id === null ? 'Create share' : 'Save' }}
+        <div class="ml-auto flex gap-2">
+          <Button variant="ghost" size="sm" @click="editor = null">{{ t('sharing.detail.cancel') }}</Button>
+          <Button type="submit" form="share-editor" size="sm" :disabled="saving || (editor.id === null && !editor.placeId)">
+            <BusyLabel :busy="saving">{{ editor.id === null ? t('sharing.detail.create') : t('sharing.detail.save') }}</BusyLabel>
           </Button>
         </div>
       </template>

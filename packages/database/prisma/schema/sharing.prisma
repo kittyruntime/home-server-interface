@@ -1,0 +1,42 @@
+// SMB service settings (a single row, id 1).
+model SmbSettings {
+  id             Int      @id @default(1)
+  netbiosName    String   @default("")
+  workgroup      String   @default("")
+  minProtocol    String   @default("SMB2") // SMB2 | SMB3
+  encryption     String   @default("off") // off | desired | required
+  discoveryWsd   Boolean  @default(false)
+  discoveryMdns  Boolean  @default(false)
+  autoBlock      Boolean  @default(true)
+  blockThreshold Int      @default(10)
+  blockWindowMin Int      @default(10)
+  blockForMin    Int      @default(30)
+  eventCursor    String   @default("") // JSON cursor into smbd's log
+  updatedAt      DateTime @updatedAt
+}
+
+// One SMB connection, disconnection or refusal, kept 30 days.
+model ShareEvent {
+  id      String   @id @default(uuid())
+  at      DateTime
+  kind    String // auth | connect | disconnect
+  result  String // ok | refused
+  reason  String   @default("")
+  user    String   @default("")
+  ip      String   @default("")
+  machine String   @default("")
+  share   String   @default("")
+
+  @@index([at])
+  @@index([user, at])
+  @@index([share, at])
+  @@index([ip, at])
+}
+
+// An address refused by Samba until a time.
+model SmbBlock {
+  ip        String   @id
+  until     DateTime
+  reason    String   @default("auto")
+  createdAt DateTime @default(now())
+}
