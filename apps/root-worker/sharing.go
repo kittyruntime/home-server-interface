@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"net"
 	"os"
 	"os/exec"
 	"os/user"
@@ -55,6 +56,88 @@ type shareDef struct {
 	// Unavailable: the share's volume is missing (#3); clients see the share
 	// as unavailable instead of an empty folder on the boot disk.
 	Unavailable bool `json:"unavailable"`
+	// Hidden: left out of network browsing (browseable = no); still reachable
+	// by its address.
+	Hidden bool `json:"hidden"`
+}
+
+// smbLogPath receives smbd's log, including the authentication and share
+// audit lines root.sharing.events reads.
+const smbLogPath = "/var/log/hsi/samba/smbd.log"
+
+// smbSettings is the service-wide part of smb.conf. Empty values keep the
+// historical defaults, so a sync without settings renders today's file.
+type smbSettings struct {
+	NetbiosName string   `json:"netbiosName"`
+	Workgroup   string   `json:"workgroup"`
+	MinProtocol string   `json:"minProtocol"` // "SMB2" | "SMB3"
+	Encryption  string   `json:"encryption"`  // "off" | "desired" | "required"
+	HostsDeny   []string `json:"hostsDeny"`
+	// Audit: this Samba can log JSON authentication events and has
+	// vfs_full_audit; without both, the audit lines would stop smbd.
+	Audit bool `json:"audit"`
+}
+
+var reNetbiosName = regexp.MustCompile(`^[A-Za-z0-9-]{1,15}$`)
+
+// globalLines validates s and returns its [global] lines.
+func (s smbSettings) globalLines() ([]string, error) {
+	var lines []string
+	if s.NetbiosName != "" {
+		if !reNetbiosName.MatchString(s.NetbiosName) {
+			return nil, fmt.Errorf("invalid network name %q", s.NetbiosName)
+		}
+		lines = append(lines, "netbios name = "+s.NetbiosName)
+	}
+	if s.Workgroup != "" {
+		if !reNetbiosName.MatchString(s.Workgroup) {
+			return nil, fmt.Errorf("invalid workgroup %q", s.Workgroup)
+		}
+		lines = append(lines, "workgroup = "+s.Workgroup)
+	}
+	switch s.MinProtocol {
+	case "", "SMB2":
+		lines = append(lines, "server min protocol = SMB2")
+	case "SMB3":
+		lines = append(lines, "server min protocol = SMB3")
+	default:
+		return nil, fmt.Errorf("invalid minimum protocol %q", s.MinProtocol)
+	}
+	switch s.Encryption {
+	case "", "off":
+	case "desired", "required":
+		lines = append(lines, "server smb encrypt = "+s.Encryption)
+	default:
+		return nil, fmt.Errorf("invalid encryption %q", s.Encryption)
+	}
+	var deny []string
+	for _, h := range s.HostsDeny {
+		ip := net.ParseIP(h)
+		if ip == nil {
+			return nil, fmt.Errorf("invalid blocked address %q", h)
+		}
+		if ip.IsLoopback() {
+			continue
+		}
+		deny = append(deny, ip.String())
+	}
+	if len(deny) > 0 {
+		lines = append(lines, "hosts deny = "+strings.Join(deny, " "))
+	}
+	if s.Audit {
+		lines = append(lines, "logging = file", "log file = "+smbLogPath, "log level = 1 auth_json_audit:3")
+	}
+	return lines, nil
+}
+
+// auditShareLines log share connects (and refused connects) with who, from
+// where and to which share; nothing about files.
+var auditShareLines = []string{
+	"vfs objects = full_audit",
+	"full_audit:prefix = %u|%I|%m|%S",
+	"full_audit:success = connect disconnect",
+	"full_audit:failure = connect",
+	"full_audit:syslog = false",
 }
 
 func smbdInstalled() bool {
@@ -122,12 +205,18 @@ func handleSharingCheckPrereqs(nc *nats.Conn, msg *nats.Msg) {
 	replyOk(nc, msg.Reply, map[string]any{"smbdInstalled": smbdInstalled()})
 }
 
-func renderSmbConf(shares []shareDef) (string, error) {
+func renderSmbConf(shares []shareDef, settings smbSettings) (string, error) {
+	globals, err := settings.globalLines()
+	if err != nil {
+		return "", err
+	}
 	var b strings.Builder
 	b.WriteString("# Managed by nasui root-worker. Do not edit; regenerated on every sync.\n")
 	b.WriteString("[global]\n")
 	b.WriteString("   server role = standalone server\n")
-	b.WriteString("   server min protocol = SMB2\n")
+	for _, l := range globals {
+		b.WriteString("   " + l + "\n")
+	}
 	b.WriteString("   map to guest = Bad User\n")
 	b.WriteString("   load printers = no\n")
 	b.WriteString("   printing = bsd\n")
@@ -150,7 +239,16 @@ func renderSmbConf(shares []shareDef) (string, error) {
 		}
 		b.WriteString("\n[" + s.Name + "]\n")
 		b.WriteString("   path = " + s.Path + "\n")
-		b.WriteString("   browseable = yes\n")
+		if s.Hidden {
+			b.WriteString("   browseable = no\n")
+		} else {
+			b.WriteString("   browseable = yes\n")
+		}
+		if settings.Audit {
+			for _, l := range auditShareLines {
+				b.WriteString("   " + l + "\n")
+			}
+		}
 		// A place's trash (#200) is only reached from the file manager.
 		b.WriteString("   veto files = /" + trashDirName + "/\n")
 		if s.Unavailable {
