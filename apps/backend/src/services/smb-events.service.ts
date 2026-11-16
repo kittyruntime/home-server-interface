@@ -129,8 +129,11 @@ export function noteRenderedSmb(s: { hostsDeny: string[]; audit: boolean }): voi
 /** True when smb.conf no longer matches the blocks and audit support: a
  *  block expired or was lifted, or Samba gained or lost the audit modules. */
 export async function smbDrift(prisma: Db, audit: boolean, now = new Date()): Promise<boolean> {
-  if (rendered === null) return false
   const active = await prisma.smbBlock.findMany({ where: { until: { gt: now } } })
+  // Never written (the startup sync failed): write as soon as there is
+  // something to enforce; with nothing due (Samba missing) do not retry
+  // every tick.
+  if (rendered === null) return active.length > 0 || audit
   return renderKey({ hostsDeny: active.map(b => b.ip), audit }) !== rendered
 }
 
