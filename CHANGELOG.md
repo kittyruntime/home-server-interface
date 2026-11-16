@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.85.0] - 2026-11-16
+
 ### Added
 - **A complete Sharing app**: a banner tells whether network sharing runs, under
   which name and how many people are connected, with Start and Restart. Each
@@ -2183,7 +2185,8 @@ First stable release.
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.84.0...HEAD
+[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.85.0...HEAD
+[1.85.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.84.0...v1.85.0
 [1.84.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.83.0...v1.84.0
 [1.83.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.82.0...v1.83.0
 [1.82.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.81.0...v1.82.0
