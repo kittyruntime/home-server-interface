@@ -87,13 +87,13 @@ export async function syncSystemPassword(
   prisma: PrismaClient,
   userId: string,
   plainPassword: string,
-): Promise<void> {
+): Promise<boolean> {
   try {
     const user = await prisma.user.findUnique({
       where: { id: userId },
       select: { username: true, sambaEnabled: true },
     })
-    if (!user?.username) return
+    if (!user?.username) return false
     // Ensure the backing Linux account exists before setting its password. The
     // username IS the Linux/Samba account, but the account may not exist yet,
     // e.g. the seeded `admin`, or any user whose row predates this identity
@@ -121,8 +121,10 @@ export async function syncSystemPassword(
     if (res?.linuxOk === false) {
       log.warn({ username: user.username }, "password-sync: Linux password NOT set: chpasswd failed")
     }
+    return res?.smbOk === true || res?.smbSkipped === true
   } catch (e) {
     log.warn({ err: e }, "password-sync failed (non-fatal)")
+    return false
   }
 }
 

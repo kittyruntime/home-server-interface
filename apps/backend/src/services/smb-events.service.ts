@@ -118,9 +118,12 @@ export async function expireSmbBlocks(prisma: Db, now = new Date()): Promise<boo
   return count > 0
 }
 
-function normalizeIp(ip: string): string {
+/** The address as Go's net.ParseIP writes it back, or "" when it is not a
+ *  plain address (a zone or anything else is refused, never stored). */
+export function normalizeIp(ip: string): string {
   const v4 = ip.startsWith("::ffff:") ? ip.slice(7) : ip
-  return isIP(v4) ? v4 : ""
+  if (v4.includes("%") || !isIP(v4)) return ""
+  return isIP(v4) === 6 ? new URL(`http://[${v4}]`).hostname.slice(1, -1) : v4
 }
 
 function isLoopback(ip: string): boolean {
