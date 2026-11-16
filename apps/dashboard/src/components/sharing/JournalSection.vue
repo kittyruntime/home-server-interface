@@ -99,7 +99,7 @@ onMounted(async () => {
     <LoadingState v-if="loading" variant="compact" />
     <Card v-else class="p-4">
       <p v-if="events.length === 0" class="text-sm text-base-content/70">{{ t('sharing.journal.empty') }}</p>
-      <ShareActivity v-else :events="events" show-user :title="t('sharing.journal.title')" />
+      <ShareActivity v-else :events="events" show-user hide-title />
       <div v-if="cursor" class="mt-3 flex justify-center">
         <Button variant="outline" size="sm" :disabled="more" @click="load(true)">{{ t('sharing.journal.loadMore') }}</Button>
       </div>

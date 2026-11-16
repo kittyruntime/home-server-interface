@@ -152,6 +152,7 @@ export default {
       refusedSignIn: 'Sign-in refused',
       refusedShare: 'Refused on {share}',
       from: 'from {where}',
+      withReason: '{what}: {reason}',
     },
     reason: {
       wrong_password: 'Wrong password',

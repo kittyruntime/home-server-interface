@@ -44,7 +44,7 @@ const availablePlaces = computed(() => {
 })
 
 const { holdForPath, refreshHolds } = useVolumeHolds()
-const unavailable = (path: string) => holdForPath(path) !== null
+const unavailable = (path: string) => holdForPath(path) !== undefined
 
 async function refresh() {
   try {
