@@ -19,7 +19,8 @@ export const NAV_ITEMS: NavItem[] = [
   { id: 'storage',   label: tr('lib.sidebar_nav.storage', 'Storage'),   adminOnly: true, capability: 'storage' },
   { id: 'store',     label: tr('lib.sidebar_nav.appStore', 'App Store'), adminOnly: true },
   { id: 'monitor',   label: tr('lib.sidebar_nav.monitor', 'Monitor'),   adminOnly: true },
-  { id: 'sharing',   label: tr('lib.sidebar_nav.sharing', 'Sharing'),   adminOnly: true },
+  // Everyone: admins manage SMB there, others see their own shares.
+  { id: 'sharing',   label: tr('lib.sidebar_nav.sharing', 'Sharing') },
   // Shown to admins, who set it up, and to whoever may use it.
   { id: 'assistant', label: tr('lib.sidebar_nav.assistant', 'Assistant'), adminOnly: true, capability: 'assistant' },
   { id: 'settings',  label: tr('lib.sidebar_nav.settings', 'Settings') },

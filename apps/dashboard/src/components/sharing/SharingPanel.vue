@@ -8,10 +8,13 @@ import ServiceBanner from './ServiceBanner.vue'
 import SharesSection from './SharesSection.vue'
 import JournalSection from './JournalSection.vue'
 import SettingsSection from './SettingsSection.vue'
+import MySharesSection from './MySharesSection.vue'
 import { trpc } from '../../lib/trpc'
+import { useAuth } from '../../lib/auth'
 import type { SharingService } from '../../lib/sharing-types'
 
 const { t } = useI18n()
+const { isAdmin } = useAuth()
 
 type SectionId = 'shares' | 'journal' | 'settings'
 const active = ref<SectionId>('shares')
@@ -41,6 +44,7 @@ async function loadService() {
 }
 
 onMounted(() => {
+  if (!isAdmin.value) return
   void loadService()
   timer = setInterval(() => { if (!document.hidden) void loadService() }, 15000)
 })
@@ -48,7 +52,10 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
 </script>
 
 <template>
-  <div class="flex h-full flex-col sm:flex-row">
+  <div v-if="!isAdmin" class="h-full overflow-y-auto">
+    <div class="max-w-3xl p-4 sm:p-8"><MySharesSection /></div>
+  </div>
+  <div v-else class="flex h-full flex-col sm:flex-row">
     <SectionNav v-model="active" :items="navItems" />
     <div class="flex-1 overflow-y-auto">
       <div class="max-w-5xl space-y-5 p-4 sm:p-8">
