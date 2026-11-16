@@ -19,7 +19,10 @@ import {
 } from "../../services/sharing-plan"
 import { planAuditMeta } from "../../services/storage-plan"
 import { getSmbSettings, liftBlock, listBlocks, smbServiceState } from "../../services/smb-events.service"
-import { listEvents, reachableShares, repairNetworkPassword, viewerOf, visibleSessions } from "../../services/sharing-view.service"
+import {
+  groupSessions, listEvents, peopleConnected, reachableShares, repairNetworkPassword, viewerOf, visibleSessions,
+  type SmbConnection, type SmbSession,
+} from "../../services/sharing-view.service"
 import { syncSystemPassword, verifyPassword } from "../../services/user.service"
 import type { Context } from "../context"
 
@@ -29,12 +32,10 @@ type DirState = {
 
 const reSmbName = /^[A-Za-z0-9][A-Za-z0-9._-]{0,31}$/
 
-type ShareConnection = { user: string; share: string; client: string; connectedAt: string; pid?: string; ip?: string; sessionId?: string }
-
-/** Who is connected right now; nobody when Samba is missing or not answering. */
-async function sessionsNow(): Promise<ShareConnection[]> {
+/** Who is connected right now, one line per person, share and machine; nobody when Samba is missing or not answering. */
+async function sessionsNow(): Promise<SmbSession[]> {
   try {
-    return (await requestSync<{ connections: ShareConnection[] }>("root.sharing.status", {})).connections
+    return groupSessions((await requestSync<{ connections: SmbConnection[] }>("root.sharing.status", {})).connections ?? [])
   } catch {
     return []
   }
@@ -223,7 +224,7 @@ export const sharingRouter = router({
         return {
           id: s.id,
           hidden: s.hidden,
-          connected: sessions.filter(c => c.share === name).length,
+          connected: peopleConnected(sessions.filter(c => c.share === name)),
           problem: s.enabled && (users.excludedUsernames.length > 0 || (facts.sambaUsers.size > 0 && noPassword) || (dir !== undefined && !(dir.exists && dir.groupWritable && dir.setgid))),
           placeId: s.placeId,
           placeName: s.place.name,
@@ -246,7 +247,7 @@ export const sharingRouter = router({
       smbServiceState().catch(() => null), getSmbSettings(ctx.prisma), sessionsNow(),
     ])
     const { eventCursor: _cursor, ...shown } = settings
-    return { state, settings: shown, connectedCount: sessions.length }
+    return { state, settings: shown, connectedCount: peopleConnected(sessions) }
   }),
 
   serviceAction: adminProcedure
@@ -293,16 +294,22 @@ export const sharingRouter = router({
     }
   }),
 
+  // Every process serving one session line; one already gone is fine.
   disconnect: adminProcedure
-    .input(z.object({ pid: z.string().regex(/^[0-9]+$/) }))
+    .input(z.object({ pids: z.array(z.string().regex(/^[0-9]+$/)).min(1).max(64) }))
     .mutation(async ({ ctx, input }) => {
-      ctx.audit.target = `pid ${input.pid}`
-      try {
-        await requestSync("root.sharing.disconnect", { pid: input.pid })
-      } catch (e) {
-        if ((e as { code?: string }).code === "NOT_A_SESSION") throw new TRPCError({ code: "NOT_FOUND", message: "This session has already ended" })
-        throw e
+      const pids = [...new Set(input.pids)]
+      ctx.audit.target = `pid ${pids.join(", ")}`
+      let ended = 0
+      for (const pid of pids) {
+        try {
+          await requestSync("root.sharing.disconnect", { pid })
+          ended++
+        } catch (e) {
+          if ((e as { code?: string }).code !== "NOT_A_SESSION") throw e
+        }
       }
+      if (ended === 0) throw new TRPCError({ code: "NOT_FOUND", message: "This session has already ended" })
       return { ok: true }
     }),
 

@@ -98,9 +98,9 @@ async function disconnect(session: ShareSession) {
   const share = data.value?.share.name ?? ''
   const user = session.user || t('sharing.detail.guest')
   if (!await confirm(t('sharing.detail.disconnectConfirm', { user, share }), { confirmLabel: t('sharing.detail.disconnect'), danger: true })) return
-  disconnecting.value = session.pid ?? null
+  disconnecting.value = `${session.share}|${session.user}|${session.ip || session.client}`
   try {
-    await trpc.sharing.disconnect.mutate({ pid: session.pid! })
+    await trpc.sharing.disconnect.mutate({ pids: session.pids })
     toast.success(t('sharing.detail.disconnected', { user }))
   } catch (e) {
     toast.error((e as Error).message || t('sharing.errors.action'))
@@ -144,8 +144,8 @@ async function disconnect(session: ShareSession) {
 
       <ConnectBlock :share="data.share.name" :guest-ok="data.share.guestOk" v-bind="connect" />
       <ShareAccess :access="data.access" />
-      <ShareSessions :sessions="data.sessions" can-disconnect :busy-pid="disconnecting" @disconnect="disconnect" />
-      <ShareActivity :events="data.recent" show-user see-all :max-lines="6" @see-all="emit('seeAll', data.share.name)" />
+      <ShareSessions :sessions="data.sessions" can-disconnect :busy-key="disconnecting" @disconnect="disconnect" />
+      <ShareActivity :events="data.recent" :sessions="data.sessions" show-user see-all :max-lines="6" @see-all="emit('seeAll', data.share.name)" />
       <ShareChecks :checks="data.checks" :read-only="data.share.readOnly" />
     </template>
   </div>

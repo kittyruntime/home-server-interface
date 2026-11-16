@@ -141,7 +141,7 @@ async function repair() {
 
       <Card class="gap-6 p-4 @2xl:p-5">
         <ShareSessions :sessions="sessions" :title="t('sharing.mine.yourSessions')" />
-        <ShareActivity :events="events" :title="t('sharing.mine.yourActivity')" :max-lines="8" />
+        <ShareActivity :events="events" :sessions="sessions" :title="t('sharing.mine.yourActivity')" :max-lines="8" />
       </Card>
     </template>
   </div>

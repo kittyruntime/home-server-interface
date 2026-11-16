@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **Sharing shows people, not connections**: a Mac opens several connections
+  for one mounted share, and each showed as a separate person with its own
+  Disconnect, in the share and in the "people connected" count. One person on
+  one machine is now one line, and Disconnect ends all their connections.
+- **The journal tells visits**: opening and leaving a share again and again
+  from one machine is one line with its start and end, marked "connected"
+  while the person is still there, instead of a "Left" while still connected.
+  The generic name a Mac sends ("WORKSTATION") gives way to its address.
+- **Saving the SMB settings keeps the fields on screen** while the service
+  restarts, instead of emptying the page for a few seconds.
+
+### Changed
+- SMB settings: switches sit on the right of their line, a tool missing on the
+  server shows "Not installed" with what to install, and the number fields
+  lose their spinner arrows.
+
 ## [1.85.0] - 2026-11-16
 
 ### Added

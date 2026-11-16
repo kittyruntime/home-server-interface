@@ -54,3 +54,41 @@ test('machine label is lowercase, falls back to the address', () => {
   assert.equal(machineLabel({ machine: null, ip: '1.2.3.4' }), '1.2.3.4')
   assert.equal(machineLabel({ machine: '', ip: null }), '')
 })
+
+test('a mount opened again and again with nothing in between is one line, however long it lasts', () => {
+  const open = (m: number) => ev(min(m), { kind: 'connect', result: 'ok', reason: null })
+  assert.equal(collapseRuns([open(0), open(1), open(45), open(120)]).length, 1)
+})
+
+test('the generic name a Mac sends is not a machine name', () => {
+  assert.equal(machineLabel({ machine: 'WORKSTATION', ip: '192.168.1.47' }), '192.168.1.47')
+})
+
+const open = (m: number, over: Record<string, unknown> = {}) => ev(min(m), { kind: 'connect', result: 'ok', reason: null, ...over })
+const leave = (m: number, over: Record<string, unknown> = {}) => ev(min(m), { kind: 'disconnect', result: 'ok', reason: null, ...over })
+
+test('opening and leaving a share again and again from one machine is one visit', () => {
+  const runs = collapseRuns([leave(0), open(1), leave(2), open(3)])
+  assert.equal(runs.length, 1)
+  assert.equal(runs[0].first.kind, 'connect', 'shown as the opening')
+  assert.equal(runs[0].earliest.getTime(), min(3).getTime())
+  assert.equal(runs[0].visit?.end?.getTime(), min(0).getTime())
+})
+
+test('coming back long after leaving is a new visit', () => {
+  assert.equal(collapseRuns([leave(0), open(1), leave(30), open(31)]).length, 2)
+})
+
+test('a visit of someone still connected has no end, even after closing some connections', () => {
+  const live = [{ user: 'bob', share: 'Films', client: '192.168.1.9', ip: '192.168.1.9', connectedAt: min(3).toISOString() }]
+  const runs = collapseRuns([leave(0), open(1), open(3)], live)
+  assert.equal(runs.length, 1)
+  assert.equal(runs[0].visit?.end, null)
+  assert.equal(collapseRuns([leave(0), open(1), open(3)], [{ ...live[0], ip: '192.168.1.50', client: '192.168.1.50' }])[0].visit?.end?.getTime(), min(0).getTime(), 'another machine')
+})
+
+test('visits and refusals keep their order, newest first', () => {
+  const refused = ev(min(10))
+  const runs = collapseRuns([leave(0), open(1), refused, leave(20), open(21), { ...open(22), user: 'eve' }])
+  assert.deepEqual(runs.map(r => r.first.user + ':' + r.first.result), ['bob:ok', 'bob:refused', 'bob:ok', 'eve:ok'])
+})

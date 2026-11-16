@@ -4213,11 +4213,29 @@ async function testSharingAdminOnlyEndpoints() {
   const ctx: any = { user: { userId: "u-bob", isAdmin: false }, prisma, req: { ip: "127.0.0.1", headers: {} } }
   const caller = sharingRouter.createCaller(ctx)
   for (const call of [
-    () => caller.detail({ id: "s-docs" }), () => caller.disconnect({ pid: "1" }), () => caller.unblock({ ip: "10.0.0.1" }),
+    () => caller.detail({ id: "s-docs" }), () => caller.disconnect({ pids: ["1"] }), () => caller.unblock({ ip: "10.0.0.1" }),
     () => caller.serviceAction({ action: "restart" }), () => caller.blocks(), () => caller.service(),
   ]) await assert.rejects(call, (e: any) => e.code === "FORBIDDEN")
 }
 await testSharingAdminOnlyEndpoints()
+
+async function testOneMountIsOneSession() {
+  const view = await import("../services/sharing-view.service")
+  const tcon = (pid: string, at: string, over: Record<string, string> = {}) =>
+    ({ user: "theo", share: "Movies", client: "192.168.1.47", ip: "192.168.1.47", connectedAt: at, pid, sessionId: pid, ...over })
+  const grouped = view.groupSessions([
+    tcon("10", "2026-11-16T10:00:02Z"), tcon("10", "2026-11-16T10:00:01Z"), tcon("11", "2026-11-16T10:00:03Z"),
+    tcon("12", "2026-11-16T10:00:00Z", { share: "Docs" }),
+    tcon("13", "2026-11-16T10:00:00Z", { client: "192.168.1.50", ip: "192.168.1.50" }),
+  ])
+  assert.equal(grouped.length, 3, "one line per person, share and machine")
+  const movies = grouped.find(g => g.share === "Movies" && g.ip === "192.168.1.47")!
+  assert.deepEqual(movies.pids, ["10", "11"])
+  assert.equal(movies.connectedAt, "2026-11-16T10:00:01Z", "the earliest connection")
+  assert.equal(view.peopleConnected(grouped), 1, "one person on two shares and two machines")
+  assert.equal(view.peopleConnected([...grouped, { ...movies, user: "", ip: "10.0.0.9" }]), 2, "a guest counts by address")
+}
+await testOneMountIsOneSession()
 
 async function testRepairPasswordVerifiesFirst() {
   const view = await import("../services/sharing-view.service")

@@ -19,6 +19,34 @@ export function visibleSessions<T extends { user: string }>(sessions: T[], v: Vi
   return v.isAdmin ? sessions : sessions.filter(s => s.user === v.username)
 }
 
+export interface SmbConnection { user: string; share: string; client: string; connectedAt: string; pid?: string; ip?: string; sessionId?: string }
+export interface SmbSession extends SmbConnection { pids: string[] }
+
+/**
+ * One line per person, share and machine. A client opens several connections
+ * for one mount (macOS opens one per window and per Finder task), which Samba
+ * lists separately; they are one session to the person using it.
+ */
+export function groupSessions(conns: SmbConnection[]): SmbSession[] {
+  const byKey = new Map<string, SmbSession>()
+  for (const c of conns) {
+    const key = `${c.share}\0${c.user}\0${(c.ip || c.client).toLowerCase()}`
+    const g = byKey.get(key)
+    if (!g) {
+      byKey.set(key, { ...c, pids: c.pid ? [c.pid] : [] })
+      continue
+    }
+    if (c.pid && !g.pids.includes(c.pid)) g.pids.push(c.pid)
+    if (c.connectedAt < g.connectedAt) g.connectedAt = c.connectedAt
+  }
+  return [...byKey.values()].sort((a, b) => a.connectedAt.localeCompare(b.connectedAt))
+}
+
+/** Distinct people connected; a guest is told apart by address. */
+export function peopleConnected(sessions: SmbConnection[]): number {
+  return new Set(sessions.map(s => s.user || `@${s.ip || s.client}`)).size
+}
+
 export interface EventFilter {
   share?: string
   user?: string
