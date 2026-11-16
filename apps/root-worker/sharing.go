@@ -552,47 +552,15 @@ func handleSharingStatus(nc *nats.Conn, msg *nats.Msg) {
 		replyErr(nc, msg.Reply, &fsError{Code: "SMBD_MISSING", Message: "samba is not installed"})
 		return
 	}
-	out, err := probe("smbstatus", "--json").Output()
+	out, err := smbStatusJSON()
 	if err != nil {
 		replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: "smbstatus failed: " + err.Error()})
 		return
 	}
-	var raw struct {
-		Sessions map[string]struct {
-			Username      string `json:"username"`
-			RemoteMachine string `json:"remote_machine"`
-			Hostname      string `json:"hostname"`
-		} `json:"sessions"`
-		Tcons map[string]struct {
-			Service     string `json:"service"`
-			SessionID   string `json:"session_id"`
-			Machine     string `json:"machine"`
-			ConnectedAt string `json:"connected_at"`
-		} `json:"tcons"`
-	}
-	if err := json.Unmarshal(out, &raw); err != nil {
+	connections, err := parseSmbStatus(out)
+	if err != nil {
 		replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: "unexpected smbstatus output"})
 		return
-	}
-	type connection struct {
-		User        string `json:"user"`
-		Share       string `json:"share"`
-		Client      string `json:"client"`
-		ConnectedAt string `json:"connectedAt"`
-	}
-	connections := []connection{}
-	for _, t := range raw.Tcons {
-		if t.Service == "IPC$" {
-			continue
-		}
-		c := connection{Share: t.Service, Client: t.Machine, ConnectedAt: t.ConnectedAt}
-		if s, ok := raw.Sessions[t.SessionID]; ok {
-			c.User = s.Username
-			if c.Client == "" {
-				c.Client = s.RemoteMachine
-			}
-		}
-		connections = append(connections, c)
 	}
 	replyOk(nc, msg.Reply, map[string]any{"connections": connections})
 }
