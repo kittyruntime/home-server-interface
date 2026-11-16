@@ -39,7 +39,7 @@ async function loadService() {
   try {
     service.value = await trpc.sharing.service.query()
   } catch {
-    service.value = null
+    // A failed poll (the service restarting) keeps what is on screen.
   } finally {
     serviceLoading.value = false
   }
@@ -67,7 +67,7 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
         <ServiceBanner :service="service" :loading="serviceLoading" @refresh="loadService" />
         <SharesSection v-if="active === 'shares'" :service="service" @changed="loadService" @see-all="openJournal" />
         <JournalSection v-else-if="active === 'journal'" :service="service" :initial-share="journalShare" />
-        <SettingsSection v-else-if="active === 'settings'" :key="service?.settings.updatedAt?.toString()" :service="service" @changed="loadService" />
+        <SettingsSection v-else-if="active === 'settings'" :service="service" @changed="loadService" />
       </div>
     </div>
   </div>

@@ -25,23 +25,32 @@ type Settings = SharingService['settings']
 const FIELDS = ['netbiosName', 'workgroup', 'minProtocol', 'encryption', 'discoveryWsd', 'discoveryMdns', 'autoBlock', 'blockThreshold', 'blockWindowMin', 'blockForMin'] as const
 type Field = typeof FIELDS[number]
 
-const form = ref<Pick<Settings, Field> | null>(null)
-watch(() => props.service?.settings, s => {
-  if (s && !form.value) form.value = Object.fromEntries(FIELDS.map(f => [f, s[f]])) as Pick<Settings, Field>
-}, { immediate: true })
+// The form edits a copy; `saved` is what the server holds, so a save keeps
+// the fields on screen while the service restarts and reloads.
+type Values = Pick<Settings, Field>
+const pick = (s: Values): Values => Object.fromEntries(FIELDS.map(f => [f, s[f]])) as Values
+const form = ref<Values | null>(null)
+const saving = ref(false)
+const error = ref('')
+const saved = ref<Values | null>(null)
 
 const patch = computed(() => {
-  const s = props.service?.settings
-  if (!s || !form.value) return {}
-  const out: Partial<Pick<Settings, Field>> = {}
-  for (const f of FIELDS) if (form.value[f] !== s[f]) (out as Record<string, unknown>)[f] = form.value[f]
+  if (!saved.value || !form.value) return {}
+  const out: Partial<Values> = {}
+  for (const f of FIELDS) if (form.value[f] !== saved.value[f]) (out as Record<string, unknown>)[f] = form.value[f]
   return out
 })
 const dirty = computed(() => Object.keys(patch.value).length > 0)
 
+// Fresh values from the server replace the fields unless the owner is editing them.
+watch(() => props.service?.settings, s => {
+  if (!s || dirty.value || saving.value) return
+  saved.value = pick(s)
+  form.value = pick(s)
+}, { immediate: true })
+
 function reset() {
-  const s = props.service?.settings
-  if (s) form.value = Object.fromEntries(FIELDS.map(f => [f, s[f]])) as Pick<Settings, Field>
+  if (saved.value) form.value = { ...saved.value }
   error.value = ''
 }
 
@@ -81,16 +90,14 @@ const numbers = computed(() => [
   { field: 'blockForMin' as const, label: t('sharing.settings.blockFor'), unit: t('sharing.settings.minutes') },
 ])
 
-const saving = ref(false)
-const error = ref('')
 async function save() {
   if (!dirty.value || hasInvalid.value || saving.value) return
   saving.value = true
   error.value = ''
   try {
     await applyPlanned('smb.settings', patch.value, { domain: 'sharing', title: t('sharing.settings.savePlan'), actionLabel: t('sharing.settings.save') })
+    saved.value = { ...form.value! }
     toast.success(t('sharing.settings.saved'))
-    form.value = null
     emit('changed')
   } catch (e) {
     error.value = (e as Error).message || t('sharing.errors.action')
@@ -151,13 +158,18 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
 
       <Card class="gap-4 p-4 @2xl:p-5">
         <h3 class="eyebrow">{{ t('sharing.settings.discovery') }}</h3>
-        <label v-for="d in discovery" :key="d.field" class="flex items-start gap-3" :class="d.locked ? 'cursor-not-allowed' : 'cursor-pointer'">
-          <Switch v-model="form[d.field]" :disabled="d.locked" class="mt-0.5" />
-          <span class="min-w-0">
-            <span class="block text-sm text-base-content" :class="d.locked && 'text-base-content/60'">{{ d.label }}</span>
-            <span class="block text-xs text-base-content/70">{{ d.help }}</span>
-          </span>
-        </label>
+        <ul class="divide-y divide-base-300/70">
+          <li v-for="d in discovery" :key="d.field" class="py-3 first:pt-0 last:pb-0">
+            <label class="flex items-center justify-between gap-4" :class="d.locked ? 'cursor-default' : 'cursor-pointer'">
+              <span class="min-w-0">
+                <span class="block text-sm text-base-content">{{ d.label }}</span>
+                <span class="block text-xs text-base-content/70">{{ d.help }}</span>
+              </span>
+              <span v-if="d.locked" class="badge badge-ghost badge-sm shrink-0 whitespace-nowrap">{{ t('sharing.settings.notInstalled') }}</span>
+              <Switch v-else v-model="form[d.field]" class="shrink-0" />
+            </label>
+          </li>
+        </ul>
       </Card>
 
       <Card class="gap-5 p-4 @2xl:p-5">
@@ -182,19 +194,19 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
           </label>
         </div>
         <div class="space-y-3 border-t border-base-300 pt-4">
-          <label class="flex cursor-pointer items-start gap-3">
-            <Switch v-model="form.autoBlock" class="mt-0.5" />
+          <label class="flex cursor-pointer items-center justify-between gap-4">
             <span class="min-w-0">
               <span class="block text-sm text-base-content">{{ t('sharing.settings.autoBlock') }}</span>
               <span class="block text-xs text-base-content/70">{{ t('sharing.settings.autoBlockHelp') }}</span>
             </span>
+            <Switch v-model="form.autoBlock" class="shrink-0" />
           </label>
-          <div v-if="form.autoBlock" class="grid gap-3 @md:grid-cols-3 @md:pl-12">
+          <div v-if="form.autoBlock" class="grid max-w-xl gap-3 @md:grid-cols-3">
             <label v-for="n in numbers" :key="n.field" class="block space-y-1.5">
               <span class="text-xs font-medium text-base-content/80">{{ n.label }}</span>
               <div class="relative">
                 <Input v-model.number="form[n.field]" type="number" inputmode="numeric" :min="LIMITS[n.field][0]" :max="LIMITS[n.field][1]" step="1"
-                  class="w-full tabular-nums" :class="n.unit && 'pr-12'" :aria-invalid="invalid[n.field] || undefined" />
+                  class="w-full [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none tabular-nums" :class="n.unit && 'pr-12'" :aria-invalid="invalid[n.field] || undefined" />
                 <span v-if="n.unit" class="pointer-events-none absolute inset-y-0 right-3 flex items-center text-xs text-base-content/60">{{ n.unit }}</span>
               </div>
               <span v-if="invalid[n.field]" class="block text-xs text-error">{{ t('sharing.settings.between', { lo: LIMITS[n.field][0], hi: LIMITS[n.field][1] }) }}</span>

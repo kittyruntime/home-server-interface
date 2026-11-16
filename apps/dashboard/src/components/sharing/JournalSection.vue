@@ -10,7 +10,7 @@ import LoadingState from '../ui/LoadingState.vue'
 import BusyLabel from '../ui/BusyLabel.vue'
 import ShareActivity from './ShareActivity.vue'
 import { trpc } from '../../lib/trpc'
-import type { ShareEventRow, SharingService } from '../../lib/sharing-types'
+import type { ShareEventRow, ShareSession, SharingService } from '../../lib/sharing-types'
 
 const props = defineProps<{ service: SharingService | null; initialShare?: string }>()
 const { t } = useI18n()
@@ -25,6 +25,8 @@ const period = ref<Period>('week')
 const shareNames = ref<string[]>([])
 
 const events = ref<ShareEventRow[]>([])
+// Who is connected now, so closing one of several connections is not shown as leaving.
+const live = ref<ShareSession[]>([])
 const cursor = ref<string | null>(null)
 const loading = ref(true)
 // A filter change keeps the current lines on screen, dimmed, until the new ones arrive.
@@ -36,6 +38,7 @@ async function load(append = false, quiet = false) {
   if (append) more.value = true
   else if (!quiet) reloading.value = true
   try {
+    if (!append) live.value = await trpc.sharing.sessions.query().catch(() => live.value)
     const page = await trpc.sharing.events.query({
       share: share.value || undefined,
       user: user.value.trim() || undefined,
@@ -124,7 +127,7 @@ onMounted(async () => {
         <p class="text-sm text-base-content/70">{{ t('sharing.journal.empty') }}</p>
         <Button v-if="filtered" variant="ghost" size="xs" @click="clearFilters">{{ t('sharing.journal.clearFilters') }}</Button>
       </div>
-      <ShareActivity v-else :events="events" show-user hide-title by-day />
+      <ShareActivity v-else :events="events" :sessions="live" show-user hide-title by-day />
       <div v-if="cursor" class="flex justify-center pt-2 pb-1">
         <Button variant="outline" size="sm" :disabled="more" @click="load(true)">
           <BusyLabel :busy="more">{{ t('sharing.journal.loadMore') }}</BusyLabel>
