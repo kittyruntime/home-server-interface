@@ -17,7 +17,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Connection journal**: connections and refused attempts of the last 30 days,
   with the reason in plain words (wrong password, unknown account or no network
   password yet, no access to this share, address blocked), filterable by share,
-  user, result and period.
+  user, result and period. Repeated attempts show as one line with a count,
+  grouped by day, and new lines appear on their own.
 - **SMB settings**: network name, workgroup, announcing the NAS to Windows
   (wsdd) and macOS (Avahi) when they are installed, oldest protocol accepted,
   encryption, and automatic blocking of an address after repeated failed
