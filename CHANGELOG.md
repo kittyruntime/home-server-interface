@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.85.1] - 2026-11-16
+
 ### Fixed
 - **Sharing shows people, not connections**: a Mac opens several connections
   for one mounted share, and each showed as a separate person with its own
@@ -2202,7 +2204,8 @@ First stable release.
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.85.0...HEAD
+[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.85.1...HEAD
+[1.85.1]: https://github.com/kittyruntime/home-server-interface/compare/v1.85.0...v1.85.1
 [1.85.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.84.0...v1.85.0
 [1.84.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.83.0...v1.84.0
 [1.83.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.82.0...v1.83.0
