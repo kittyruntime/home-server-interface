@@ -197,15 +197,15 @@ func readSmbEvents(path string, c smbCursor, maxBytes int64) ([]smbEvent, smbCur
 	br := bufio.NewReaderSize(f, 64*1024)
 	var read int64
 	for read < maxBytes {
-		line, err := readSmbLogLine(br)
+		line, consumed, err := readSmbLogLine(br)
 		if errors.Is(err, io.EOF) {
 			break // a partial last line waits for its newline
 		}
 		if err != nil {
 			return out, c, err
 		}
-		read += int64(len(line))
-		c.Offset += int64(len(line))
+		read += consumed
+		c.Offset += consumed
 		if ev, ok := smbEventsParser.line(string(bytes.TrimRight(line, "\n"))); ok {
 			out = append(out, ev)
 		}
@@ -213,27 +213,28 @@ func readSmbEvents(path string, c smbCursor, maxBytes int64) ([]smbEvent, smbCur
 	return out, c, nil
 }
 
-// readSmbLogLine returns one line with its newline; a line over
-// maxSmbLogLine comes back as its newline only, so it is skipped.
-func readSmbLogLine(br *bufio.Reader) ([]byte, error) {
+// readSmbLogLine returns one line with its newline and the bytes it used.
+// A line over maxSmbLogLine is consumed but comes back empty, so it is
+// skipped without ever being held whole.
+func readSmbLogLine(br *bufio.Reader) ([]byte, int64, error) {
 	var buf []byte
-	n := 0
+	var n int64
 	for {
 		chunk, err := br.ReadSlice('\n')
-		n += len(chunk)
-		if len(buf)+len(chunk) <= maxSmbLogLine {
+		n += int64(len(chunk))
+		if n <= maxSmbLogLine {
 			buf = append(buf, chunk...)
 		}
 		switch {
 		case err == nil:
 			if n > maxSmbLogLine {
-				return append(make([]byte, n-1), '\n'), nil
+				return nil, n, nil
 			}
-			return buf, nil
+			return buf, n, nil
 		case errors.Is(err, bufio.ErrBufferFull):
 			continue
 		default:
-			return nil, err
+			return nil, n, err
 		}
 	}
 }

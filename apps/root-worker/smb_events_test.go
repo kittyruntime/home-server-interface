@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"os"
 	"path/filepath"
 	"strings"
@@ -154,5 +155,21 @@ func TestEventsMissingFileIsUnavailable(t *testing.T) {
 	_, _, err := readSmbEvents(filepath.Join(t.TempDir(), "none.log"), smbCursor{}, 1<<20)
 	if !os.IsNotExist(err) {
 		t.Fatalf("got %v, want a not-exist error", err)
+	}
+}
+
+func TestEventsSkipsAnOversizedLine(t *testing.T) {
+	p := filepath.Join(t.TempDir(), "smbd.log")
+	huge := "  " + strings.Repeat("x", maxSmbLogLine+10) + "\n"
+	if err := os.WriteFile(p, []byte(huge+twoMoreLines), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	line, consumed, err := readSmbLogLine(bufio.NewReader(strings.NewReader(huge)))
+	if err != nil || consumed != int64(len(huge)) || len(line) > maxSmbLogLine {
+		t.Fatalf("oversized line: kept %d bytes, consumed %d, %v", len(line), consumed, err)
+	}
+	evs, c, err := readSmbEvents(p, smbCursor{}, 1<<30)
+	if err != nil || len(evs) != 2 || c.Offset != int64(len(huge)+len(twoMoreLines)) {
+		t.Fatalf("got %d events, cursor %+v, %v", len(evs), c, err)
 	}
 }
