@@ -2,18 +2,27 @@
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import type { Component } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { FolderIcon } from '@lucide/vue'
+import { FolderIcon, ScrollTextIcon, SettingsIcon } from '@lucide/vue'
 import SectionNav from '@/components/ui/SectionNav.vue'
 import ServiceBanner from './ServiceBanner.vue'
 import SharesSection from './SharesSection.vue'
+import JournalSection from './JournalSection.vue'
+import SettingsSection from './SettingsSection.vue'
 import { trpc } from '../../lib/trpc'
 import type { SharingService } from '../../lib/sharing-types'
 
 const { t } = useI18n()
 
-type SectionId = 'shares'
+type SectionId = 'shares' | 'journal' | 'settings'
 const active = ref<SectionId>('shares')
-const icons: Record<SectionId, Component> = { shares: FolderIcon }
+const icons: Record<SectionId, Component> = { shares: FolderIcon, journal: ScrollTextIcon, settings: SettingsIcon }
+
+// "See all" in a share opens the journal on that share.
+const journalShare = ref<string | undefined>(undefined)
+function openJournal(share: string) {
+  journalShare.value = share
+  active.value = 'journal'
+}
 const navItems = computed(() => (Object.keys(icons) as SectionId[]).map(id => ({ id, label: t(`sharing.nav.${id}`), icon: icons[id] })))
 
 const service = ref<SharingService | null>(null)
@@ -44,7 +53,9 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
     <div class="flex-1 overflow-y-auto">
       <div class="max-w-5xl space-y-5 p-4 sm:p-8">
         <ServiceBanner :service="service" :loading="serviceLoading" @refresh="loadService" />
-        <SharesSection v-if="active === 'shares'" :service="service" @changed="loadService" />
+        <SharesSection v-if="active === 'shares'" :service="service" @changed="loadService" @see-all="openJournal" />
+        <JournalSection v-else-if="active === 'journal'" :service="service" :initial-share="journalShare" />
+        <SettingsSection v-else-if="active === 'settings'" :key="service?.settings.updatedAt?.toString()" :service="service" @changed="loadService" />
       </div>
     </div>
   </div>
