@@ -113,8 +113,8 @@ func TestRenderExportsGoneOwnerIsReadOnly(t *testing.T) {
 func TestNfsClientAddress(t *testing.T) {
 	cases := map[string]string{
 		"clientid: 0xabc\naddress: \"192.168.1.47:776\"\nstatus: confirmed\n": "192.168.1.47",
-		"address: \"[fd00::5]:801\"\n":                                       "fd00::5",
-		"status: courtesy\n":                                                "",
+		"address: \"[fd00::5]:801\"\n":                                        "fd00::5",
+		"status: courtesy\n":                                                  "",
 	}
 	for info, want := range cases {
 		if got := nfsClientAddress(info); got != want {
