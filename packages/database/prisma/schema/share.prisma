@@ -9,4 +9,6 @@ model Share {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   hidden    Boolean  @default(false) // left out of network browsing
+  timeMachine      Boolean @default(false) // usable as a Time Machine destination
+  timeMachineMaxGb Int? // Time Machine size cap in GB; null = no cap
 }

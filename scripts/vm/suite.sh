@@ -551,6 +551,20 @@ sys.exit(0 if ok and bad else 1)' <<<"$events" && break
   done
   [[ $i -lt 15 ]] || { echo "$events"; vm_ssh 'tail -n 40 /var/log/hsi/samba/smbd.log' || true; fail "the journal misses vmuser's connection or its refused password"; }
   log "SMB: the journal shows the connection and the wrong password"
+
+  # Time Machine: the share gets the macOS modules and its cap, and still serves.
+  local share
+  share=$(api_query sharing.list | python3 -c 'import json,sys; print(next(s["id"] for s in json.load(sys.stdin) if s["effectiveName"]=="mirror"))')
+  apply_plan share.update "{\"id\":\"$share\",\"timeMachine\":true,\"timeMachineMaxGb\":200}" sharing >/dev/null
+  vm_ssh 'testparm -s /etc/nasui/samba/smb.conf 2>/dev/null' > "$VM_DIR/testparm-tm.log"
+  for line in "fruit:time machine = yes" "fruit:time machine max size = 200G" "vfs objects = catia fruit streams_xattr" "fruit:metadata = stream"; do
+    grep -qF "$line" "$VM_DIR/testparm-tm.log" || { cat "$VM_DIR/testparm-tm.log"; fail "Time Machine share misses: $line"; }
+  done
+  vm_ssh "smbclient //127.0.0.1/mirror -U 'vmuser%$USER_PASSWORD' -c 'ls from-smb/*'" >/dev/null 2>&1 \
+    || fail "the share no longer serves as a Time Machine destination"
+  apply_plan share.update "{\"id\":\"$share\",\"timeMachine\":false}" sharing >/dev/null
+  vm_ssh 'grep -q fruit /etc/nasui/samba/smb.conf' && fail "Time Machine lines stayed after turning it off"
+  log "SMB: a share becomes a Time Machine destination and back"
 }
 
 stack_state() { vm_ssh "docker compose ls -a --format json" | python3 -c 'import json,sys; s=[x for x in json.load(sys.stdin) if x["Name"]==sys.argv[1]]; print(s[0]["Status"] if s else "absent")' "$1"; }

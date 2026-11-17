@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
-import { CircleAlertIcon } from '@lucide/vue'
+import { CircleAlertIcon, HistoryIcon } from '@lucide/vue'
 import { Badge } from '@/components/ui/badge'
 import type { ShareListRow } from '../../lib/sharing-types'
 
@@ -20,7 +20,10 @@ const { t } = useI18n()
         @click="emit('select', s.id)"
       >
         <div class="min-w-0 flex-1">
-          <p class="truncate text-sm font-medium text-base-content" :class="!s.enabled && 'text-base-content/60'">{{ s.effectiveName }}</p>
+          <p class="flex items-center gap-1.5 text-sm font-medium text-base-content" :class="!s.enabled && 'text-base-content/60'">
+            <span class="truncate">{{ s.effectiveName }}</span>
+            <HistoryIcon v-if="s.timeMachine" class="size-3.5 shrink-0 text-base-content/60" :aria-label="t('sharing.detail.timeMachineOption')" role="img" />
+          </p>
           <p class="truncate text-xs text-base-content/70">
             {{ s.placeName }} · {{ s.readOnly ? t('sharing.list.readOnly') : t('sharing.list.readWrite') }}
           </p>

@@ -57,14 +57,40 @@ func TestDisconnectRefusesAPidThatIsNotASession(t *testing.T) {
 }
 
 func TestAvahiServiceFile(t *testing.T) {
-	f := avahiServiceFile("")
+	f := avahiServiceFile("", nil)
 	for _, s := range []string{"<type>_smb._tcp</type>", "<port>445</port>", `<name replace-wildcards="yes">%h</name>`} {
 		if !strings.Contains(f, s) {
 			t.Errorf("missing %q in\n%s", s, f)
 		}
 	}
-	if f := avahiServiceFile("A<B&C"); !strings.Contains(f, "A&lt;B&amp;C") {
+	if f := avahiServiceFile("A<B&C", nil); !strings.Contains(f, "A&lt;B&amp;C") {
 		t.Fatalf("name not escaped:\n%s", f)
+	}
+}
+
+func TestAvahiAnnouncesTimeMachine(t *testing.T) {
+	f := avahiServiceFile("", []string{"Backups", "Mac&Co"})
+	for _, s := range []string{"<type>_adisk._tcp</type>", "<txt-record>sys=waMa=0,adVF=0x100</txt-record>",
+		"<txt-record>dk0=adVN=Backups,adVF=0x82</txt-record>", "<txt-record>dk1=adVN=Mac&amp;Co,adVF=0x82</txt-record>"} {
+		if !strings.Contains(f, s) {
+			t.Errorf("missing %q in\n%s", s, f)
+		}
+	}
+	if strings.Contains(avahiServiceFile("", nil), "_adisk") {
+		t.Fatal("Time Machine announced without a Time Machine share")
+	}
+}
+
+func TestSmbModuleAvailable(t *testing.T) {
+	has := func(p string) bool { return p == "/usr/lib/samba/vfs/fruit.so" }
+	if !smbModuleAvailable("MODULESDIR: /usr/lib/samba", "fruit", has) {
+		t.Fatal("module file not found")
+	}
+	if smbModuleAvailable("MODULESDIR: /usr/lib/samba", "streams_xattr", has) {
+		t.Fatal("missing module reported")
+	}
+	if !smbModuleAvailable("vfs_streams_xattr_init", "streams_xattr", has) {
+		t.Fatal("built-in module not seen")
 	}
 }
 
@@ -77,13 +103,13 @@ func TestDiscoveryRemovesOnlyItsOwnFile(t *testing.T) {
 	stubSmbRun(t)
 	other := filepath.Join(dir, "ssh.service")
 	_ = os.WriteFile(other, []byte("x"), 0o644)
-	if fe := applySmbDiscovery(nil, ptr(true), "NAS"); fe != nil {
+	if fe := applySmbDiscovery(nil, ptr(true), "NAS", nil); fe != nil {
 		t.Fatal(fe)
 	}
 	if _, err := os.Stat(filepath.Join(dir, "hsi-smb.service")); err != nil {
 		t.Fatal("service file not written")
 	}
-	if fe := applySmbDiscovery(nil, ptr(false), ""); fe != nil {
+	if fe := applySmbDiscovery(nil, ptr(false), "", nil); fe != nil {
 		t.Fatal(fe)
 	}
 	if _, err := os.Stat(filepath.Join(dir, "hsi-smb.service")); !os.IsNotExist(err) {
@@ -92,7 +118,7 @@ func TestDiscoveryRemovesOnlyItsOwnFile(t *testing.T) {
 	if _, err := os.Stat(other); err != nil {
 		t.Fatal("another service file was removed")
 	}
-	if fe := applySmbDiscovery(ptr(true), nil, ""); fe == nil || fe.Code != "TOOL_MISSING" {
+	if fe := applySmbDiscovery(ptr(true), nil, "", nil); fe == nil || fe.Code != "TOOL_MISSING" {
 		t.Fatalf("wsd without wsdd: %v", fe)
 	}
 }
@@ -128,13 +154,13 @@ func TestDiscoveryLeavesWsddAloneWhenNotAsked(t *testing.T) {
 	hostLookPath = func(n string) bool { return n == "wsdd" || n == "avahi-daemon" }
 	t.Cleanup(func() { avahiServicesDir, hostLookPath = prevDir, prevLook })
 	// A rename or the macOS switch must not touch a wsdd the admin runs.
-	if fe := applySmbDiscovery(nil, ptr(true), "NAS"); fe != nil {
+	if fe := applySmbDiscovery(nil, ptr(true), "NAS", nil); fe != nil {
 		t.Fatal(fe)
 	}
 	if len(*ran) != 0 {
 		t.Fatalf("ran %v without a Windows discovery change", *ran)
 	}
-	if fe := applySmbDiscovery(ptr(false), nil, ""); fe != nil {
+	if fe := applySmbDiscovery(ptr(false), nil, "", nil); fe != nil {
 		t.Fatal(fe)
 	}
 	if len(*ran) != 1 || strings.Join((*ran)[0], " ") != "systemctl disable --now wsdd" {

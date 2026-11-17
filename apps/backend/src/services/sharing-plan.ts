@@ -9,10 +9,14 @@ import type { SmbSettingsPatch } from "./smb-events.service"
 export const SHARE_OPS = ["share.create", "share.update", "share.remove", "smb.settings"] as const
 export type ShareOp = typeof SHARE_OPS[number]
 
-export interface ShareRow { id: string; placeId: string; smbName: string | null; readOnly: boolean; guestOk: boolean; enabled: boolean; hidden: boolean; place: { name: string; path: string } }
+export interface ShareRow {
+  id: string; placeId: string; smbName: string | null; readOnly: boolean; guestOk: boolean; enabled: boolean; hidden: boolean
+  timeMachine?: boolean; timeMachineMaxGb?: number | null
+  place: { name: string; path: string }
+}
 export type ShareChange =
   | { kind: "create"; row: ShareRow }
-  | { kind: "update"; id: string; patch: Partial<Pick<ShareRow, "enabled" | "readOnly" | "guestOk" | "smbName" | "hidden">> }
+  | { kind: "update"; id: string; patch: Partial<Pick<ShareRow, "enabled" | "readOnly" | "guestOk" | "smbName" | "hidden" | "timeMachine" | "timeMachineMaxGb">> }
   | { kind: "remove"; id: string }
   | { kind: "settings"; patch: SmbSettingsPatch }
 
@@ -37,6 +41,13 @@ export interface SharePlanDeps {
   serialize<T>(fn: () => Promise<T>): Promise<T>
   /** Brings Samba back to what the database says (after a failed apply). */
   resync(): Promise<void>
+}
+
+/** Why a share cannot be a Time Machine destination on this server, or null. */
+export function timeMachineRefusal(state: { installed: boolean; timeMachine?: boolean } | null): string | null {
+  if (!state?.installed) return "Samba is not installed or not answering"
+  if (!state.timeMachine) return "This Samba lacks the fruit and streams_xattr modules Time Machine needs"
+  return null
 }
 
 export const NO_SAMBA_FINGERPRINT = "no-samba"

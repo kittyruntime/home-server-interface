@@ -4177,6 +4177,28 @@ function fakeSharingDb() {
   return { prisma, lastWhere: () => lastWhere }
 }
 
+async function testDefsCarryTimeMachine() {
+  const { desiredShareDefs } = await import("../services/sharing.service")
+  const { prisma } = fakeSharingDb()
+  prisma.volumeHold = { findMany: async () => [] }
+  const defs: any[] = await desiredShareDefs(prisma, { kind: "update", id: "s-films", patch: { timeMachine: true, timeMachineMaxGb: 500 } })
+  const films = defs.find(d => d.name === "Films")
+  assert.equal(films.timeMachine, true)
+  assert.equal(films.timeMachineMaxGb, 500)
+  const docs = defs.find(d => d.name === "Docs")
+  assert.equal(docs.timeMachine, false, "a row from before the column reads as off")
+  assert.equal(docs.timeMachineMaxGb, 0, "no cap")
+}
+await testDefsCarryTimeMachine()
+
+async function testTimeMachineNeedsTheMacModules() {
+  const sp = await import("../services/sharing-plan")
+  assert.match(sp.timeMachineRefusal(null) ?? "", /Samba/)
+  assert.match(sp.timeMachineRefusal({ installed: true, timeMachine: false } as any) ?? "", /fruit/)
+  assert.equal(sp.timeMachineRefusal({ installed: true, timeMachine: true } as any), null)
+}
+await testTimeMachineNeedsTheMacModules()
+
 async function testSharingNonAdminSeesOnlyOwnData() {
   const view = await import("../services/sharing-view.service")
   const { prisma, lastWhere } = fakeSharingDb()

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
@@ -122,4 +123,41 @@ func TestSmbSyncApplyIsSerialized(t *testing.T) {
 	}
 	smbMu.Unlock()
 	<-done
+}
+
+func TestPlanSmbSyncAnnouncesTimeMachineWhenMdnsIsOn(t *testing.T) {
+	written := stubSmbHost(t, "# old\n", true, true)
+	avahi := filepath.Join(avahiServicesDir, avahiServiceName)
+	read, exists := hostReadFile, hostExists
+	hostReadFile = func(p string) ([]byte, error) {
+		if p == avahi {
+			return []byte(avahiServiceFile("NAS", nil)), nil
+		}
+		return read(p)
+	}
+	hostExists = func(p string) bool { return p == avahi || exists(p) }
+	in := `{"settings":{"netbiosName":"NAS"},"shares":[{"name":"media","path":"/srv/media","validUsers":["alice"],"timeMachine":true}]}`
+	p, fe := build(t, planSmbSync, in)
+	if fe != nil {
+		t.Fatal(fe)
+	}
+	assertParity(t, p)
+	if (*written)[avahi] != avahiServiceFile("NAS", []string{"media"}) {
+		t.Fatalf("avahi file not updated: %q", (*written)[avahi])
+	}
+}
+
+func TestPlanSmbSyncLeavesMdnsOffAlone(t *testing.T) {
+	written := stubSmbHost(t, "# old\n", true, true)
+	in := `{"shares":[{"name":"media","path":"/srv/media","validUsers":["alice"],"timeMachine":true}]}`
+	p, fe := build(t, planSmbSync, in)
+	if fe != nil {
+		t.Fatal(fe)
+	}
+	assertParity(t, p)
+	for path := range *written {
+		if strings.HasPrefix(path, avahiServicesDir) {
+			t.Fatal("announcement written while macOS discovery is off")
+		}
+	}
 }

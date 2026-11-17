@@ -59,6 +59,10 @@ type shareDef struct {
 	// Hidden: left out of network browsing (browseable = no); still reachable
 	// by its address.
 	Hidden bool `json:"hidden"`
+	// TimeMachine: a Mac can back up to this share (vfs_fruit); a cap in GB
+	// when TimeMachineMaxGb > 0.
+	TimeMachine      bool `json:"timeMachine"`
+	TimeMachineMaxGb int  `json:"timeMachineMaxGb"`
 }
 
 // smbLogPath receives smbd's log, including the authentication and share
@@ -128,8 +132,30 @@ func (s smbSettings) globalLines() ([]string, error) {
 	return lines, nil
 }
 
+func anyTimeMachine(shares []shareDef) bool {
+	for _, s := range shares {
+		if s.TimeMachine {
+			return true
+		}
+	}
+	return false
+}
+
+// timeMachineNames are the shares announced to Time Machine over mDNS.
+func timeMachineNames(shares []shareDef) []string {
+	var out []string
+	for _, s := range shares {
+		if s.TimeMachine && !s.Unavailable {
+			out = append(out, s.Name)
+		}
+	}
+	sort.Strings(out)
+	return out
+}
+
 // auditShareLines log share connects (and refused connects) with who, from
 // where and to which share; nothing about files.
+// The first line is replaced when other modules join full_audit.
 var auditShareLines = []string{
 	"vfs objects = full_audit",
 	"full_audit:prefix = %u|%I|%m|%S",
@@ -219,6 +245,11 @@ func renderSmbConf(shares []shareDef, settings smbSettings) (string, error) {
 	b.WriteString("   load printers = no\n")
 	b.WriteString("   printing = bsd\n")
 	b.WriteString("   disable spoolss = yes\n")
+	if anyTimeMachine(shares) {
+		// macOS metadata in streams, as Apple's own servers keep it.
+		b.WriteString("   fruit:metadata = stream\n")
+		b.WriteString("   fruit:model = MacSamba\n")
+	}
 	sorted := append([]shareDef(nil), shares...)
 	sort.Slice(sorted, func(i, j int) bool { return sorted[i].Name < sorted[j].Name })
 	for _, s := range sorted {
@@ -242,9 +273,25 @@ func renderSmbConf(shares []shareDef, settings smbSettings) (string, error) {
 		} else {
 			b.WriteString("   browseable = yes\n")
 		}
+		var vfs []string
+		if s.TimeMachine {
+			vfs = append(vfs, "catia", "fruit", "streams_xattr")
+		}
 		if settings.Audit {
-			for _, l := range auditShareLines {
+			vfs = append(vfs, "full_audit")
+		}
+		if len(vfs) > 0 {
+			b.WriteString("   vfs objects = " + strings.Join(vfs, " ") + "\n")
+		}
+		if settings.Audit {
+			for _, l := range auditShareLines[1:] {
 				b.WriteString("   " + l + "\n")
+			}
+		}
+		if s.TimeMachine {
+			b.WriteString("   fruit:time machine = yes\n")
+			if s.TimeMachineMaxGb > 0 {
+				b.WriteString("   fruit:time machine max size = " + strconv.Itoa(s.TimeMachineMaxGb) + "G\n")
 			}
 		}
 		// A place's trash (#200) is only reached from the file manager.

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { ChevronLeftIcon } from '@lucide/vue'
+import { ChevronLeftIcon, HistoryIcon } from '@lucide/vue'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -141,6 +141,15 @@ async function disconnect(session: ShareSession) {
       </header>
 
       <p v-if="data.share.hidden" class="text-xs text-base-content/70">{{ t('sharing.detail.hiddenNote') }}</p>
+      <div v-if="data.share.timeMachine" class="flex items-start gap-3 rounded-box border border-base-300 bg-base-200/50 p-3">
+        <HistoryIcon class="mt-0.5 size-4 shrink-0 text-primary" aria-hidden="true" />
+        <div class="min-w-0 space-y-0.5">
+          <p class="text-sm font-medium text-base-content">
+            {{ t('sharing.detail.timeMachineOption') }}<span v-if="data.share.timeMachineMaxGb" class="font-normal text-base-content/70"> · {{ t('sharing.detail.upTo', { n: data.share.timeMachineMaxGb }) }}</span>
+          </p>
+          <p class="text-xs text-base-content/70">{{ t('sharing.detail.timeMachineHowTo') }}</p>
+        </div>
+      </div>
 
       <ConnectBlock :share="data.share.name" :guest-ok="data.share.guestOk" v-bind="connect" />
       <ShareAccess :access="data.access" />

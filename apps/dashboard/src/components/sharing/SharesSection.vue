@@ -66,7 +66,13 @@ async function refresh() {
 onMounted(() => { void refresh(); void refreshHolds() })
 
 // null = closed; id null = create
-const editor = ref<{ id: string | null; placeId: string; smbName: string; readOnly: boolean; guestOk: boolean; hidden: boolean } | null>(null)
+type Editor = {
+  id: string | null; placeId: string; smbName: string; readOnly: boolean; guestOk: boolean; hidden: boolean
+  timeMachine: boolean; timeMachineMaxGb: number | ''
+}
+const editor = ref<Editor | null>(null)
+// Time Machine needs Samba's fruit modules; a share that already has it can still turn it off.
+const timeMachineAvailable = computed(() => props.service?.state?.timeMachine ?? false)
 const saving = ref(false)
 const OPTIONS = ['readOnly', 'guestOk', 'hidden'] as const
 // The name the share gets when the field stays empty.
@@ -80,12 +86,15 @@ const editorError = ref('')
 
 function openCreate() {
   editorError.value = ''
-  editor.value = { id: null, placeId: availablePlaces.value[0]?.id ?? '', smbName: '', readOnly: false, guestOk: false, hidden: false }
+  editor.value = { id: null, placeId: availablePlaces.value[0]?.id ?? '', smbName: '', readOnly: false, guestOk: false, hidden: false, timeMachine: false, timeMachineMaxGb: '' }
 }
 
 function openEdit(s: ShareDetailData['share']) {
   editorError.value = ''
-  editor.value = { id: s.id, placeId: '', smbName: s.smbName ?? '', readOnly: s.readOnly, guestOk: s.guestOk, hidden: s.hidden }
+  editor.value = {
+    id: s.id, placeId: '', smbName: s.smbName ?? '', readOnly: s.readOnly, guestOk: s.guestOk, hidden: s.hidden,
+    timeMachine: s.timeMachine, timeMachineMaxGb: s.timeMachineMaxGb ?? '',
+  }
 }
 
 async function save() {
@@ -93,14 +102,15 @@ async function save() {
   if (!e || saving.value) return
   saving.value = true
   editorError.value = ''
+  const timeMachine = { timeMachine: e.timeMachine, timeMachineMaxGb: e.timeMachine && e.timeMachineMaxGb !== '' ? e.timeMachineMaxGb : null }
   try {
     if (e.id === null) {
       await applyPlanned('share.create', {
-        placeId: e.placeId, smbName: e.smbName.trim() || undefined, readOnly: e.readOnly, guestOk: e.guestOk, hidden: e.hidden,
+        placeId: e.placeId, smbName: e.smbName.trim() || undefined, readOnly: e.readOnly, guestOk: e.guestOk, hidden: e.hidden, ...timeMachine,
       }, { domain: 'sharing', title: t('sharing.detail.createPlan'), actionLabel: t('sharing.detail.create') })
     } else {
       await applyPlanned('share.update', {
-        id: e.id, smbName: e.smbName.trim() || null, readOnly: e.readOnly, guestOk: e.guestOk, hidden: e.hidden,
+        id: e.id, smbName: e.smbName.trim() || null, readOnly: e.readOnly, guestOk: e.guestOk, hidden: e.hidden, ...timeMachine,
       }, { domain: 'sharing', title: t('sharing.detail.savePlan'), actionLabel: t('sharing.detail.save') })
     }
     editor.value = null
@@ -180,6 +190,25 @@ async function onRemoved() {
               <span class="block text-sm text-base-content">{{ t(`sharing.detail.${o}Option`) }}</span>
               <span class="block text-xs text-base-content/70">{{ t(`sharing.detail.${o}Help`) }}</span>
             </span>
+          </label>
+        </fieldset>
+        <fieldset class="space-y-3 border-t border-base-300 pt-4">
+          <legend class="sr-only">{{ t('sharing.detail.timeMachineOption') }}</legend>
+          <label class="flex items-start gap-3" :class="timeMachineAvailable || editor.timeMachine ? 'cursor-pointer' : 'cursor-not-allowed'">
+            <Checkbox v-model="editor.timeMachine" class="mt-0.5" :disabled="!timeMachineAvailable && !editor.timeMachine" />
+            <span class="min-w-0">
+              <span class="block text-sm text-base-content" :class="!timeMachineAvailable && !editor.timeMachine && 'text-base-content/60'">{{ t('sharing.detail.timeMachineOption') }}</span>
+              <span class="block text-xs text-base-content/70">{{ timeMachineAvailable ? t('sharing.detail.timeMachineHelp') : t('sharing.detail.timeMachineUnavailable') }}</span>
+            </span>
+          </label>
+          <label v-if="editor.timeMachine" class="block space-y-1.5 pl-7">
+            <span class="text-xs font-medium text-base-content/80">{{ t('sharing.detail.timeMachineMax') }}</span>
+            <div class="relative max-w-40">
+              <Input v-model.number="editor.timeMachineMaxGb" type="number" inputmode="numeric" min="1" step="1" :placeholder="t('sharing.detail.noLimit')"
+                class="w-full pr-10 tabular-nums [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none" />
+              <span class="pointer-events-none absolute inset-y-0 right-3 flex items-center text-xs text-base-content/60">{{ t('sharing.detail.gb') }}</span>
+            </div>
+            <span class="block text-xs text-base-content/70">{{ t('sharing.detail.timeMachineMaxHelp') }}</span>
           </label>
         </fieldset>
         <Alert v-if="editorError" variant="destructive"><AlertDescription>{{ editorError }}</AlertDescription></Alert>

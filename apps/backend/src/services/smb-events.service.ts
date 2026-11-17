@@ -64,6 +64,8 @@ export interface SmbServiceState {
   avahi: boolean
   wsddOn: boolean
   avahiOn: boolean
+  /** Samba has the fruit and streams_xattr modules Time Machine needs. */
+  timeMachine?: boolean
 }
 
 export function smbServiceState(): Promise<SmbServiceState> {

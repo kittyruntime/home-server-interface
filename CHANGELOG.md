@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Time Machine over SMB**: a share can be a Time Machine destination, with an
+  optional size limit. Macs find it in Time Machine's list of disks when macOS
+  discovery is on, and the share's detail explains how to pick it otherwise.
+  Needs Samba's fruit modules; without them the option says so.
+
 ## [1.85.1] - 2026-11-16
 
 ### Fixed

@@ -116,3 +116,31 @@ func TestRenderRejectsUnknownSettingValues(t *testing.T) {
 		}
 	}
 }
+
+func TestRenderTimeMachineShare(t *testing.T) {
+	shares := []shareDef{renderShares[0]}
+	shares[0].TimeMachine = true
+	shares[0].TimeMachineMaxGb = 500
+	conf := mustRender(t, shares, smbSettings{})
+	wantLines(t, conf, "fruit:metadata = stream", "fruit:model = MacSamba",
+		"vfs objects = catia fruit streams_xattr", "fruit:time machine = yes", "fruit:time machine max size = 500G")
+	if !strings.Contains(strings.SplitN(conf, "[Films]", 2)[0], "fruit:metadata") {
+		t.Fatal("fruit globals not in [global]")
+	}
+}
+
+func TestRenderTimeMachineKeepsTheJournal(t *testing.T) {
+	shares := []shareDef{renderShares[0]}
+	shares[0].TimeMachine = true
+	conf := mustRender(t, shares, smbSettings{Audit: true})
+	wantLines(t, conf, "vfs objects = catia fruit streams_xattr full_audit")
+	if strings.Contains(conf, "   vfs objects = full_audit\n") || strings.Contains(conf, "max size") {
+		t.Fatalf("one vfs objects line and no cap expected:\n%s", conf)
+	}
+}
+
+func TestRenderNoFruitWithoutTimeMachine(t *testing.T) {
+	if strings.Contains(mustRender(t, renderShares, smbSettings{}), "fruit") {
+		t.Fatal("fruit written without a Time Machine share")
+	}
+}

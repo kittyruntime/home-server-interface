@@ -14,7 +14,7 @@ import {
   withShareLock,
 } from "../../services/sharing.service"
 import {
-  SHARE_OPS, applyShareChange, previewShareChange,
+  SHARE_OPS, applyShareChange, previewShareChange, timeMachineRefusal,
   type ShareChange, type ShareOp, type SharePlanDeps,
 } from "../../services/sharing-plan"
 import { planAuditMeta } from "../../services/storage-plan"
@@ -78,6 +78,8 @@ const zShareInputs = {
     readOnly: z.boolean().default(false),
     guestOk: z.boolean().default(false),
     hidden: z.boolean().default(false),
+    timeMachine: z.boolean().default(false),
+    timeMachineMaxGb: z.number().int().min(1).max(1_000_000).nullable().default(null),
   }),
   "share.update": z.object({
     id: z.string(),
@@ -86,6 +88,8 @@ const zShareInputs = {
     guestOk: z.boolean().optional(),
     hidden: z.boolean().optional(),
     smbName: z.string().regex(reSmbName).nullable().optional(),
+    timeMachine: z.boolean().optional(),
+    timeMachineMaxGb: z.number().int().min(1).max(1_000_000).nullable().optional(),
   }),
   "share.remove": z.object({ id: z.string() }),
   "smb.settings": z.object({
@@ -108,6 +112,11 @@ function parseInput<T extends ShareOp>(op: T, input: unknown): z.infer<typeof zS
   return r.data as z.infer<typeof zShareInputs[T]>
 }
 
+async function assertTimeMachine(): Promise<void> {
+  const refusal = timeMachineRefusal(await smbServiceState().catch(() => null))
+  if (refusal) throw new TRPCError({ code: "PRECONDITION_FAILED", message: refusal })
+}
+
 // Today's checks for a share change, the change as a plan sees it, and the
 // database write that follows a successful plan.
 async function prepare(ctx: Context, op: ShareOp, raw: unknown): Promise<{ name: string; change: ShareChange; commit: () => Promise<unknown> }> {
@@ -120,7 +129,11 @@ async function prepare(ctx: Context, op: ShareOp, raw: unknown): Promise<{ name:
       throw new TRPCError({ code: "CONFLICT", message: "This place is already shared" })
     const name = effectiveSmbName({ smbName: input.smbName ?? null }, place.name)
     await assertUniqueName(prisma, name)
-    const data = { placeId: input.placeId, smbName: input.smbName ?? null, readOnly: input.readOnly, guestOk: input.guestOk, hidden: input.hidden }
+    if (input.timeMachine) await assertTimeMachine()
+    const data = {
+      placeId: input.placeId, smbName: input.smbName ?? null, readOnly: input.readOnly, guestOk: input.guestOk, hidden: input.hidden,
+      timeMachine: input.timeMachine, timeMachineMaxGb: input.timeMachineMaxGb,
+    }
     return {
       name,
       change: { kind: "create", row: { id: "(new)", ...data, enabled: true, place: { name: place.name, path: place.path } } },
@@ -141,7 +154,8 @@ async function prepare(ctx: Context, op: ShareOp, raw: unknown): Promise<{ name:
         const wsd = patch.discoveryWsd
         const mdns = patch.discoveryMdns ?? (patch.netbiosName !== undefined && s.discoveryMdns ? true : undefined)
         if (wsd !== undefined || mdns !== undefined) {
-          await requestSync("root.sharing.discovery", { wsd, mdns, name: s.netbiosName }).catch(() => {})
+          const timeMachine = (await desiredShareDefs(prisma)).filter(d => d.timeMachine && !d.unavailable).map(d => d.name).sort()
+          await requestSync("root.sharing.discovery", { wsd, mdns, name: s.netbiosName, timeMachine }).catch(() => {})
         }
       },
     }
@@ -163,7 +177,10 @@ async function prepare(ctx: Context, op: ShareOp, raw: unknown): Promise<{ name:
     ...(u.guestOk !== undefined && { guestOk: u.guestOk }),
     ...(u.hidden !== undefined && { hidden: u.hidden }),
     ...(u.smbName !== undefined && { smbName: u.smbName }),
+    ...(u.timeMachine !== undefined && { timeMachine: u.timeMachine }),
+    ...(u.timeMachineMaxGb !== undefined && { timeMachineMaxGb: u.timeMachineMaxGb }),
   }
+  if (u.timeMachine && !share.timeMachine) await assertTimeMachine()
   const name = effectiveSmbName({ smbName: u.smbName !== undefined ? u.smbName : share.smbName }, share.place.name)
   if (u.smbName !== undefined) await assertUniqueName(prisma, name, share.id)
   return {
@@ -232,6 +249,7 @@ export const sharingRouter = router({
           enabled: s.enabled,
           readOnly: s.readOnly,
           guestOk: s.guestOk,
+          timeMachine: s.timeMachine,
           smbName: s.smbName,
           effectiveName: effectiveSmbName(s, s.place.name),
           userCount: users.validUsers.length,
@@ -279,6 +297,7 @@ export const sharingRouter = router({
       share: {
         id: s.id, name, placeName: s.place.name, placePath: s.place.path, enabled: s.enabled,
         readOnly: s.readOnly, guestOk: s.guestOk, hidden: s.hidden, smbName: s.smbName,
+        timeMachine: s.timeMachine, timeMachineMaxGb: s.timeMachineMaxGb,
       },
       access: access.map(a => ({ ...a, networkPassword: facts.sambaUsers.has(a.linuxUsername) })),
       sessions: sessions.filter(c => c.share === name),

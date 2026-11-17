@@ -25,8 +25,18 @@ HSI is multi-user from the start.
 
 Sharing publishes Places over SMB with Samba, in sync with HSI's accounts and
 permissions. Creating, editing, enabling, disabling and removing a share show the
-change to the Samba configuration as a diff before it runs. The Diagnostics tab
-shows, per share, who can actually read and write, and who is blocked and why.
+change to the Samba configuration as a diff before it runs. Each share's detail
+shows how to connect from Windows, macOS and Linux, who can read and write, who
+is connected now, its recent activity and its checks.
+
+### Time Machine
+
+A share can be a **Time Machine destination**, with an optional size limit in GB
+(Time Machine removes its oldest backups to stay under it). It needs Samba's
+`fruit` and `streams_xattr` modules, which most distributions ship with Samba.
+With macOS discovery turned on in the SMB settings (Avahi installed), the share
+appears in Time Machine's list of disks; otherwise connect to it in the Finder
+first, then choose it in System Settings, General, Time Machine.
 
 ## Without HSI
 
