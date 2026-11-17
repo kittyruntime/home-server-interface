@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { nfsAddresses, shareAddresses } from '../src/lib/share-address.ts'
+import { nfsAddresses, sftpAddress, shareAddresses } from '../src/lib/share-address.ts'
 
 const byOs = (list: { os: string; address: string }[]) => Object.fromEntries(list.map(a => [a.os, a.address]))
 
@@ -47,4 +47,9 @@ test('NFS: paths with spaces are quoted and encoded, IPv6 hosts bracketed', () =
   const [linux, mac] = nfsAddresses({ host: 'fd00::5', path: '/srv/My Films', share: 'My-Films' })
   assert.equal(linux.address, "sudo mount -t nfs '[fd00::5]:/srv/My Films' /mnt/My-Films")
   assert.equal(mac.address, 'nfs://[fd00::5]/srv/My%20Films')
+})
+
+test('SFTP: user, host, a port only when not 22, and the share as the folder', () => {
+  assert.equal(sftpAddress({ host: '192.168.1.10', port: 22, user: 'alice', share: 'Films' }), 'sftp://alice@192.168.1.10/Films')
+  assert.equal(sftpAddress({ host: 'fd00::5', port: 2222, user: 'bob', share: 'My Films' }), 'sftp://bob@[fd00::5]:2222/My%20Films')
 })

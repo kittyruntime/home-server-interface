@@ -3,7 +3,7 @@ import { TRPCError } from "@trpc/server"
 import { router, protectedProcedure, userManagerProcedure, adminProcedure, CAPABILITIES } from "../index"
 import { userSelect, changePassword, reLinuxUsername, getIdentityStatus, assertCreatable, createUserRecord } from "../../services/user.service"
 import { requestSync } from "../../nats"
-import { currentSmbSettings, desiredNfsExports, desiredShareDefs, syncPlaceAccess, withShareLock } from "../../services/sharing.service"
+import { currentSmbSettings, desiredNfsExports, desiredSftpUsers, desiredShareDefs, syncPlaceAccess, withShareLock } from "../../services/sharing.service"
 import { planAuditMeta } from "../../services/storage-plan"
 import {
   USER_OPS, applyUserCreate, applyUserDelete, previewUserCreate, previewUserDelete,
@@ -91,6 +91,8 @@ async function prepareUserPlan(ctx: Context, caller: Caller, op: UserOp, raw: un
     currentShareDefs: () => desiredShareDefs(ctx.prisma),
     nfsExports: () => desiredNfsExports(ctx.prisma, undefined, { withoutUser: username }),
     currentNfsExports: () => desiredNfsExports(ctx.prisma),
+    sftpUsers: () => desiredSftpUsers(ctx.prisma, undefined, { withoutUser: username }),
+    currentSftpUsers: () => desiredSftpUsers(ctx.prisma),
     smbSettings: () => currentSmbSettings(ctx.prisma),
     serialize: withShareLock,
     resync: () => syncSharesBestEffort(ctx.prisma),

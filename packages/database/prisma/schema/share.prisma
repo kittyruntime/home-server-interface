@@ -15,4 +15,5 @@ model Share {
   nfs              Boolean @default(false) // exported over NFS
   nfsClients       String  @default("") // space-separated addresses or networks allowed over NFS
   nfsWriteAs       String  @default("") // HSI username new NFS files belong to; "" = read-only export
+  sftp             Boolean @default(false) // reachable over SFTP by the people with access
 }

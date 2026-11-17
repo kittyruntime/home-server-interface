@@ -106,6 +106,13 @@ async function save() {
   }
 }
 
+const sftpState = computed(() => {
+  const s = props.service?.sftp
+  if (!s?.installed) return t('sharing.sftp.notInstalled')
+  if (!s.supported) return t('sharing.sftp.notSupported')
+  return s.active ? t('sharing.sftp.on', { port: s.port }) : t('sharing.sftp.off')
+})
+
 type Block = Awaited<ReturnType<typeof trpc.sharing.blocks.query>>[number]
 const blocks = ref<Block[]>([])
 const blocksLoaded = ref(false)
@@ -234,6 +241,18 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
         <div class="min-w-0">
           <p class="text-sm text-base-content">{{ !service?.nfs?.installed ? t('sharing.nfs.notInstalled') : service.nfs?.active ? t('sharing.nfs.on') : t('sharing.nfs.off') }}</p>
           <p class="text-xs text-base-content/70">{{ service?.nfs?.installed ? t('sharing.nfs.settingsHelp') : t('sharing.nfs.missing') }}</p>
+        </div>
+      </div>
+    </Card>
+
+    <Card class="gap-3 p-4 @2xl:p-5">
+      <h3 class="eyebrow">SFTP</h3>
+      <div class="flex items-start gap-3">
+        <span class="mt-1.5 size-2 shrink-0 rounded-full" aria-hidden="true"
+          :class="!service?.sftp?.supported ? 'bg-base-content/30' : service.sftp?.active ? 'bg-success' : 'bg-warning'" />
+        <div class="min-w-0">
+          <p class="text-sm text-base-content">{{ sftpState }}</p>
+          <p class="text-xs text-base-content/70">{{ service?.sftp?.supported ? t('sharing.sftp.settingsHelp') : !service?.sftp?.installed ? t('sharing.sftp.missing') : t('sharing.sftp.unsupported') }}</p>
         </div>
       </div>
     </Card>

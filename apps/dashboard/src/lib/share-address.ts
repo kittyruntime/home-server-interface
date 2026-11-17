@@ -48,3 +48,11 @@ export function nfsAddresses(o: NfsAddressInput): { os: 'linux' | 'macos'; addre
     { os: 'macos', address: `nfs://${host}${encoded}` },
   ]
 }
+
+export interface SftpAddressInput { host: string; port: number; user: string; share: string }
+
+/** An SFTP address for apps and file managers; the share is a folder at the top. */
+export function sftpAddress(o: SftpAddressInput): string {
+  const port = o.port && o.port !== 22 ? `:${o.port}` : ''
+  return `sftp://${encodeURIComponent(o.user)}@${urlHost(o.host)}${port}/${encodeURIComponent(o.share)}`
+}

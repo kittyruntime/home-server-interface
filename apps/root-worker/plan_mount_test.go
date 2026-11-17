@@ -274,3 +274,25 @@ func TestPlanMountRefusesAnOccupiedMountPoint(t *testing.T) {
 		t.Fatalf("an occupied mount point is refused: %+v", fe)
 	}
 }
+
+func TestPlanUmountClosesSftpViewsFirst(t *testing.T) {
+	stubMountHost(t)
+	read := hostReadFile
+	t.Cleanup(func() { hostReadFile = read })
+	hostReadFile = func(p string) ([]byte, error) {
+		if p == "/proc/self/mountinfo" {
+			return []byte("22 1 253:0 / / rw - ext4 /dev/root rw\n40 22 8:17 / /mnt/data rw - ext4 /dev/sdb1 rw\n" +
+				"50 22 8:17 /films /var/lib/hsi-sftp/alice/Films rw - ext4 /dev/sdb1 rw\n" +
+				"51 22 253:0 /srv/x /var/lib/hsi-sftp/alice/X rw - ext4 /dev/root rw\n"), nil
+		}
+		return read(p)
+	}
+	p, fe := build(t, planUmount, `{"mountpoint":"/mnt/data"}`)
+	if fe != nil {
+		t.Fatal(fe)
+	}
+	want := [][]string{{"umount", "-l", "/var/lib/hsi-sftp/alice/Films"}, {"umount", "/mnt/data"}}
+	if !reflect.DeepEqual(argvs(p), want) {
+		t.Fatalf("commands: %v", argvs(p))
+	}
+}

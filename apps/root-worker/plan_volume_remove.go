@@ -252,6 +252,7 @@ func planVolumeRemove(raw json.RawMessage) (*opPlan, *fsError) {
 			c.OnFailure = "ignore"
 			steps = append(steps, c)
 		}
+		steps = append(steps, closeSftpViewsSteps(mp)...)
 		steps = append(steps, cmdStep(mp, "Unmount "+mp, []string{"umount", mp}))
 	}
 	if s, _ := fstabStep("Stop mounting "+mp+" at boot", fstab, func(conf string) (string, error) {

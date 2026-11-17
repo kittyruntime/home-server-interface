@@ -206,6 +206,31 @@ export async function desiredNfsExports(prisma: PrismaClient, change?: ShareChan
   return out
 }
 
+/** Who sees which share over SFTP, with `change` applied as `desiredShareDefs`
+ *  does: everyone who can read it (admins included), writing where they may.
+ *  The worker keeps only the accounts HSI made (no login shell). */
+export async function desiredSftpUsers(prisma: PrismaClient, change?: ShareChange, opts: { withoutUser?: string } = {}) {
+  const rows = await prisma.share.findMany({
+    include: { place: { select: { name: true, path: true } } },
+    orderBy: { createdAt: "asc" },
+  })
+  const shares = overlayShares(rows, change).filter(s => s.enabled && s.sftp)
+  const adminLinux = await adminLinuxUsers(prisma)
+  const holds = await prisma.volumeHold.findMany()
+  const byUser = new Map<string, { name: string; path: string; write: boolean; unavailable: boolean }[]>()
+  for (const s of shares) {
+    const users = await resolveShareUsers(prisma, s.placeId)
+    const writers = new Set([...users.writeUsers, ...adminLinux])
+    const view = { name: effectiveSmbName(s, s.place.name), path: s.place.path, unavailable: holdFor(holds, s.place.path) !== null }
+    for (const u of new Set([...users.validUsers, ...adminLinux])) {
+      if (u === opts.withoutUser) continue
+      byUser.set(u, [...(byUser.get(u) ?? []), { ...view, write: !s.readOnly && writers.has(u) }])
+    }
+  }
+  return [...byUser.entries()].sort(([a], [b]) => a.localeCompare(b))
+    .map(([user, list]) => ({ user, shares: list.map(({ name, path, write, unavailable }) => ({ name, path, write, unavailable })) }))
+}
+
 // Share syncs and applied share plans run one at a time: a sync reading the
 // database while a plan is between its smb.conf write and its database write
 // would put the old state back.
@@ -221,7 +246,9 @@ export function withShareLock<T>(fn: () => Promise<T>): Promise<T> {
 export async function syncShares(prisma: PrismaClient): Promise<void> {
   await withShareLock(async () => {
     const settings = await currentSmbSettings(prisma)
-    await requestSync("root.sharing.sync", { shares: await desiredShareDefs(prisma), settings, nfs: { exports: await desiredNfsExports(prisma) } })
+    await requestSync("root.sharing.sync", { shares: await desiredShareDefs(prisma), settings,
+      nfs: { exports: await desiredNfsExports(prisma) }, sftp: { users: await desiredSftpUsers(prisma) },
+    })
     noteRenderedSmb(settings)
   })
 }

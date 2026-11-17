@@ -52,6 +52,19 @@ HSI writes its exports to `/etc/exports.d/hsi.exports` and never edits
 Ubuntu, `nfs-utils` elsewhere). From Linux: `sudo mount -t nfs <nas>:<path> /mnt/<name>`;
 from macOS, `nfs://<nas><path>` in the Finder's Connect to Server.
 
+## SFTP
+
+A share can also be reached over **SFTP**, with each person's HSI username and
+password, from FileZilla, Cyberduck, WinSCP or a phone's file app, on the
+server's SSH port: `sftp://<username>@<nas>/<share>`. HSI uses the host's
+OpenSSH: it adds its own `/etc/ssh/sshd_config.d/hsi-sftp.conf` (checked with
+`sshd -t` before any reload) and never edits `sshd_config`. Each person is
+locked in a folder that shows only the shares they can read, read-only where
+they cannot write, and gets no shell. Only the accounts HSI created get SFTP:
+an account with a login shell keeps its own SSH access, unchanged. It needs
+`openssh-server` and a `sshd_config` that includes `sshd_config.d` (the
+default on Debian, Ubuntu and Fedora).
+
 ## Without HSI
 
 See [Samba](/home-server-interface/guide/manage-without-hsi/#samba-smb-shares) and

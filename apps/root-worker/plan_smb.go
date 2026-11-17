@@ -42,6 +42,9 @@ type shareSyncReq struct {
 	Nfs      *struct {
 		Exports []nfsExportDef `json:"exports"`
 	} `json:"nfs"`
+	Sftp *struct {
+		Users []sftpUserDef `json:"users"`
+	} `json:"sftp"`
 }
 
 func planSmbSync(raw json.RawMessage) (*opPlan, *fsError) {
@@ -52,7 +55,7 @@ func planSmbSync(raw json.RawMessage) (*opPlan, *fsError) {
 	obs := map[string]string{}
 	var steps []planStep
 	// Samba is needed for SMB shares, and by callers that only know SMB.
-	if hostSmbdInstalled() || req.Nfs == nil || len(req.Shares) > 0 {
+	if hostSmbdInstalled() || (req.Nfs == nil && req.Sftp == nil) || len(req.Shares) > 0 {
 		s, fe := smbSyncSteps(req, obs)
 		if fe != nil {
 			return nil, fe
@@ -61,6 +64,13 @@ func planSmbSync(raw json.RawMessage) (*opPlan, *fsError) {
 	}
 	if req.Nfs != nil {
 		s, fe := nfsSyncSteps(req.Nfs.Exports, obs)
+		if fe != nil {
+			return nil, fe
+		}
+		steps = append(steps, s...)
+	}
+	if req.Sftp != nil {
+		s, fe := sftpSyncSteps(req.Sftp.Users, obs)
 		if fe != nil {
 			return nil, fe
 		}
