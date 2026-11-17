@@ -4248,6 +4248,22 @@ async function testNfsExportsFollowWritePermission() {
 }
 await testNfsExportsFollowWritePermission()
 
+async function testLanAddressIsTheServersOwn() {
+  const { lanAddress } = await import("../services/lan-address")
+  const v4 = (address: string, internal = false) => ({ address, family: "IPv4", internal, netmask: "255.255.255.0", mac: "", cidr: null }) as any
+  assert.equal(lanAddress({
+    lo: [v4("127.0.0.1", true)], docker0: [v4("172.17.0.1")], "br-1a2b": [v4("172.18.0.1")], veth9: [v4("10.0.5.1")],
+    tailscale0: [v4("100.64.0.3")], enp3s0: [{ address: "fe80::1", family: "IPv6", internal: false } as any, v4("192.168.1.222")],
+  }), "192.168.1.222")
+  assert.equal(lanAddress({ wlan0: [v4("10.0.0.7")], virbr0: [v4("192.168.122.1")] }), "10.0.0.7", "a VM bridge is not the LAN")
+  assert.equal(lanAddress({ lo: [v4("127.0.0.1", true)], eth0: [v4("203.0.113.5")] }), "", "a public address is not a LAN address")
+  const two = { ens18: [v4("192.168.1.48")], ens19: [v4("10.42.0.4")] }
+  assert.equal(lanAddress(two, "10.42.0.77"), "10.42.0.4", "the address on the viewer's own network")
+  assert.equal(lanAddress(two, "::ffff:192.168.1.5"), "192.168.1.48")
+  assert.equal(lanAddress(two, "203.0.113.9"), "192.168.1.48", "from outside: the first one")
+}
+await testLanAddressIsTheServersOwn()
+
 async function testNfsOnlySharesDoNotNeedSamba() {
   const sp = await import("../services/sharing-plan")
   let sent: any = null

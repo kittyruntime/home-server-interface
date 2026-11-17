@@ -3,6 +3,7 @@ import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import AddressList from './AddressList.vue'
 import { shareAddresses } from '../../lib/share-address'
+import { shareHost } from '../../lib/sharing-types'
 
 const props = defineProps<{
   share: string
@@ -12,6 +13,8 @@ const props = defineProps<{
   netbiosName?: string
   wsd?: boolean
   mdns?: boolean
+  /** The server's local address; the browser's host otherwise. */
+  host?: string
   /** A heading naming the protocol, when the share has several. */
   title?: string
 }>()
@@ -19,7 +22,7 @@ const props = defineProps<{
 const { t } = useI18n()
 
 const items = computed(() => shareAddresses({
-  host: window.location.hostname, share: props.share,
+  host: shareHost(props.host), share: props.share,
   netbiosName: props.netbiosName, wsd: props.wsd, mdns: props.mdns,
 }).map(a => ({ key: a.os, label: t(`sharing.detail.${a.os}`), address: a.address })))
 </script>

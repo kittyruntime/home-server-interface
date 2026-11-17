@@ -155,7 +155,7 @@ async function disconnect(session: ShareSession) {
       <ConnectBlock v-if="data.share.smb" :share="data.share.name" :guest-ok="data.share.guestOk" v-bind="connect"
         :title="data.share.nfs ? t('sharing.detail.connectSmb') : undefined" />
       <NfsBlock v-if="data.share.nfs && data.nfs" :share="data.share.name" :path="data.share.placePath"
-        :clients="data.share.nfsClients" :write-as="data.nfs.writeAs" :connected="data.nfs.clients" />
+        :clients="data.share.nfsClients" :write-as="data.nfs.writeAs" :connected="data.nfs.clients" :host="connect.host" />
       <ShareAccess :access="data.access" />
       <template v-if="data.share.smb">
         <ShareSessions :sessions="data.sessions" can-disconnect :busy-key="disconnecting" @disconnect="disconnect" />

@@ -136,7 +136,7 @@ async function repair() {
           <Badge variant="secondary">{{ s.level === 'write' ? t('sharing.list.readWrite') : t('sharing.list.readOnly') }}</Badge>
           <Badge v-if="s.guestOk" variant="outline">{{ t('sharing.list.guest') }}</Badge>
         </div>
-        <ConnectBlock :share="s.name" :guest-ok="s.guestOk" :username="mine.username" :netbios-name="mine.netbiosName" :wsd="mine.discovery.wsd" :mdns="mine.discovery.mdns" />
+        <ConnectBlock :share="s.name" :guest-ok="s.guestOk" :username="mine.username" :netbios-name="mine.netbiosName" :wsd="mine.discovery.wsd" :mdns="mine.discovery.mdns" :host="mine.lanAddress || undefined" />
       </Card>
 
       <Card class="gap-6 p-4 @2xl:p-5">

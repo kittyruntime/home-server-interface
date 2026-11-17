@@ -27,6 +27,7 @@ import {
 } from "../../services/sharing-view.service"
 import { syncSystemPassword, verifyPassword } from "../../services/user.service"
 import { clientAllowed, parseNfsClients, suggestNfsClients } from "../../services/nfs"
+import { lanAddress } from "../../services/lan-address"
 import type { Context } from "../context"
 
 type DirState = {
@@ -319,7 +320,10 @@ export const sharingRouter = router({
       smbServiceState().catch(() => null), getSmbSettings(ctx.prisma), sessionsNow(), nfsNow(),
     ])
     const { eventCursor: _cursor, ...shown } = settings
-    return { state, settings: shown, connectedCount: peopleConnected(sessions), nfs, suggestedNfsClients: suggestNfsClients(callerIp(ctx)) }
+    return {
+      state, settings: shown, connectedCount: peopleConnected(sessions), nfs,
+      suggestedNfsClients: suggestNfsClients(callerIp(ctx)), lanAddress: lanAddress(undefined, callerIp(ctx)),
+    }
   }),
 
   serviceAction: adminProcedure
@@ -438,6 +442,7 @@ export const sharingRouter = router({
       networkPassword: facts.sambaUsers.has(viewer.username),
       serviceActive: state?.active ?? false,
       netbiosName: settings.netbiosName,
+      lanAddress: lanAddress(undefined, callerIp(ctx)),
       discovery: { wsd: settings.discoveryWsd && !!state?.wsddOn, mdns: settings.discoveryMdns && !!state?.avahiOn },
     }
   }),

@@ -4,6 +4,7 @@ import { useI18n } from 'vue-i18n'
 import { MonitorIcon } from '@lucide/vue'
 import AddressList from './AddressList.vue'
 import { nfsAddresses } from '../../lib/share-address'
+import { shareHost } from '../../lib/sharing-types'
 
 const props = defineProps<{
   share: string
@@ -14,10 +15,12 @@ const props = defineProps<{
   writeAs: string
   /** Machines with it mounted now. */
   connected: string[]
+  /** The server's local address; the browser's host otherwise. */
+  host?: string
 }>()
 const { t } = useI18n()
 
-const items = computed(() => nfsAddresses({ host: window.location.hostname, path: props.path, share: props.share })
+const items = computed(() => nfsAddresses({ host: shareHost(props.host), path: props.path, share: props.share })
   .map(a => ({ key: `nfs-${a.os}`, label: t(`sharing.detail.${a.os}`), address: a.address })))
 const allowed = computed(() => props.clients.split(' ').filter(Boolean))
 </script>
