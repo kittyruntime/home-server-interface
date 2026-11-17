@@ -180,7 +180,7 @@ export async function desiredShareDefs(prisma: PrismaClient, change?: ShareChang
 /** The NFS exports, with `change` applied as `desiredShareDefs` does. New files
  *  belong to the chosen account only while it may write to the place; else
  *  the export is read-only. */
-export async function desiredNfsExports(prisma: PrismaClient, change?: ShareChange) {
+export async function desiredNfsExports(prisma: PrismaClient, change?: ShareChange, opts: { withoutUser?: string } = {}) {
   const rows = await prisma.share.findMany({
     include: { place: { select: { name: true, path: true } } },
     orderBy: { createdAt: "asc" },
@@ -193,6 +193,7 @@ export async function desiredNfsExports(prisma: PrismaClient, change?: ShareChan
     const parsed = parseNfsClients(s.nfsClients ?? "")
     if ("error" in parsed) continue
     const writers = new Set([...(await resolveShareUsers(prisma, s.placeId)).writeUsers, ...adminLinux])
+    if (opts.withoutUser) writers.delete(opts.withoutUser)
     const owner = s.nfsWriteAs ?? ""
     out.push({
       path: s.place.path,

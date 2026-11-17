@@ -1563,12 +1563,28 @@ await testSharePlans()
 
   // A user outside the share group: a worker before v1.80.3 sent null steps
   // and results for group.leave, which made the delete plan fail.
-  const nullWorker = async (subject: string, payload: any) =>
+  const nullWorker = async (subject: string, _payload: any) =>
     subject === "root.plan.preview" ? { steps: null, fingerprint: "g0" } : { ok: true, steps: null, results: null }
   const outside = await up.previewUserDelete("alice", deps({ currentShareDefs: async () => [], worker: nullWorker }))
   assert.deepEqual(outside.steps.map(s => s.kind), ["delete"])
   const outsideDone = await up.applyUserDelete("alice", outside.fingerprint, deps({ currentShareDefs: async () => [], worker: nullWorker }))
   assert.equal(outsideDone.ok, true)
+
+  // NFS files belong to the user: the exports drop them in the same plan, even
+  // without Samba, so no export keeps a uid a later account could get.
+  let sentNfs: any = null
+  const nfsOnly = await up.previewUserDelete("alice", deps({
+    smbdInstalled: async () => false,
+    currentShareDefs: async () => [],
+    nfsExports: async () => [{ path: "/srv/x", writeAs: "" }],
+    currentNfsExports: async () => [{ path: "/srv/x", writeAs: "alice" }],
+    worker: async (_subject: string, payload: any) => {
+      if (payload.op === "smb.sync") { sentNfs = payload.input.nfs; return { steps: [{ kind: "update", target: "/etc/exports.d/hsi.exports", summary: "exports" }], fingerprint: "n1" } }
+      return { steps: [], fingerprint: "g0" }
+    },
+  }))
+  assert.deepEqual(sentNfs, { exports: [{ path: "/srv/x", writeAs: "" }] })
+  assert.deepEqual(nfsOnly.steps.map(s => s.kind), ["update", "delete"])
 
   // No share access, but smb.conf out of date: the user's delete does not
   // reconcile unrelated drift (no smb.conf step, no smbd reload).
