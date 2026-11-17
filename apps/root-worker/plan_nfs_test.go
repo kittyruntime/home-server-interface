@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"reflect"
 	"strings"
 	"testing"
@@ -22,9 +23,9 @@ func stubNfsHost(t *testing.T, smbd, exportfs bool, current string) *map[string]
 	}
 	hostLookPath = func(n string) bool { return n == "exportfs" && exportfs }
 	hostNfsIDsFn = func() (nfsIDs, error) { return nfsIDsStub(), nil }
-	prp := hostRealpath
-	t.Cleanup(func() { hostRealpath = prp })
-	hostRealpath = func(p string) (string, error) { return p, nil }
+	prp := hostSafeFolder
+	t.Cleanup(func() { hostSafeFolder = prp })
+	hostSafeFolder = func(string) error { return nil }
 	hostRemoveFile = func(p string) error { (*written)[p] = "<removed>"; return nil }
 	return written
 }
@@ -99,9 +100,9 @@ func TestPlanShareSyncStillNeedsSambaForSmbShares(t *testing.T) {
 
 func TestPlanShareSyncLeavesOutASymlinkedExport(t *testing.T) {
 	written := stubNfsHost(t, false, true, "")
-	pr := hostRealpath
-	t.Cleanup(func() { hostRealpath = pr })
-	hostRealpath = func(p string) (string, error) { return "/etc", nil }
+	pr := hostSafeFolder
+	t.Cleanup(func() { hostSafeFolder = pr })
+	hostSafeFolder = func(string) error { return errors.New("a symbolic link") }
 	p, fe := build(t, planSmbSync, nfsOnly)
 	if fe != nil {
 		t.Fatal(fe)

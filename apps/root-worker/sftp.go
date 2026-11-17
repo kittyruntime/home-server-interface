@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"os"
 	"path"
 	"path/filepath"
@@ -11,6 +12,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"syscall"
 
 	"github.com/nats-io/nats.go"
 )
@@ -216,11 +218,53 @@ var (
 	hostPrepareSftpDirs = prepareSftpDirs
 	// hostTidySftp removes folders left empty, never anything inside them.
 	hostTidySftp = tidySftpDirs
-	// hostRealpath resolves symbolic links, to refuse a share reached through one.
-	hostRealpath = filepath.EvalSymlinks
+	// hostSafeFolder refuses a share folder that someone other than root could
+	// swap for a link to elsewhere.
+	hostSafeFolder = func(p string) error { return safeShareFolder(p, ownedByRoot) }
 	// hostUmountView takes down a view that could not be made read-only.
 	hostUmountView = func(dst string) { _ = probe("umount", "-l", dst).Run() }
 )
+
+func ownedByRoot(fi os.FileInfo) bool {
+	st, ok := fi.Sys().(*syscall.Stat_t)
+	return ok && st.Uid == 0
+}
+
+// safeShareFolder: p is a real folder (not a link) and every folder above it
+// is root's and writable by nobody else (or sticky, like /tmp, where only an
+// entry's owner may rename it). Then only root can swap p for something
+// else, so what was checked is what gets mounted or exported: no window
+// between the check and its use.
+func safeShareFolder(p string, rootOwned func(os.FileInfo) bool) error {
+	if !filepath.IsAbs(p) || filepath.Clean(p) != p {
+		return fmt.Errorf("%q is not an absolute path", p)
+	}
+	fi, err := os.Lstat(p)
+	if err != nil {
+		return err
+	}
+	if !fi.IsDir() {
+		return fmt.Errorf("%s is not a folder (a symbolic link?)", p)
+	}
+	for dir := filepath.Dir(p); ; dir = filepath.Dir(dir) {
+		fi, err := os.Lstat(dir)
+		if err != nil {
+			return err
+		}
+		if !fi.IsDir() {
+			return fmt.Errorf("%s is a symbolic link", dir)
+		}
+		if !rootOwned(fi) {
+			return fmt.Errorf("%s does not belong to root", dir)
+		}
+		if fi.Mode().Perm()&0o022 != 0 && fi.Mode()&os.ModeSticky == 0 {
+			return fmt.Errorf("others can write in %s, so they could swap the share's folder", dir)
+		}
+		if dir == "/" {
+			return nil
+		}
+	}
+}
 
 // mountViewStep shows src in dst, read-only from the first instant when ro
 // (one mount call), after checking src is still the real folder: a writer of
@@ -233,8 +277,8 @@ func mountViewStep(m sftpMount) planStep {
 		summary += ", read-only"
 	}
 	return planStep{Kind: "run", Target: m.Dst, Summary: summary, Command: argv, run: func() (string, error) {
-		if real, err := hostRealpath(m.Src); err != nil || real != m.Src {
-			return "", fmt.Errorf("%s is not a plain folder (a symbolic link on the way?); it is not shown over SFTP", m.Src)
+		if err := hostSafeFolder(m.Src); err != nil {
+			return "", fmt.Errorf("%s is not shown over SFTP: %v", m.Src, err)
 		}
 		out, err := runArgv(argv)
 		if err != nil {
@@ -349,6 +393,11 @@ func sftpSyncSteps(users []sftpUserDef, obs map[string]string) ([]planStep, *fsE
 				return nil, &fsError{Code: "ERR", Message: fmt.Sprintf("invalid share path %q", s.Path)}
 			}
 			if s.Unavailable {
+				continue
+			}
+			if err := hostSafeFolder(s.Path); err != nil {
+				// Left out like a missing volume, so one share never stops the rest.
+				log.Printf("sftp: %s not shown: %v", s.Path, err)
 				continue
 			}
 			dirs = append(dirs, dst)

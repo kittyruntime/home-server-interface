@@ -1,6 +1,8 @@
 package main
 
 import (
+	"os"
+	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
@@ -124,5 +126,39 @@ func TestSftpSessions(t *testing.T) {
 	ps := "root     sshd-session: alice [priv]\nalice    sshd-session: alice@internal-sftp\nbob      sshd: bob@internal-sftp\nalice    sshd-session: alice@internal-sftp\ntheo     sshd-session: theo@pts/0\n"
 	if got := sftpSessions(ps); !reflect.DeepEqual(got, []string{"alice", "bob"}) {
 		t.Fatalf("got %v", got)
+	}
+}
+
+func TestSafeShareFolder(t *testing.T) {
+	root := t.TempDir() // owned by the test user, so only the owner check is stubbed
+	share := filepath.Join(root, "media", "films")
+	if err := os.MkdirAll(share, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	for _, d := range []string{root, filepath.Dir(root), filepath.Join(root, "media")} {
+		if d != os.TempDir() {
+			_ = os.Chmod(d, 0o755) // whatever the umask made them
+		}
+	}
+	ok := func(fi os.FileInfo) bool { return true }
+	if err := safeShareFolder(share, ok); err != nil {
+		t.Fatalf("a plain folder refused: %v", err)
+	}
+	// A folder someone else can write: whoever can write it can swap the share.
+	_ = os.Chmod(filepath.Join(root, "media"), 0o775)
+	if err := safeShareFolder(share, ok); err == nil {
+		t.Fatal("a group-writable parent accepted")
+	}
+	_ = os.Chmod(filepath.Join(root, "media"), 0o755)
+	link := filepath.Join(root, "media", "link")
+	_ = os.Symlink(share, link)
+	if err := safeShareFolder(link, ok); err == nil {
+		t.Fatal("a symbolic link accepted")
+	}
+	if err := safeShareFolder(share, func(os.FileInfo) bool { return false }); err == nil {
+		t.Fatal("a parent not owned by root accepted")
+	}
+	if err := safeShareFolder("relative/x", ok); err == nil {
+		t.Fatal("a relative path accepted")
 	}
 }

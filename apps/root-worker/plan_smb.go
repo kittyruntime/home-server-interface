@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"log"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -91,11 +92,12 @@ func nfsSyncSteps(exports []nfsExportDef, obs map[string]string) ([]planStep, *f
 		if !hostLookPath("exportfs") {
 			return nil, &fsError{Code: "NFS_MISSING", Message: "the NFS server is not installed"}
 		}
-		// exportfs follows links: a folder a writer swapped for a link to
-		// elsewhere is left out, like a missing volume.
+		// exportfs follows links: a folder someone other than root could swap
+		// for a link to elsewhere is left out, like a missing volume.
 		checked := make([]nfsExportDef, len(exports))
 		for i, e := range exports {
-			if real, err := hostRealpath(e.Path); err != nil || real != e.Path {
+			if err := hostSafeFolder(e.Path); err != nil {
+				log.Printf("nfs: %s not exported: %v", e.Path, err)
 				e.Unavailable = true
 			}
 			checked[i] = e

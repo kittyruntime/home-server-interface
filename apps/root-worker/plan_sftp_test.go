@@ -22,11 +22,11 @@ func stubSftpHost(t *testing.T, mountinfo, dropIn, groupLine string, sshdOK bool
 	written := stubSmbHost(t, "", true, true)
 	h.written = *written
 	hostSmbdInstalled = func() bool { return false }
-	pr, pl, pe, prm, pc, pp, pt, prp := hostReadFile, hostLookPath, hostExists, hostRemoveFile, hostSshdCheck, hostPrepareSftpDirs, hostTidySftp, hostRealpath
+	pr, pl, pe, prm, pc, pp, pt, prp := hostReadFile, hostLookPath, hostExists, hostRemoveFile, hostSshdCheck, hostPrepareSftpDirs, hostTidySftp, hostSafeFolder
 	t.Cleanup(func() {
-		hostReadFile, hostLookPath, hostExists, hostRemoveFile, hostSshdCheck, hostPrepareSftpDirs, hostTidySftp, hostRealpath = pr, pl, pe, prm, pc, pp, pt, prp
+		hostReadFile, hostLookPath, hostExists, hostRemoveFile, hostSshdCheck, hostPrepareSftpDirs, hostTidySftp, hostSafeFolder = pr, pl, pe, prm, pc, pp, pt, prp
 	})
-	hostRealpath = func(p string) (string, error) { return p, nil }
+	hostSafeFolder = func(string) error { return nil }
 	files := map[string]string{
 		sshdConfigPath:         "Include /etc/ssh/sshd_config.d/*.conf\nPort 22\n",
 		"/etc/passwd":          passwdFixture,
@@ -210,18 +210,32 @@ func TestPlanSftpNothingAskedNothingDone(t *testing.T) {
 	}
 }
 
-func TestPlanSftpRefusesASymlinkedShare(t *testing.T) {
+func TestPlanSftpLeavesOutAnUnsafeShare(t *testing.T) {
 	stubSftpHost(t, srvMountinfo, sftpDropIn, "hsi-sftp:x:990:alice\n", true)
-	// A writer of a parent folder replaced the share's folder with a link.
-	hostRealpath = func(p string) (string, error) { return "/etc", nil }
+	// A writer of a parent folder could swap the share's folder for a link.
+	hostSafeFolder = func(string) error { return errors.New("others can write in /srv") }
 	p, fe := build(t, planSmbSync, sftpInput(`[{"user":"alice","shares":[{"name":"Films","path":"/srv/films","write":true}]}]`))
 	if fe != nil {
 		t.Fatal(fe)
 	}
+	for _, a := range argvs(p) {
+		if a[0] == "mount" {
+			t.Fatalf("an unsafe share is shown: %v", a)
+		}
+	}
+}
+
+func TestPlanSftpChecksAgainRightBeforeMounting(t *testing.T) {
+	stubSftpHost(t, srvMountinfo, sftpDropIn, "hsi-sftp:x:990:alice\n", true)
+	p, fe := build(t, planSmbSync, sftpInput(`[{"user":"alice","shares":[{"name":"Films","path":"/srv/films","write":true}]}]`))
+	if fe != nil {
+		t.Fatal(fe)
+	}
+	hostSafeFolder = func(string) error { return errors.New("a symbolic link") }
 	var ran [][]string
 	runArgv = func(argv []string) ([]byte, error) { ran = append(ran, argv); return nil, nil }
 	if _, ok, _ := p.execute(); ok {
-		t.Fatal("a share reached through a link was shown")
+		t.Fatal("a share that became unsafe after the preview was shown")
 	}
 	for _, a := range ran {
 		if a[0] == "mount" {

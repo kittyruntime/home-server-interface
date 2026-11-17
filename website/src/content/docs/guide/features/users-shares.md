@@ -65,6 +65,11 @@ an account with a login shell keeps its own SSH access, unchanged. It needs
 `openssh-server` and a `sshd_config` that includes `sshd_config.d` (the
 default on Debian, Ubuntu and Fedora).
 
+For NFS and SFTP, a share's folder must be a real folder whose parent folders
+belong to root and are writable by nobody else: otherwise someone could swap
+it for a link to elsewhere. A Place inside another Place is therefore not
+exported over NFS nor shown over SFTP (SMB is not affected).
+
 ## Without HSI
 
 See [Samba](/home-server-interface/guide/manage-without-hsi/#samba-smb-shares) and
