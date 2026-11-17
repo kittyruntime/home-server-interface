@@ -217,13 +217,15 @@ export async function desiredSftpUsers(prisma: PrismaClient, change?: ShareChang
   const shares = overlayShares(rows, change).filter(s => s.enabled && s.sftp)
   const adminLinux = await adminLinuxUsers(prisma)
   const holds = await prisma.volumeHold.findMany()
+  // Turning off an account's network (Samba) access turns SFTP off as well.
+  const optedOut = new Set((await prisma.user.findMany({ where: { sambaEnabled: false }, select: { username: true } })).map(u => u.username))
   const byUser = new Map<string, { name: string; path: string; write: boolean; unavailable: boolean }[]>()
   for (const s of shares) {
     const users = await resolveShareUsers(prisma, s.placeId)
     const writers = new Set([...users.writeUsers, ...adminLinux])
     const view = { name: effectiveSmbName(s, s.place.name), path: s.place.path, unavailable: holdFor(holds, s.place.path) !== null }
     for (const u of new Set([...users.validUsers, ...adminLinux])) {
-      if (u === opts.withoutUser) continue
+      if (u === opts.withoutUser || optedOut.has(u)) continue
       byUser.set(u, [...(byUser.get(u) ?? []), { ...view, write: !s.readOnly && writers.has(u) }])
     }
   }

@@ -279,11 +279,14 @@ export const userRouter = router({
       if (!target) throw new TRPCError({ code: "NOT_FOUND" })
       if (target.isAdmin && !ctx.user.isAdmin)
         throw new TRPCError({ code: "FORBIDDEN", message: "Cannot edit admin users" })
-      return ctx.prisma.user.update({
+      const updated = await ctx.prisma.user.update({
         where: { id: input.userId },
         data: { sambaEnabled: input.sambaEnabled },
         select: userSelect,
       })
+      // SFTP views follow the network access.
+      void syncSharesBestEffort(ctx.prisma)
+      return updated
     }),
 
   setCapability: adminProcedure

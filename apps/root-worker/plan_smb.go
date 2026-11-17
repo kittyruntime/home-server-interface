@@ -91,6 +91,16 @@ func nfsSyncSteps(exports []nfsExportDef, obs map[string]string) ([]planStep, *f
 		if !hostLookPath("exportfs") {
 			return nil, &fsError{Code: "NFS_MISSING", Message: "the NFS server is not installed"}
 		}
+		// exportfs follows links: a folder a writer swapped for a link to
+		// elsewhere is left out, like a missing volume.
+		checked := make([]nfsExportDef, len(exports))
+		for i, e := range exports {
+			if real, err := hostRealpath(e.Path); err != nil || real != e.Path {
+				e.Unavailable = true
+			}
+			checked[i] = e
+		}
+		exports = checked
 		ids, err := hostNfsIDsFn()
 		if err != nil {
 			return nil, &fsError{Code: "ERR", Message: err.Error()}

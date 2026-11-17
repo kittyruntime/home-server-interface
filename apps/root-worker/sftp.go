@@ -216,7 +216,36 @@ var (
 	hostPrepareSftpDirs = prepareSftpDirs
 	// hostTidySftp removes folders left empty, never anything inside them.
 	hostTidySftp = tidySftpDirs
+	// hostRealpath resolves symbolic links, to refuse a share reached through one.
+	hostRealpath = filepath.EvalSymlinks
+	// hostUmountView takes down a view that could not be made read-only.
+	hostUmountView = func(dst string) { _ = probe("umount", "-l", dst).Run() }
 )
+
+// mountViewStep shows src in dst, read-only from the first instant when ro
+// (one mount call), after checking src is still the real folder: a writer of
+// a parent folder must not swap it for a link to elsewhere.
+func mountViewStep(m sftpMount) planStep {
+	argv := []string{"mount", "--bind", m.Src, m.Dst}
+	summary := "Show " + m.Src + " in " + m.Dst
+	if m.RO {
+		argv = []string{"mount", "--bind", "-o", "ro", m.Src, m.Dst}
+		summary += ", read-only"
+	}
+	return planStep{Kind: "run", Target: m.Dst, Summary: summary, Command: argv, run: func() (string, error) {
+		if real, err := hostRealpath(m.Src); err != nil || real != m.Src {
+			return "", fmt.Errorf("%s is not a plain folder (a symbolic link on the way?); it is not shown over SFTP", m.Src)
+		}
+		out, err := runArgv(argv)
+		if err != nil {
+			if m.RO {
+				hostUmountView(m.Dst)
+			}
+			return "", cmdError{cmdErrMessage(out, err)}
+		}
+		return "", nil
+	}}
+}
 
 func prepareSftpDirs(dirs []string) error {
 	for _, d := range append([]string{sftpRoot}, dirs...) {
@@ -400,10 +429,7 @@ func sftpSyncSteps(users []sftpUserDef, obs map[string]string) ([]planStep, *fsE
 			run: func() (string, error) { return "", hostPrepareSftpDirs(dirs) }})
 	}
 	for _, m := range mount {
-		steps = append(steps, cmdStep(m.Dst, "Show "+m.Src+" in "+m.Dst, []string{"mount", "--bind", m.Src, m.Dst}))
-		if m.RO {
-			steps = append(steps, cmdStep(m.Dst, "Make "+m.Dst+" read-only", []string{"mount", "-o", "remount,bind,ro", m.Dst}))
-		}
+		steps = append(steps, mountViewStep(m))
 	}
 	for _, m := range remount {
 		mode, what := "rw", "writable"
@@ -411,6 +437,13 @@ func sftpSyncSteps(users []sftpUserDef, obs map[string]string) ([]planStep, *fsE
 			mode, what = "ro", "read-only"
 		}
 		steps = append(steps, cmdStep(m.Dst, "Make "+m.Dst+" "+what, []string{"mount", "-o", "remount,bind," + mode, m.Dst}))
+		if m.RO {
+			// Files opened for writing before stay writable: end those sessions.
+			u := userOfView(m.Dst)
+			kill := cmdStep(u, "End "+u+"'s SFTP sessions so open files lose write access", []string{"pkill", "-u", u, "-f", "@internal-sftp"})
+			kill.OnFailure = "warn"
+			steps = append(steps, kill)
+		}
 	}
 
 	reload := false

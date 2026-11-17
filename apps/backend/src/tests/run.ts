@@ -4186,7 +4186,8 @@ function fakeSharingDb() {
         const u = users.find(x => x.id === where.id)
         return u ? { ...u, isUserManager: u.isAdmin, mustChangePassword: false, capabilities: [] } : null
       },
-      findMany: async ({ where }: any) => users.filter(u => !where?.isAdmin || u.isAdmin),
+      findMany: async ({ where }: any) => users.filter(u => (!where?.isAdmin || u.isAdmin) &&
+        (where?.sambaEnabled === undefined || ((u as any).sambaEnabled ?? true) === where.sambaEnabled)),
     },
     share: { findMany: async () => shares },
     userPlacePermission: { findMany: async ({ where }: any) => userPerms[where.placeId] ?? [] },
@@ -4290,6 +4291,12 @@ async function testSftpViewsFollowAccess() {
   assert.deepEqual(gone.map(u => u.user), ["admin"])
   const off: any[] = await desiredSftpUsers(prisma)
   assert.deepEqual(off, [], "no share over SFTP, nobody")
+  // Turning the network account off turns SFTP off too.
+  const optedOut = fakeSharingDb().prisma
+  optedOut.volumeHold = { findMany: async () => [] }
+  const realFind = optedOut.user.findMany
+  optedOut.user.findMany = async (q: any) => q?.where?.sambaEnabled === false ? [{ username: "alice" }] : realFind(q)
+  assert.deepEqual((await desiredSftpUsers(optedOut, both) as any[]).map(u => u.user), ["admin"], "alice opted out of network access")
 }
 await testSftpViewsFollowAccess()
 

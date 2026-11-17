@@ -22,10 +22,11 @@ func stubSftpHost(t *testing.T, mountinfo, dropIn, groupLine string, sshdOK bool
 	written := stubSmbHost(t, "", true, true)
 	h.written = *written
 	hostSmbdInstalled = func() bool { return false }
-	pr, pl, pe, prm, pc, pp, pt := hostReadFile, hostLookPath, hostExists, hostRemoveFile, hostSshdCheck, hostPrepareSftpDirs, hostTidySftp
+	pr, pl, pe, prm, pc, pp, pt, prp := hostReadFile, hostLookPath, hostExists, hostRemoveFile, hostSshdCheck, hostPrepareSftpDirs, hostTidySftp, hostRealpath
 	t.Cleanup(func() {
-		hostReadFile, hostLookPath, hostExists, hostRemoveFile, hostSshdCheck, hostPrepareSftpDirs, hostTidySftp = pr, pl, pe, prm, pc, pp, pt
+		hostReadFile, hostLookPath, hostExists, hostRemoveFile, hostSshdCheck, hostPrepareSftpDirs, hostTidySftp, hostRealpath = pr, pl, pe, prm, pc, pp, pt, prp
 	})
+	hostRealpath = func(p string) (string, error) { return p, nil }
 	files := map[string]string{
 		sshdConfigPath:         "Include /etc/ssh/sshd_config.d/*.conf\nPort 22\n",
 		"/etc/passwd":          passwdFixture,
@@ -92,10 +93,8 @@ func TestPlanSftpReadOnlyView(t *testing.T) {
 	if fe != nil {
 		t.Fatal(fe)
 	}
-	want := [][]string{
-		{"mount", "--bind", "/srv/films", "/var/lib/hsi-sftp/alice/Films"},
-		{"mount", "-o", "remount,bind,ro", "/var/lib/hsi-sftp/alice/Films"},
-	}
+	// Read-only from the first instant: one mount, never a writable moment.
+	want := [][]string{{"mount", "--bind", "-o", "ro", "/srv/films", "/var/lib/hsi-sftp/alice/Films"}}
 	if !reflect.DeepEqual(argvs(p), want) {
 		t.Fatalf("commands: %v", argvs(p))
 	}
@@ -209,4 +208,57 @@ func TestPlanSftpNothingAskedNothingDone(t *testing.T) {
 	if fe != nil || len(p.Steps) != 0 {
 		t.Fatalf("steps %+v, %v", p.Steps, fe)
 	}
+}
+
+func TestPlanSftpRefusesASymlinkedShare(t *testing.T) {
+	stubSftpHost(t, srvMountinfo, sftpDropIn, "hsi-sftp:x:990:alice\n", true)
+	// A writer of a parent folder replaced the share's folder with a link.
+	hostRealpath = func(p string) (string, error) { return "/etc", nil }
+	p, fe := build(t, planSmbSync, sftpInput(`[{"user":"alice","shares":[{"name":"Films","path":"/srv/films","write":true}]}]`))
+	if fe != nil {
+		t.Fatal(fe)
+	}
+	var ran [][]string
+	runArgv = func(argv []string) ([]byte, error) { ran = append(ran, argv); return nil, nil }
+	if _, ok, _ := p.execute(); ok {
+		t.Fatal("a share reached through a link was shown")
+	}
+	for _, a := range ran {
+		if a[0] == "mount" {
+			t.Fatalf("mounted: %v", a)
+		}
+	}
+}
+
+func TestPlanSftpFailedReadOnlyViewIsTakenDown(t *testing.T) {
+	stubSftpHost(t, srvMountinfo, sftpDropIn, "hsi-sftp:x:990:alice\n", true)
+	var cleaned []string
+	pu := hostUmountView
+	t.Cleanup(func() { hostUmountView = pu })
+	hostUmountView = func(dst string) { cleaned = append(cleaned, dst) }
+	p, _ := build(t, planSmbSync, sftpInput(`[{"user":"alice","shares":[{"name":"Films","path":"/srv/films","write":false}]}]`))
+	runArgv = func(argv []string) ([]byte, error) { return []byte("cannot remount"), errors.New("exit status 32") }
+	if _, ok, _ := p.execute(); ok {
+		t.Fatal("a failed read-only view must fail the plan")
+	}
+	if !reflect.DeepEqual(cleaned, []string{"/var/lib/hsi-sftp/alice/Films"}) {
+		t.Fatalf("cleaned %v", cleaned)
+	}
+}
+
+func TestPlanSftpBecomingReadOnlyEndsSessions(t *testing.T) {
+	mi := srvMountinfo + "50 22 8:17 /films /var/lib/hsi-sftp/alice/Films rw,relatime shared:20 - ext4 /dev/sdb1 rw\n"
+	stubSftpHost(t, mi, sftpDropIn, "hsi-sftp:x:990:alice\n", true)
+	p, fe := build(t, planSmbSync, sftpInput(`[{"user":"alice","shares":[{"name":"Films","path":"/srv/films","write":false}]}]`))
+	if fe != nil {
+		t.Fatal(fe)
+	}
+	want := [][]string{
+		{"mount", "-o", "remount,bind,ro", "/var/lib/hsi-sftp/alice/Films"},
+		{"pkill", "-u", "alice", "-f", "@internal-sftp"},
+	}
+	if !reflect.DeepEqual(argvs(p), want) {
+		t.Fatalf("commands: %v", argvs(p))
+	}
+	assertParity(t, p)
 }
