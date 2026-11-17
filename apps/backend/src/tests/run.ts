@@ -4199,6 +4199,55 @@ async function testTimeMachineNeedsTheMacModules() {
 }
 await testTimeMachineNeedsTheMacModules()
 
+async function testNfsClientsAreAddressesOrNetworks() {
+  const nfs = await import("../services/nfs")
+  assert.deepEqual(nfs.parseNfsClients("192.168.1.0/24, 10.0.0.5  fd00::/64"), { clients: ["192.168.1.0/24", "10.0.0.5", "fd00::/64"] })
+  for (const bad of ["", "*", "0.0.0.0/0", "::/0", "pc.lan", "10.0.0.1(rw)", "10.0.0.0/33", Array(17).fill("10.0.0.1").join(" ")])
+    assert.ok("error" in nfs.parseNfsClients(bad), `accepted ${JSON.stringify(bad)}`)
+  assert.equal(nfs.clientAllowed("192.168.1.47", ["192.168.1.0/24"]), true)
+  assert.equal(nfs.clientAllowed("192.168.2.1", ["192.168.1.0/24", "10.0.0.5"]), false)
+  assert.equal(nfs.clientAllowed("10.0.0.5", ["10.0.0.5"]), true)
+  assert.equal(nfs.suggestNfsClients("192.168.1.47"), "192.168.1.0/24")
+  assert.equal(nfs.suggestNfsClients("::ffff:10.1.2.3"), "10.1.2.0/24")
+  assert.equal(nfs.suggestNfsClients("8.8.8.8"), "")
+  assert.equal(nfs.suggestNfsClients(undefined), "")
+}
+await testNfsClientsAreAddressesOrNetworks()
+
+async function testNfsExportsFollowWritePermission() {
+  const { desiredShareDefs, desiredNfsExports } = await import("../services/sharing.service")
+  const { prisma } = fakeSharingDb()
+  prisma.volumeHold = { findMany: async () => [] }
+  const base = { nfs: true, nfsClients: "192.168.1.0/24" }
+  const change: any = { kind: "update", id: "s-films", patch: { ...base, nfsWriteAs: "alice", smb: false } }
+  const exports: any[] = await desiredNfsExports(prisma, change)
+  assert.deepEqual(exports, [{ path: "/srv/films", clients: ["192.168.1.0/24"], writeAs: "alice", fsid: "s-films", unavailable: false }])
+  assert.ok(!(await desiredShareDefs(prisma, change)).some((d: any) => d.name === "Films"), "an NFS-only share is not in smb.conf")
+  const bob: any[] = await desiredNfsExports(prisma, { kind: "update", id: "s-docs", patch: { ...base, nfsWriteAs: "bob" } } as any)
+  assert.equal(bob[0].writeAs, "", "bob only reads Docs: the export is read-only")
+  const ro: any[] = await desiredNfsExports(prisma, { kind: "update", id: "s-films", patch: { ...base, nfsWriteAs: "alice", readOnly: true } } as any)
+  assert.equal(ro[0].writeAs, "", "a read-only share exports read-only")
+  const admin: any[] = await desiredNfsExports(prisma, { kind: "update", id: "s-docs", patch: { ...base, nfsWriteAs: "admin" } } as any)
+  assert.equal(admin[0].writeAs, "admin", "an admin writes everywhere")
+}
+await testNfsExportsFollowWritePermission()
+
+async function testNfsOnlySharesDoNotNeedSamba() {
+  const sp = await import("../services/sharing-plan")
+  let sent: any = null
+  const deps: any = {
+    smbdInstalled: async () => false, defs: async () => [], nfs: async () => [{ path: "/srv/x" }],
+    worker: async (_s: string, p: any) => { sent = p; return { steps: [], fingerprint: "f" } },
+  }
+  await sp.previewShareChange("share.update", "x", deps)
+  assert.deepEqual(sent.input.nfs, { exports: [{ path: "/srv/x" }] })
+  await assert.rejects(sp.previewShareChange("share.update", "x", { ...deps, defs: async () => [{ name: "x" }] }),
+    (e: any) => e.code === "PRECONDITION_FAILED")
+  await assert.rejects(sp.previewShareChange("share.update", "x", { ...deps, worker: async () => { throw Object.assign(new Error("no"), { code: "NFS_MISSING" }) } }),
+    (e: any) => e.code === "PRECONDITION_FAILED" && /NFS/.test(e.message))
+}
+await testNfsOnlySharesDoNotNeedSamba()
+
 async function testSharingNonAdminSeesOnlyOwnData() {
   const view = await import("../services/sharing-view.service")
   const { prisma, lastWhere } = fakeSharingDb()

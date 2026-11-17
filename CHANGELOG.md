@@ -8,6 +8,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **NFS**: a share can be exported over NFS to the machines listed on it, as
+  well as or instead of SMB. Every NFS client writes as one account chosen
+  among the Place's writers (read-only when none is chosen), the share's detail
+  shows how to mount it from Linux and macOS and which machines have it
+  mounted, and the settings show the NFS server's state.
 - **Time Machine over SMB**: a share can be a Time Machine destination, with an
   optional size limit. Macs find it in Time Machine's list of disks when macOS
   discovery is on, and the share's detail explains how to pick it otherwise.

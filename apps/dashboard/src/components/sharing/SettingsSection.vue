@@ -227,6 +227,18 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
     </form>
 
     <Card class="gap-3 p-4 @2xl:p-5">
+      <h3 class="eyebrow">{{ t('sharing.nfs.settingsTitle') }}</h3>
+      <div class="flex items-start gap-3">
+        <span class="mt-1.5 size-2 shrink-0 rounded-full" aria-hidden="true"
+          :class="!service?.nfs?.installed ? 'bg-base-content/30' : service.nfs?.active ? 'bg-success' : 'bg-warning'" />
+        <div class="min-w-0">
+          <p class="text-sm text-base-content">{{ !service?.nfs?.installed ? t('sharing.nfs.notInstalled') : service.nfs?.active ? t('sharing.nfs.on') : t('sharing.nfs.off') }}</p>
+          <p class="text-xs text-base-content/70">{{ service?.nfs?.installed ? t('sharing.nfs.settingsHelp') : t('sharing.nfs.missing') }}</p>
+        </div>
+      </div>
+    </Card>
+
+    <Card class="gap-3 p-4 @2xl:p-5">
       <div class="flex items-baseline justify-between gap-3">
         <h3 class="eyebrow">{{ t('sharing.settings.blocked') }}</h3>
         <span v-if="blocks.length" class="text-xs text-base-content/70 tabular-nums">{{ blocks.length }}</span>

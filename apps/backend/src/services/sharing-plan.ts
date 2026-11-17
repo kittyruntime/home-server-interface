@@ -12,11 +12,12 @@ export type ShareOp = typeof SHARE_OPS[number]
 export interface ShareRow {
   id: string; placeId: string; smbName: string | null; readOnly: boolean; guestOk: boolean; enabled: boolean; hidden: boolean
   timeMachine?: boolean; timeMachineMaxGb?: number | null
+  smb?: boolean; nfs?: boolean; nfsClients?: string; nfsWriteAs?: string
   place: { name: string; path: string }
 }
 export type ShareChange =
   | { kind: "create"; row: ShareRow }
-  | { kind: "update"; id: string; patch: Partial<Pick<ShareRow, "enabled" | "readOnly" | "guestOk" | "smbName" | "hidden" | "timeMachine" | "timeMachineMaxGb">> }
+  | { kind: "update"; id: string; patch: Partial<Pick<ShareRow, "enabled" | "readOnly" | "guestOk" | "smbName" | "hidden" | "timeMachine" | "timeMachineMaxGb" | "smb" | "nfs" | "nfsClients" | "nfsWriteAs">> }
   | { kind: "remove"; id: string }
   | { kind: "settings"; patch: SmbSettingsPatch }
 
@@ -33,6 +34,8 @@ export function overlayShares(rows: ShareRow[], change?: ShareChange): ShareRow[
 export interface SharePlanDeps {
   smbdInstalled(): Promise<boolean>
   defs(): Promise<unknown[]>
+  /** The NFS exports as they will be (absent: NFS is left as it is). */
+  nfs?(): Promise<unknown[]>
   /** The service settings smb.conf is rendered with (absent: the defaults). */
   smbSettings?(): Promise<unknown>
   worker<T>(subject: string, payload: Record<string, unknown>): Promise<T>
@@ -52,6 +55,7 @@ export function timeMachineRefusal(state: { installed: boolean; timeMachine?: bo
 
 export const NO_SAMBA_FINGERPRINT = "no-samba"
 const SAMBA_MISSING = "Samba is not installed on the host. Run: apt install samba"
+const NFS_MISSING = "The NFS server is not installed on the host (nfs-kernel-server or nfs-utils)"
 
 function noSambaRemoval(name: string): PlanStep {
   return { kind: "delete", target: name, summary: `Samba is not installed; only HSI's record of the share ${name} is removed` }
@@ -68,23 +72,31 @@ export function workerError(e: unknown): never {
   const code = (e as { code?: string }).code
   const message = e instanceof Error ? e.message : String(e)
   if (code === "SMBD_MISSING") throw new TRPCError({ code: "PRECONDITION_FAILED", message: SAMBA_MISSING })
+  if (code === "NFS_MISSING") throw new TRPCError({ code: "PRECONDITION_FAILED", message: NFS_MISSING })
   if (code === "ESTALE") throw new TRPCError({ code: "CONFLICT", message })
   // The worker refused the request (code ERR); anything else (a timeout, the
   // worker down) is a server error, not the user's.
   throw new TRPCError({ code: code === "ERR" ? "BAD_REQUEST" : "INTERNAL_SERVER_ERROR", message })
 }
 
-async function smbSyncInput(deps: SharePlanDeps): Promise<Record<string, unknown>> {
-  return { shares: await deps.defs(), settings: await deps.smbSettings?.() }
+async function smbSyncInput(deps: SharePlanDeps, shares?: unknown[]): Promise<Record<string, unknown>> {
+  const nfs = deps.nfs ? { exports: await deps.nfs() } : undefined
+  return { shares: shares ?? await deps.defs(), settings: await deps.smbSettings?.(), ...(nfs && { nfs }) }
+}
+
+/** Samba is needed when some share is offered over SMB, or by a caller that only knows SMB. */
+function needsSamba(deps: SharePlanDeps, shares: unknown[]): boolean {
+  return !deps.nfs || shares.length > 0
 }
 
 export async function previewShareChange(op: ShareOp, name: string, deps: SharePlanDeps): Promise<{ steps: PlanStep[]; fingerprint: string }> {
-  if (!await deps.smbdInstalled()) {
+  const shares = await deps.defs()
+  if (needsSamba(deps, shares) && !await deps.smbdInstalled()) {
     if (op !== "share.remove") throw new TRPCError({ code: "PRECONDITION_FAILED", message: SAMBA_MISSING })
     return { steps: [noSambaRemoval(name)], fingerprint: NO_SAMBA_FINGERPRINT }
   }
   try {
-    return await deps.worker("root.plan.preview", { op: "smb.sync", input: await smbSyncInput(deps) })
+    return await deps.worker("root.plan.preview", { op: "smb.sync", input: await smbSyncInput(deps, shares) })
   } catch (e) { workerError(e) }
 }
 

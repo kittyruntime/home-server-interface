@@ -38,6 +38,20 @@ With macOS discovery turned on in the SMB settings (Avahi installed), the share
 appears in Time Machine's list of disks; otherwise connect to it in the Finder
 first, then choose it in System Settings, General, Time Machine.
 
+## NFS
+
+A share can also be exported over **NFS**, for Linux machines, hypervisors
+(Proxmox, VMware) and media players. NFS has no password: list the machines
+allowed to mount it (addresses or networks like `192.168.1.0/24`; every address
+at once is refused). Every NFS client writes as one account you choose among
+those who may write to the Place, so files stay usable over SMB and in HSI;
+with nobody chosen, the export is read-only. A share can be NFS only.
+
+HSI writes its exports to `/etc/exports.d/hsi.exports` and never edits
+`/etc/exports`. It needs the NFS server (`nfs-kernel-server` on Debian and
+Ubuntu, `nfs-utils` elsewhere). From Linux: `sudo mount -t nfs <nas>:<path> /mnt/<name>`;
+from macOS, `nfs://<nas><path>` in the Finder's Connect to Server.
+
 ## Without HSI
 
 See [Samba](/home-server-interface/guide/manage-without-hsi/#samba-smb-shares) and

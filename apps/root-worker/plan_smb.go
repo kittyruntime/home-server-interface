@@ -15,6 +15,13 @@ var (
 	hostWriteFile     = writeSmbFile
 	errNotExist       = os.ErrNotExist
 	hostMkdirPrivate  = func(path string) error { return os.MkdirAll(path, 0o750) }
+	hostNfsIDsFn      = hostNfsIDs
+	hostRemoveFile    = func(path string) error {
+		if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
+			return err
+		}
+		return nil
+	}
 )
 
 // smbMu serializes every write of the Samba configuration: automatic syncs
@@ -27,14 +34,93 @@ func writeSmbFile(path, content string) error {
 	return writeFileAtomic(path, []byte(content), 0o644)
 }
 
+// shareSyncReq is the whole desired sharing state. Nfs is absent from callers
+// that only know SMB; then NFS is left as it is.
+type shareSyncReq struct {
+	Shares   []shareDef  `json:"shares"`
+	Settings smbSettings `json:"settings"`
+	Nfs      *struct {
+		Exports []nfsExportDef `json:"exports"`
+	} `json:"nfs"`
+}
+
 func planSmbSync(raw json.RawMessage) (*opPlan, *fsError) {
-	var req struct {
-		Shares   []shareDef  `json:"shares"`
-		Settings smbSettings `json:"settings"`
-	}
+	var req shareSyncReq
 	if err := json.Unmarshal(raw, &req); err != nil {
 		return nil, badRequest(err)
 	}
+	obs := map[string]string{}
+	var steps []planStep
+	// Samba is needed for SMB shares, and by callers that only know SMB.
+	if hostSmbdInstalled() || req.Nfs == nil || len(req.Shares) > 0 {
+		s, fe := smbSyncSteps(req, obs)
+		if fe != nil {
+			return nil, fe
+		}
+		steps = append(steps, s...)
+	}
+	if req.Nfs != nil {
+		s, fe := nfsSyncSteps(req.Nfs.Exports, obs)
+		if fe != nil {
+			return nil, fe
+		}
+		steps = append(steps, s...)
+	}
+	return &opPlan{Op: "smb.sync", Steps: steps, Observed: obs}, nil
+}
+
+// nfsSyncSteps writes HSI's exports file and has the kernel server re-read
+// it. The service is started for a first export but never stopped: the
+// owner may export other folders.
+func nfsSyncSteps(exports []nfsExportDef, obs map[string]string) ([]planStep, *fsError) {
+	b, readErr := hostReadFile(nfsExportsPath)
+	current, exists := string(b), readErr == nil
+	obs["exports"] = current
+	want := ""
+	if len(exports) > 0 {
+		if !hostLookPath("exportfs") {
+			return nil, &fsError{Code: "NFS_MISSING", Message: "the NFS server is not installed"}
+		}
+		ids, err := hostNfsIDsFn()
+		if err != nil {
+			return nil, &fsError{Code: "ERR", Message: err.Error()}
+		}
+		if want, err = renderExports(exports, ids); err != nil {
+			return nil, &fsError{Code: "ERR", Message: err.Error()}
+		}
+	}
+	if want == current {
+		return nil, nil
+	}
+	var steps []planStep
+	switch {
+	case want == "" && exists:
+		steps = append(steps, planStep{Kind: "delete", Target: nfsExportsPath, Summary: "Stop exporting HSI's folders over NFS",
+			Diff: unifiedDiff(nfsExportsPath, current, ""),
+			run:  func() (string, error) { return "", hostRemoveFile(nfsExportsPath) }})
+	case want == "":
+		return nil, nil
+	default:
+		kind, summary := "update", "Update the NFS exports"
+		if !exists {
+			kind, summary = "create", "Create the NFS exports"
+		}
+		steps = append(steps, planStep{Kind: kind, Target: nfsExportsPath, Summary: summary,
+			Diff: unifiedDiff(nfsExportsPath, current, want),
+			run:  func() (string, error) { return "", hostWriteFile(nfsExportsPath, want) }})
+	}
+	if hostLookPath("exportfs") {
+		steps = append(steps, cmdStep("exportfs", "Have the NFS server read the exports again", []string{"exportfs", "-ra"}))
+	}
+	if want != "" {
+		start := cmdStep("nfs-server", "Start the NFS server, now and at boot", []string{"systemctl", "enable", "--now", "nfs-server"})
+		start.OnFailure = "warn"
+		steps = append(steps, start)
+	}
+	return steps, nil
+}
+
+func smbSyncSteps(req shareSyncReq, obs map[string]string) ([]planStep, *fsError) {
 	if !hostSmbdInstalled() {
 		return nil, &fsError{Code: "SMBD_MISSING", Message: "samba is not installed"}
 	}
@@ -45,7 +131,7 @@ func planSmbSync(raw json.RawMessage) (*opPlan, *fsError) {
 	b, readErr := hostReadFile(smbConfPath)
 	current, confExists := string(b), readErr == nil
 	dropIn := hostExists(dropInPath)
-	obs := map[string]string{"smb.conf": current, "dropIn": strconv.FormatBool(dropIn)}
+	obs["smb.conf"], obs["dropIn"] = current, strconv.FormatBool(dropIn)
 
 	var steps []planStep
 	if logDir := filepath.Dir(smbLogPath); req.Settings.Audit && !hostExists(logDir) {
@@ -92,5 +178,5 @@ func planSmbSync(raw json.RawMessage) (*opPlan, *fsError) {
 		steps = append(steps, enable,
 			cmdStep("smbd", "Reload smbd so clients see the new shares (restarts it if it is stopped)", []string{"systemctl", "reload-or-restart", "smbd"}))
 	}
-	return &opPlan{Op: "smb.sync", Steps: steps, Observed: obs}, nil
+	return steps, nil
 }
