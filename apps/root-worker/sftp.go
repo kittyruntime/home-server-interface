@@ -231,11 +231,16 @@ func ownedByRoot(fi os.FileInfo) bool {
 }
 
 // safeShareFolder: p is a real folder (not a link) and every folder above it
-// is root's and writable by nobody else (or sticky, like /tmp, where only an
-// entry's owner may rename it). Then only root can swap p for something
-// else, so what was checked is what gets mounted or exported: no window
-// between the check and its use.
+// is root's and writable by nobody else, sticky or not (under a sticky
+// folder like /tmp, p's owner could still rename it). Then only root can swap
+// p for something else, so what was checked is what gets mounted or
+// exported: no window between the check and its use.
 func safeShareFolder(p string, rootOwned func(os.FileInfo) bool) error {
+	return safeShareFolderUpTo(p, rootOwned, "/")
+}
+
+// safeShareFolderUpTo checks the folders above p up to top included.
+func safeShareFolderUpTo(p string, rootOwned func(os.FileInfo) bool, top string) error {
 	if !filepath.IsAbs(p) || filepath.Clean(p) != p {
 		return fmt.Errorf("%q is not an absolute path", p)
 	}
@@ -257,10 +262,10 @@ func safeShareFolder(p string, rootOwned func(os.FileInfo) bool) error {
 		if !rootOwned(fi) {
 			return fmt.Errorf("%s does not belong to root", dir)
 		}
-		if fi.Mode().Perm()&0o022 != 0 && fi.Mode()&os.ModeSticky == 0 {
+		if fi.Mode().Perm()&0o022 != 0 {
 			return fmt.Errorf("others can write in %s, so they could swap the share's folder", dir)
 		}
-		if dir == "/" {
+		if dir == top || dir == "/" {
 			return nil
 		}
 	}

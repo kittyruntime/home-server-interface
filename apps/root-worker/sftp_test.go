@@ -135,11 +135,10 @@ func TestSafeShareFolder(t *testing.T) {
 	if err := os.MkdirAll(share, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	for _, d := range []string{root, filepath.Dir(root), filepath.Join(root, "media")} {
-		if d != os.TempDir() {
-			_ = os.Chmod(d, 0o755) // whatever the umask made them
-		}
-	}
+	_ = os.Chmod(root, 0o755)
+	_ = os.Chmod(filepath.Join(root, "media"), 0o755) // whatever the umask made them
+	// The checks stop at root: the system's /tmp above it is sticky and world-writable.
+	safeShareFolder := func(p string, owned func(os.FileInfo) bool) error { return safeShareFolderUpTo(p, owned, root) }
 	ok := func(fi os.FileInfo) bool { return true }
 	if err := safeShareFolder(share, ok); err != nil {
 		t.Fatalf("a plain folder refused: %v", err)
@@ -160,5 +159,11 @@ func TestSafeShareFolder(t *testing.T) {
 	}
 	if err := safeShareFolder("relative/x", ok); err == nil {
 		t.Fatal("a relative path accepted")
+	}
+	// Under a sticky world-writable folder (like /tmp) the owner of the
+	// share's folder could still rename it: refused.
+	_ = os.Chmod(filepath.Join(root, "media"), 0o777|os.ModeSticky)
+	if err := safeShareFolder(share, ok); err == nil {
+		t.Fatal("a sticky world-writable parent accepted")
 	}
 }
