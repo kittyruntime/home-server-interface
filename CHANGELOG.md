@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.86.0] - 2026-11-18
+
 ### Added
 - **SFTP**: a share can be reached over SFTP with each person's HSI username
   and password, through the host's OpenSSH. HSI adds its own sshd drop-in,
@@ -2230,7 +2232,8 @@ First stable release.
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.85.1...HEAD
+[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.86.0...HEAD
+[1.86.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.85.1...v1.86.0
 [1.85.1]: https://github.com/kittyruntime/home-server-interface/compare/v1.85.0...v1.85.1
 [1.85.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.84.0...v1.85.0
 [1.84.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.83.0...v1.84.0
