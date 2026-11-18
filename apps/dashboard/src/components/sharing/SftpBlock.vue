@@ -26,7 +26,7 @@ const items = computed(() => [{
 
 <template>
   <section class="space-y-2">
-    <h4 class="eyebrow">{{ t('sharing.sftp.title') }}</h4>
+    <h4 class="text-sm font-semibold text-base-content">{{ t('sharing.sftp.title') }}</h4>
     <AddressList :items="items" />
     <p class="text-xs text-base-content/80">{{ t('sharing.sftp.credentials') }}</p>
     <p v-if="leftOut?.length" class="text-xs text-warning">{{ t('sharing.sftp.leftOut', { users: leftOut.join(', ') }, leftOut.length) }}</p>

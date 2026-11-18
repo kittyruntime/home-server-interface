@@ -8,7 +8,7 @@ const { t } = useI18n()
 
 <template>
   <section class="space-y-2">
-    <h4 class="eyebrow">{{ t('sharing.detail.access') }}</h4>
+    <h4 class="text-sm font-semibold text-base-content">{{ t('sharing.detail.access') }}</h4>
     <ul class="space-y-2">
       <li v-for="a in access" :key="a.username" class="text-sm">
         <div class="flex flex-wrap items-center gap-x-2 gap-y-0.5">

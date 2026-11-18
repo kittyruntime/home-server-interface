@@ -21,7 +21,7 @@ const lines = computed(() => {
 
 <template>
   <section v-if="lines.length" class="space-y-2">
-    <h4 class="eyebrow">{{ t('sharing.detail.checks') }}</h4>
+    <h4 class="text-sm font-semibold text-base-content">{{ t('sharing.detail.checks') }}</h4>
     <ul class="space-y-1">
       <li v-for="(l, i) in lines" :key="i" class="flex items-start gap-2 text-sm" :class="l.ok ? 'text-base-content/80' : 'text-warning'">
         <CircleCheckIcon v-if="l.ok" class="mt-0.5 size-4 shrink-0 text-success" />

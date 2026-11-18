@@ -25,16 +25,30 @@ HSI is multi-user from the start.
 
 Sharing publishes Places over SMB with Samba, in sync with HSI's accounts and
 permissions. Creating, editing, enabling, disabling and removing a share show the
-change to the Samba configuration as a diff before it runs. Each share's detail
-shows how to connect from Windows, macOS and Linux, who can read and write, who
-is connected now, its recent activity and its checks.
+change to the Samba configuration as a diff before it runs.
+
+The Sharing app has four sections:
+
+- **Shared folders**: a table of every share (location, protocols, access,
+  state, people connected) with a toolbar to create, edit, enable, disable or
+  delete the selected one. Below it, the selected share's detail in three tabs:
+  **Connect** (addresses for Windows, macOS and Linux, NFS mount commands, the
+  SFTP address), **Access** (who can read and write, and its checks) and
+  **Activity** (who is connected over each protocol, and recent SMB activity).
+  The share editor has a tab per protocol: General, SMB, NFS and SFTP.
+- **File services**: one card per protocol with its state. SMB's card holds
+  its settings (network name, workgroup, discovery, oldest protocol,
+  encryption) and starts or restarts Samba.
+- **Security**: automatic blocking of addresses after failed sign-ins, and the
+  addresses blocked now.
+- **Journal**: SMB connections and refusals of the last 30 days.
 
 ### Time Machine
 
 A share can be a **Time Machine destination**, with an optional size limit in GB
 (Time Machine removes its oldest backups to stay under it). It needs Samba's
 `fruit` and `streams_xattr` modules, which most distributions ship with Samba.
-With macOS discovery turned on in the SMB settings (Avahi installed), the share
+With macOS discovery turned on in File services, SMB (Avahi installed), the share
 appears in Time Machine's list of disks; otherwise connect to it in the Finder
 first, then choose it in System Settings, General, Time Machine.
 

@@ -29,7 +29,7 @@ const items = computed(() => shareAddresses({
 
 <template>
   <section class="space-y-2">
-    <h4 class="eyebrow">{{ title ?? t('sharing.detail.connect') }}</h4>
+    <h4 class="text-sm font-semibold text-base-content">{{ title ?? t('sharing.detail.connect') }}</h4>
     <AddressList :items="items" />
     <p class="text-xs text-base-content/80">
       <template v-if="guestOk">{{ t('sharing.detail.guestCredentials') }} </template>

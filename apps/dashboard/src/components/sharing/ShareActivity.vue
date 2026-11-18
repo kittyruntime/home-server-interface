@@ -58,7 +58,7 @@ function when(r: Run): string {
 <template>
   <section class="space-y-2">
     <div v-if="!hideTitle" class="flex items-center justify-between gap-2">
-      <h4 class="eyebrow">{{ title ?? t('sharing.detail.activity') }}</h4>
+      <h4 class="text-sm font-semibold text-base-content">{{ title ?? t('sharing.detail.activity') }}</h4>
       <button v-if="seeAll && events.length" type="button" class="link link-primary text-xs" @click="emit('seeAll')">{{ t('sharing.detail.seeAll') }}</button>
     </div>
     <p v-if="events.length === 0" class="text-sm text-base-content/70">{{ t('sharing.detail.noActivity') }}</p>
