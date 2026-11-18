@@ -9,6 +9,8 @@ import LoadingState from '../ui/LoadingState.vue'
 import BusyLabel from '../ui/BusyLabel.vue'
 import ConnectBlock from './ConnectBlock.vue'
 import NfsBlock from './NfsBlock.vue'
+import SftpBlock from './SftpBlock.vue'
+import { useAuth } from '../../lib/auth'
 import ShareAccess from './ShareAccess.vue'
 import ShareSessions from './ShareSessions.vue'
 import ShareActivity from './ShareActivity.vue'
@@ -29,6 +31,7 @@ const emit = defineEmits<{
 }>()
 
 const { t } = useI18n()
+const { currentUsername } = useAuth()
 const { confirm } = useConfirm()
 const toast = useToast()
 
@@ -153,9 +156,11 @@ async function disconnect(session: ShareSession) {
       </div>
 
       <ConnectBlock v-if="data.share.smb" :share="data.share.name" :guest-ok="data.share.guestOk" v-bind="connect"
-        :title="data.share.nfs ? t('sharing.detail.connectSmb') : undefined" />
+        :title="data.share.nfs || data.share.sftp ? t('sharing.detail.connectSmb') : undefined" />
       <NfsBlock v-if="data.share.nfs && data.nfs" :share="data.share.name" :path="data.share.placePath"
         :clients="data.share.nfsClients" :write-as="data.nfs.writeAs" :connected="data.nfs.clients" :host="connect.host" />
+      <SftpBlock v-if="data.share.sftp && data.sftp" :share="data.share.name" :user="currentUsername ?? 'admin'" :port="data.sftp.port"
+        :host="connect.host" :left-out="data.sftp.leftOut" :sessions="data.sftp.sessions" />
       <ShareAccess :access="data.access" />
       <template v-if="data.share.smb">
         <ShareSessions :sessions="data.sessions" can-disconnect :busy-key="disconnecting" @disconnect="disconnect" />

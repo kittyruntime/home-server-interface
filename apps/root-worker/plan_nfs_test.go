@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"reflect"
 	"strings"
 	"testing"
@@ -22,6 +23,9 @@ func stubNfsHost(t *testing.T, smbd, exportfs bool, current string) *map[string]
 	}
 	hostLookPath = func(n string) bool { return n == "exportfs" && exportfs }
 	hostNfsIDsFn = func() (nfsIDs, error) { return nfsIDsStub(), nil }
+	prp := hostSafeFolder
+	t.Cleanup(func() { hostSafeFolder = prp })
+	hostSafeFolder = func(string) error { return nil }
 	hostRemoveFile = func(p string) error { (*written)[p] = "<removed>"; return nil }
 	return written
 }
@@ -92,4 +96,19 @@ func TestPlanShareSyncStillNeedsSambaForSmbShares(t *testing.T) {
 	stubNfsHost(t, false, true, "")
 	_, fe := build(t, planSmbSync, `{"shares":[{"name":"media","path":"/srv/media","validUsers":["alice"]}],"nfs":{"exports":[]}}`)
 	wantErr(t, fe, "SMBD_MISSING")
+}
+
+func TestPlanShareSyncLeavesOutASymlinkedExport(t *testing.T) {
+	written := stubNfsHost(t, false, true, "")
+	pr := hostSafeFolder
+	t.Cleanup(func() { hostSafeFolder = pr })
+	hostSafeFolder = func(string) error { return errors.New("a symbolic link") }
+	p, fe := build(t, planSmbSync, nfsOnly)
+	if fe != nil {
+		t.Fatal(fe)
+	}
+	assertParity(t, p)
+	if strings.Contains((*written)[nfsExportsPath], "/srv/films") {
+		t.Fatalf("a folder swapped for a link is exported: %q", (*written)[nfsExportsPath])
+	}
 }

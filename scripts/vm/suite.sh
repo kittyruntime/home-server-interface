@@ -588,6 +588,29 @@ nfs_feature() {
   log "NFS: written as the chosen account, read-only without one, removed when turned off"
 }
 
+# SFTP through the VM's OpenSSH: vmuser (made by HSI, no login shell) signs
+# in with its HSI password, sees only its shares, writes as itself and gets no
+# shell; root's SSH keeps working; turning SFTP off removes HSI's drop-in and views.
+sftp_feature() {
+  local share opts="-o BatchMode=no -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o PubkeyAuthentication=no -o PreferredAuthentications=password"
+  share=$(api_query sharing.list | python3 -c 'import json,sys; print(next(s["id"] for s in json.load(sys.stdin) if s["effectiveName"]=="mirror"))')
+  apply_plan share.update "{\"id\":\"$share\",\"sftp\":true}" sharing >/dev/null
+  vm_ssh 'sshd -t && test -f /etc/ssh/sshd_config.d/hsi-sftp.conf && findmnt -n /var/lib/hsi-sftp/vmuser/mirror >/dev/null' \
+    || { vm_ssh 'ls -la /etc/ssh/sshd_config.d /var/lib/hsi-sftp/*; findmnt -R /var/lib/hsi-sftp' || true; fail "SFTP is not set up for vmuser"; }
+  vm_ssh "printf 'ls\nput /etc/hostname mirror/from-sftp.txt\n' > /tmp/sftp.batch && sshpass -p '$USER_PASSWORD' sftp $opts -b /tmp/sftp.batch vmuser@127.0.0.1" > "$VM_DIR/sftp.log" 2>&1 \
+    || { cat "$VM_DIR/sftp.log"; fail "vmuser could not write over SFTP"; }
+  grep -qx 'mirror' <(grep -v '^sftp>' "$VM_DIR/sftp.log" | tr -s ' ' '\n' | grep -v '^$') || { cat "$VM_DIR/sftp.log"; fail "vmuser does not see its share over SFTP"; }
+  [[ $(vm_ssh 'stat -c %U /srv/vm-mirror/from-sftp.txt') == vmuser ]] || fail "the file written over SFTP is not vmuser's"
+  vm_ssh "printf -- '-ls /etc\n' > /tmp/sftp.batch && sshpass -p '$USER_PASSWORD' sftp $opts -b /tmp/sftp.batch vmuser@127.0.0.1" 2>&1 | grep -q passwd \
+    && fail "vmuser sees the server's /etc over SFTP"
+  vm_ssh "sshpass -p '$USER_PASSWORD' ssh $opts vmuser@127.0.0.1 id" 2>&1 | grep -q 'uid=' && fail "vmuser got a shell over SSH"
+  apply_plan share.update "{\"id\":\"$share\",\"sftp\":false}" sharing >/dev/null
+  vm_ssh '! test -e /etc/ssh/sshd_config.d/hsi-sftp.conf && ! findmnt -n /var/lib/hsi-sftp/vmuser/mirror >/dev/null && sshd -t' \
+    || fail "turning SFTP off left HSI's drop-in or a view"
+  vm_ssh 'rm -f /srv/vm-mirror/from-sftp.txt /tmp/sftp.batch'
+  log "SFTP: vmuser signs in, sees and writes its share only, gets no shell; turning it off removes everything"
+}
+
 stack_state() { vm_ssh "docker compose ls -a --format json" | python3 -c 'import json,sys; s=[x for x in json.load(sys.stdin) if x["Name"]==sys.argv[1]]; print(s[0]["Status"] if s else "absent")' "$1"; }
 
 # An App Store app: installed, its port changed, removed; each step checked
@@ -1067,7 +1090,7 @@ case "$scenario" in
     expect_mirror; expect_mirror_data
     ;;
   features)
-    { vm_apt_install samba smbclient nfs-kernel-server docker.io docker-compose && vm_ssh 'docker compose version'; } \
+    { vm_apt_install samba smbclient nfs-kernel-server sshpass docker.io docker-compose && vm_ssh 'docker compose version'; } \
       || fail "could not install Samba, the NFS server and Docker"
     install_build
     expect_running "$version"
@@ -1083,6 +1106,7 @@ case "$scenario" in
     files_feature
     smb_feature
     nfs_feature
+    sftp_feature
     trash_feature
     mcp_feature
     assistant_feature

@@ -22,6 +22,10 @@ export interface UserPlanDeps {
   nfsExports?(): Promise<unknown[]>
   /** NFS exports as they are now. */
   currentNfsExports?(): Promise<unknown[]>
+  /** SFTP views without the deleted user. */
+  sftpUsers?(): Promise<unknown[]>
+  /** SFTP views as they are now. */
+  currentSftpUsers?(): Promise<unknown[]>
   serialize<T>(fn: () => Promise<T>): Promise<T>
   resync(): Promise<void>
   commit(): Promise<unknown>
@@ -90,8 +94,14 @@ async function deletePreviews(username: string, deps: UserPlanDeps) {
   // later account could get.
   const exports = deps.nfsExports ? await deps.nfsExports() : undefined
   const nfsNamed = exports !== undefined && JSON.stringify(exports) !== JSON.stringify(await deps.currentNfsExports?.())
-  if (nfsNamed || (named && await deps.smbdInstalled())) {
-    const input = { shares, settings: await deps.smbSettings?.(), ...(exports && { nfs: { exports } }) }
+  // Their SFTP views and sessions go with the account.
+  const sftpUsers = deps.sftpUsers ? await deps.sftpUsers() : undefined
+  const sftpNamed = sftpUsers !== undefined && JSON.stringify(sftpUsers) !== JSON.stringify(await deps.currentSftpUsers?.())
+  if (nfsNamed || sftpNamed || (named && await deps.smbdInstalled())) {
+    const input = {
+      shares, settings: await deps.smbSettings?.(),
+      ...(exports && { nfs: { exports } }), ...(sftpUsers && { sftp: { users: sftpUsers } }),
+    }
     smb = { ...await preview(deps, "smb.sync", input), input }
   }
   const group = await preview(deps, "group.leave", { username })

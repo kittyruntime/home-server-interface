@@ -12,12 +12,12 @@ export type ShareOp = typeof SHARE_OPS[number]
 export interface ShareRow {
   id: string; placeId: string; smbName: string | null; readOnly: boolean; guestOk: boolean; enabled: boolean; hidden: boolean
   timeMachine?: boolean; timeMachineMaxGb?: number | null
-  smb?: boolean; nfs?: boolean; nfsClients?: string; nfsWriteAs?: string
+  smb?: boolean; nfs?: boolean; nfsClients?: string; nfsWriteAs?: string; sftp?: boolean
   place: { name: string; path: string }
 }
 export type ShareChange =
   | { kind: "create"; row: ShareRow }
-  | { kind: "update"; id: string; patch: Partial<Pick<ShareRow, "enabled" | "readOnly" | "guestOk" | "smbName" | "hidden" | "timeMachine" | "timeMachineMaxGb" | "smb" | "nfs" | "nfsClients" | "nfsWriteAs">> }
+  | { kind: "update"; id: string; patch: Partial<Pick<ShareRow, "enabled" | "readOnly" | "guestOk" | "smbName" | "hidden" | "timeMachine" | "timeMachineMaxGb" | "smb" | "nfs" | "nfsClients" | "nfsWriteAs" | "sftp">> }
   | { kind: "remove"; id: string }
   | { kind: "settings"; patch: SmbSettingsPatch }
 
@@ -36,6 +36,8 @@ export interface SharePlanDeps {
   defs(): Promise<unknown[]>
   /** The NFS exports as they will be (absent: NFS is left as it is). */
   nfs?(): Promise<unknown[]>
+  /** The SFTP views per account (absent: SFTP is left as it is). */
+  sftp?(): Promise<unknown[]>
   /** The service settings smb.conf is rendered with (absent: the defaults). */
   smbSettings?(): Promise<unknown>
   worker<T>(subject: string, payload: Record<string, unknown>): Promise<T>
@@ -73,6 +75,8 @@ export function workerError(e: unknown): never {
   const message = e instanceof Error ? e.message : String(e)
   if (code === "SMBD_MISSING") throw new TRPCError({ code: "PRECONDITION_FAILED", message: SAMBA_MISSING })
   if (code === "NFS_MISSING") throw new TRPCError({ code: "PRECONDITION_FAILED", message: NFS_MISSING })
+  if (code === "SFTP_MISSING") throw new TRPCError({ code: "PRECONDITION_FAILED", message: "OpenSSH's server is not installed on the host (openssh-server)" })
+  if (code === "SFTP_UNSUPPORTED") throw new TRPCError({ code: "PRECONDITION_FAILED", message: "The SSH server's configuration does not include /etc/ssh/sshd_config.d, so HSI cannot add SFTP to it" })
   if (code === "ESTALE") throw new TRPCError({ code: "CONFLICT", message })
   // The worker refused the request (code ERR); anything else (a timeout, the
   // worker down) is a server error, not the user's.
@@ -81,12 +85,13 @@ export function workerError(e: unknown): never {
 
 async function smbSyncInput(deps: SharePlanDeps, shares?: unknown[]): Promise<Record<string, unknown>> {
   const nfs = deps.nfs ? { exports: await deps.nfs() } : undefined
-  return { shares: shares ?? await deps.defs(), settings: await deps.smbSettings?.(), ...(nfs && { nfs }) }
+  const sftp = deps.sftp ? { users: await deps.sftp() } : undefined
+  return { shares: shares ?? await deps.defs(), settings: await deps.smbSettings?.(), ...(nfs && { nfs }), ...(sftp && { sftp }) }
 }
 
 /** Samba is needed when some share is offered over SMB, or by a caller that only knows SMB. */
 function needsSamba(deps: SharePlanDeps, shares: unknown[]): boolean {
-  return !deps.nfs || shares.length > 0
+  return (!deps.nfs && !deps.sftp) || shares.length > 0
 }
 
 export async function previewShareChange(op: ShareOp, name: string, deps: SharePlanDeps): Promise<{ steps: PlanStep[]; fingerprint: string }> {

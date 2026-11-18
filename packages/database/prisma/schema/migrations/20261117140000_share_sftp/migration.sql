@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "Share" ADD COLUMN "sftp" BOOLEAN NOT NULL DEFAULT false;

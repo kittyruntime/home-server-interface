@@ -80,13 +80,16 @@ export interface ReachableShare {
   level: "read" | "write"
   guestOk: boolean
   hidden: boolean
+  /** Offered over SMB and over SFTP. */
+  smb: boolean
+  sftp: boolean
 }
 
 /** The enabled shares the viewer can open, with what they may do there. */
 export async function reachableShares(prisma: PrismaClient, v: Viewer): Promise<ReachableShare[]> {
   const shares = await prisma.share.findMany({
     // NFS has no sign-in: only what a person opens with their account.
-    where: { enabled: true, smb: true },
+    where: { enabled: true, OR: [{ smb: true }, { sftp: true }] },
     include: { place: { select: { name: true, path: true } } },
     orderBy: { createdAt: "asc" },
   })
@@ -97,7 +100,7 @@ export async function reachableShares(prisma: PrismaClient, v: Viewer): Promise<
     const valid = users.validUsers.includes(v.username) || admins.has(v.username)
     if (!valid && !s.guestOk) continue
     const write = !s.readOnly && valid && (users.writeUsers.includes(v.username) || admins.has(v.username))
-    out.push({ id: s.id, name: effectiveSmbName(s, s.place.name), level: write ? "write" : "read", guestOk: s.guestOk, hidden: s.hidden })
+    out.push({ id: s.id, name: effectiveSmbName(s, s.place.name), level: write ? "write" : "read", guestOk: s.guestOk, hidden: s.hidden, smb: s.smb ?? true, sftp: s.sftp ?? false })
   }
   return out
 }

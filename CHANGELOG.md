@@ -8,6 +8,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **SFTP**: a share can be reached over SFTP with each person's HSI username
+  and password, through the host's OpenSSH. HSI adds its own sshd drop-in,
+  checked with `sshd -t` before any reload; each person is locked in a folder
+  of the shares they can read (read-only where they cannot write) and gets no
+  shell. Only accounts HSI created get SFTP, so nobody's SSH access changes.
+  Taking access away closes the view and ends that person's SFTP sessions,
+  unmounting or removing a volume closes its SFTP views first, and an account
+  whose network access is turned off gets no SFTP either. A share folder
+  that someone other than root could swap (a link, or a folder above it that
+  others can write, such as a Place inside another Place) is neither shown
+  over SFTP nor exported over NFS.
 - **NFS**: a share can be exported over NFS to the machines listed on it, as
   well as or instead of SMB. Every NFS client writes as one account chosen
   among the Place's writers (read-only when none is chosen), the share's detail

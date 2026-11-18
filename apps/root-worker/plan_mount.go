@@ -179,7 +179,7 @@ func planUmount(raw json.RawMessage) (*opPlan, *fsError) {
 	// is removed (never an admin entry for another one).
 	sources := hostMountSources(mp)
 	obs := map[string]string{"sources": strings.Join(sources, " ")}
-	steps := []planStep{cmdStep(mp, "Unmount "+mp, []string{"umount", mp})}
+	steps := append(closeSftpViewsSteps(mp), cmdStep(mp, "Unmount "+mp, []string{"umount", mp}))
 	if req.RemoveFromFstab {
 		current := readFstab()
 		obs["fstab"] = current

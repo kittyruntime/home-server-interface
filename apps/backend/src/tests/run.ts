@@ -1584,6 +1584,14 @@ await testSharePlans()
     },
   }))
   assert.deepEqual(sentNfs, { exports: [{ path: "/srv/x", writeAs: "" }] })
+  // Their SFTP views go in the same plan.
+  let sentSftp: any = null
+  await up.previewUserDelete("alice", deps({
+    smbdInstalled: async () => false, currentShareDefs: async () => [],
+    sftpUsers: async () => [], currentSftpUsers: async () => [{ user: "alice", shares: [] }],
+    worker: async (_s: string, payload: any) => { if (payload.op === "smb.sync") sentSftp = payload.input.sftp; return { steps: [], fingerprint: "x" } },
+  }))
+  assert.deepEqual(sentSftp, { users: [] })
   assert.deepEqual(nfsOnly.steps.map(s => s.kind), ["update", "delete"])
 
   // No share access, but smb.conf out of date: the user's delete does not
@@ -4178,7 +4186,8 @@ function fakeSharingDb() {
         const u = users.find(x => x.id === where.id)
         return u ? { ...u, isUserManager: u.isAdmin, mustChangePassword: false, capabilities: [] } : null
       },
-      findMany: async ({ where }: any) => users.filter(u => !where?.isAdmin || u.isAdmin),
+      findMany: async ({ where }: any) => users.filter(u => (!where?.isAdmin || u.isAdmin) &&
+        (where?.sambaEnabled === undefined || ((u as any).sambaEnabled ?? true) === where.sambaEnabled)),
     },
     share: { findMany: async () => shares },
     userPlacePermission: { findMany: async ({ where }: any) => userPerms[where.placeId] ?? [] },
@@ -4263,6 +4272,47 @@ async function testLanAddressIsTheServersOwn() {
   assert.equal(lanAddress(two, "203.0.113.9"), "192.168.1.48", "from outside: the first one")
 }
 await testLanAddressIsTheServersOwn()
+
+async function testSftpViewsFollowAccess() {
+  const { desiredSftpUsers } = await import("../services/sharing.service")
+  const { prisma } = fakeSharingDb()
+  prisma.volumeHold = { findMany: async () => [{ mountPoint: "/srv/docs", reason: "missing" }] }
+  const both: any = { kind: "update", id: "s-films", patch: { sftp: true } }
+  const users: any[] = await desiredSftpUsers(prisma, both)
+  assert.deepEqual(users, [
+    { user: "admin", shares: [{ name: "Films", path: "/srv/films", write: true, unavailable: false }] },
+    { user: "alice", shares: [{ name: "Films", path: "/srv/films", write: true, unavailable: false }] },
+  ])
+  const ro: any[] = await desiredSftpUsers(prisma, { kind: "update", id: "s-films", patch: { sftp: true, readOnly: true } } as any)
+  assert.ok(ro.every(u => u.shares.every((s: any) => !s.write)), "a read-only share is read-only for everyone")
+  const docs: any[] = await desiredSftpUsers(prisma, { kind: "update", id: "s-docs", patch: { sftp: true } } as any)
+  assert.deepEqual(docs.find(u => u.user === "bob").shares, [{ name: "Docs", path: "/srv/docs", write: false, unavailable: true }])
+  const gone: any[] = await desiredSftpUsers(prisma, both, { withoutUser: "alice" })
+  assert.deepEqual(gone.map(u => u.user), ["admin"])
+  const off: any[] = await desiredSftpUsers(prisma)
+  assert.deepEqual(off, [], "no share over SFTP, nobody")
+  // Turning the network account off turns SFTP off too.
+  const optedOut = fakeSharingDb().prisma
+  optedOut.volumeHold = { findMany: async () => [] }
+  const realFind = optedOut.user.findMany
+  optedOut.user.findMany = async (q: any) => q?.where?.sambaEnabled === false ? [{ username: "alice" }] : realFind(q)
+  assert.deepEqual((await desiredSftpUsers(optedOut, both) as any[]).map(u => u.user), ["admin"], "alice opted out of network access")
+}
+await testSftpViewsFollowAccess()
+
+async function testSharePlanCarriesSftp() {
+  const sp = await import("../services/sharing-plan")
+  let sent: any = null
+  const deps: any = {
+    smbdInstalled: async () => false, defs: async () => [], nfs: async () => [], sftp: async () => [{ user: "alice", shares: [] }],
+    worker: async (_s: string, p: any) => { sent = p; return { steps: [], fingerprint: "f" } },
+  }
+  await sp.previewShareChange("share.update", "x", deps)
+  assert.deepEqual(sent.input.sftp, { users: [{ user: "alice", shares: [] }] })
+  await assert.rejects(sp.previewShareChange("share.update", "x", { ...deps, worker: async () => { throw Object.assign(new Error("x"), { code: "SFTP_UNSUPPORTED" }) } }),
+    (e: any) => e.code === "PRECONDITION_FAILED" && /sshd_config\.d/.test(e.message))
+}
+await testSharePlanCarriesSftp()
 
 async function testNfsOnlySharesDoNotNeedSamba() {
   const sp = await import("../services/sharing-plan")

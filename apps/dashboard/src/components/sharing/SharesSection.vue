@@ -69,7 +69,7 @@ onMounted(() => { void refresh(); void refreshHolds() })
 type Editor = {
   id: string | null; placeId: string; smbName: string; readOnly: boolean; guestOk: boolean; hidden: boolean
   timeMachine: boolean; timeMachineMaxGb: number | ''
-  smb: boolean; nfs: boolean; nfsClients: string; nfsWriteAs: string
+  smb: boolean; nfs: boolean; nfsClients: string; nfsWriteAs: string; sftp: boolean
 }
 const editor = ref<Editor | null>(null)
 // Time Machine needs Samba's fruit modules; a share that already has it can still turn it off.
@@ -89,7 +89,7 @@ function openCreate() {
   editorError.value = ''
   editor.value = {
     id: null, placeId: availablePlaces.value[0]?.id ?? '', smbName: '', readOnly: false, guestOk: false, hidden: false,
-    timeMachine: false, timeMachineMaxGb: '', smb: true, nfs: false, nfsClients: props.service?.suggestedNfsClients ?? '', nfsWriteAs: '',
+    timeMachine: false, timeMachineMaxGb: '', smb: true, nfs: false, nfsClients: props.service?.suggestedNfsClients ?? '', nfsWriteAs: '', sftp: false,
   }
 }
 
@@ -98,7 +98,7 @@ function openEdit(s: ShareDetailData['share']) {
   editor.value = {
     id: s.id, placeId: shares.value.find(x => x.id === s.id)?.placeId ?? '', smbName: s.smbName ?? '', readOnly: s.readOnly, guestOk: s.guestOk, hidden: s.hidden,
     timeMachine: s.timeMachine, timeMachineMaxGb: s.timeMachineMaxGb ?? '',
-    smb: s.smb, nfs: s.nfs, nfsClients: s.nfsClients || (props.service?.suggestedNfsClients ?? ''), nfsWriteAs: s.nfsWriteAs,
+    smb: s.smb, nfs: s.nfs, nfsClients: s.nfsClients || (props.service?.suggestedNfsClients ?? ''), nfsWriteAs: s.nfsWriteAs, sftp: s.sftp,
   }
 }
 
@@ -110,9 +110,14 @@ watch(() => editor.value?.nfs && editor.value.placeId, async placeId => {
   try { writers.value = await trpc.sharing.writers.query({ placeId }) } catch { /* the select keeps "read-only" only */ }
 }, { immediate: true })
 const nfsMissing = computed(() => !(props.service?.nfs?.installed ?? false))
+const sftpReason = computed(() => {
+  const s = props.service?.sftp
+  if (!s?.installed) return t('sharing.sftp.missing')
+  return s.supported ? '' : t('sharing.sftp.unsupported')
+})
 const canSave = computed(() => {
   const e = editor.value
-  return !!e && (e.smb || e.nfs) && (e.id !== null || !!e.placeId) && (!e.nfs || !!e.nfsClients.trim())
+  return !!e && (e.smb || e.nfs || e.sftp) && (e.id !== null || !!e.placeId) && (!e.nfs || !!e.nfsClients.trim())
 })
 
 async function save() {
@@ -122,7 +127,7 @@ async function save() {
   editorError.value = ''
   const timeMachine = {
     timeMachine: e.smb && e.timeMachine, timeMachineMaxGb: e.timeMachine && e.timeMachineMaxGb !== '' ? e.timeMachineMaxGb : null,
-    smb: e.smb, nfs: e.nfs, nfsClients: e.nfs ? e.nfsClients.trim() : '', nfsWriteAs: e.nfs ? e.nfsWriteAs : '',
+    smb: e.smb, nfs: e.nfs, nfsClients: e.nfs ? e.nfsClients.trim() : '', nfsWriteAs: e.nfs ? e.nfsWriteAs : '', sftp: e.sftp,
   }
   try {
     if (e.id === null) {
@@ -271,6 +276,15 @@ async function onRemoved() {
                 <span class="block text-xs text-base-content/70">{{ editor.readOnly ? t('sharing.nfs.ownerReadOnly') : t('sharing.nfs.ownerHelp') }}</span>
               </label>
             </div>
+          </div>
+          <div class="rounded-box border border-base-300" :class="editor.sftp && 'border-primary/40'">
+            <label class="flex items-start gap-3 p-3" :class="sftpReason && !editor.sftp ? 'cursor-not-allowed' : 'cursor-pointer'">
+              <Checkbox v-model="editor.sftp" class="mt-0.5" :disabled="!!sftpReason && !editor.sftp" />
+              <span class="min-w-0">
+                <span class="block text-sm font-medium text-base-content" :class="sftpReason && !editor.sftp && 'text-base-content/60'">SFTP</span>
+                <span class="block text-xs text-base-content/70">{{ sftpReason || t('sharing.sftp.help') }}</span>
+              </span>
+            </label>
           </div>
         </fieldset>
         <Alert v-if="editorError" variant="destructive"><AlertDescription>{{ editorError }}</AlertDescription></Alert>

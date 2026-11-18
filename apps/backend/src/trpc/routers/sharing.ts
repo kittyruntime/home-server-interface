@@ -11,6 +11,7 @@ import {
   shareExclusionReason,
   desiredShareDefs,
   desiredNfsExports,
+  desiredSftpUsers,
   currentSmbSettings,
   syncShares,
   withShareLock,
@@ -53,6 +54,17 @@ async function nfsNow(): Promise<NfsState> {
     return await requestSync<NfsState>("root.sharing.nfs", {})
   } catch {
     return { installed: false, active: false, clients: [] }
+  }
+}
+
+type SftpState = { installed: boolean; supported: boolean; active: boolean; port: number; sessions: string[]; leftOut: string[] }
+
+/** The SSH server's state for SFTP; `leftOut`: which of `users` cannot use it. */
+async function sftpNow(users: string[]): Promise<SftpState> {
+  try {
+    return await requestSync<SftpState>("root.sharing.sftp", { users })
+  } catch {
+    return { installed: false, supported: false, active: false, port: 22, sessions: [], leftOut: [] }
   }
 }
 
@@ -99,6 +111,7 @@ const zShareInputs = {
     nfs: z.boolean().default(false),
     nfsClients: z.string().max(600).default(""),
     nfsWriteAs: z.string().max(64).default(""),
+    sftp: z.boolean().default(false),
   }),
   "share.update": z.object({
     id: z.string(),
@@ -113,6 +126,7 @@ const zShareInputs = {
     nfs: z.boolean().optional(),
     nfsClients: z.string().max(600).optional(),
     nfsWriteAs: z.string().max(64).optional(),
+    sftp: z.boolean().optional(),
   }),
   "share.remove": z.object({ id: z.string() }),
   "smb.settings": z.object({
@@ -135,12 +149,12 @@ function parseInput<T extends ShareOp>(op: T, input: unknown): z.infer<typeof zS
   return r.data as z.infer<typeof zShareInputs[T]>
 }
 
-type Protocols = { smb: boolean; nfs: boolean; nfsClients: string; nfsWriteAs: string; readOnly: boolean }
+type Protocols = { smb: boolean; nfs: boolean; sftp: boolean; nfsClients: string; nfsWriteAs: string; readOnly: boolean }
 
 /** A share is offered over at least one protocol, and its NFS part is sound.
  *  Returns the client list as it is stored. */
 async function checkProtocols(prisma: Context["prisma"], placeId: string, p: Protocols): Promise<string> {
-  if (!p.smb && !p.nfs) throw new TRPCError({ code: "BAD_REQUEST", message: "Choose at least one way to share it (SMB or NFS)" })
+  if (!p.smb && !p.nfs && !p.sftp) throw new TRPCError({ code: "BAD_REQUEST", message: "Choose at least one way to share it (SMB, NFS or SFTP)" })
   if (!p.nfs) return p.nfsClients
   const parsed = parseNfsClients(p.nfsClients)
   if ("error" in parsed) throw new TRPCError({ code: "BAD_REQUEST", message: parsed.error })
@@ -176,7 +190,7 @@ async function prepare(ctx: Context, op: ShareOp, raw: unknown): Promise<{ name:
       id: randomUUID(),
       placeId: input.placeId, smbName: input.smbName ?? null, readOnly: input.readOnly, guestOk: input.guestOk, hidden: input.hidden,
       timeMachine: input.timeMachine && input.smb, timeMachineMaxGb: input.timeMachineMaxGb,
-      smb: input.smb, nfs: input.nfs, nfsClients, nfsWriteAs: input.nfs ? input.nfsWriteAs : "",
+      smb: input.smb, nfs: input.nfs, nfsClients, nfsWriteAs: input.nfs ? input.nfsWriteAs : "", sftp: input.sftp,
     }
     return {
       name,
@@ -226,10 +240,11 @@ async function prepare(ctx: Context, op: ShareOp, raw: unknown): Promise<{ name:
     ...(u.smb !== undefined && { smb: u.smb }),
     ...(u.nfs !== undefined && { nfs: u.nfs }),
     ...(u.nfsWriteAs !== undefined && { nfsWriteAs: u.nfsWriteAs }),
+    ...(u.sftp !== undefined && { sftp: u.sftp }),
   }
   if (u.timeMachine && !share.timeMachine) await assertTimeMachine()
   const after = { ...share, ...patch, ...(u.nfsClients !== undefined && { nfsClients: u.nfsClients }) }
-  if (u.smb !== undefined || u.nfs !== undefined || u.nfsClients !== undefined || u.nfsWriteAs !== undefined || u.readOnly !== undefined) {
+  if (u.smb !== undefined || u.nfs !== undefined || u.sftp !== undefined || u.nfsClients !== undefined || u.nfsWriteAs !== undefined || u.readOnly !== undefined) {
     const nfsClients = await checkProtocols(prisma, share.placeId, after)
     if (u.nfsClients !== undefined) Object.assign(patch, { nfsClients })
   }
@@ -247,6 +262,7 @@ function planDeps(ctx: Context, change: ShareChange, commit: () => Promise<unkno
     smbdInstalled: () => requestSync<{ smbdInstalled: boolean }>("root.sharing.checkPrereqs", {}).then(r => r.smbdInstalled),
     defs:   () => desiredShareDefs(ctx.prisma, change),
     nfs:    () => desiredNfsExports(ctx.prisma, change),
+    sftp:   () => desiredSftpUsers(ctx.prisma, change),
     smbSettings: () => currentSmbSettings(ctx.prisma, change.kind === "settings" ? change.patch : undefined),
     worker: <T>(subject: string, payload: Record<string, unknown>) => requestSync<T>(subject, payload, timeout),
     commit,
@@ -305,6 +321,7 @@ export const sharingRouter = router({
           timeMachine: s.timeMachine,
           smb: s.smb,
           nfs: s.nfs,
+          sftp: s.sftp,
           smbName: s.smbName,
           effectiveName: effectiveSmbName(s, s.place.name),
           userCount: users.validUsers.length,
@@ -316,12 +333,13 @@ export const sharingRouter = router({
 
   // Sharing app: service state and settings (admin).
   service: adminProcedure.query(async ({ ctx }) => {
-    const [state, settings, sessions, nfs] = await Promise.all([
-      smbServiceState().catch(() => null), getSmbSettings(ctx.prisma), sessionsNow(), nfsNow(),
+    const [state, settings, sessions, nfs, sftp] = await Promise.all([
+      smbServiceState().catch(() => null), getSmbSettings(ctx.prisma), sessionsNow(), nfsNow(), sftpNow([]),
     ])
     const { eventCursor: _cursor, ...shown } = settings
     return {
       state, settings: shown, connectedCount: peopleConnected(sessions), nfs,
+      sftp: { installed: sftp.installed, supported: sftp.supported, active: sftp.active, port: sftp.port, sessions: sftp.sessions.length },
       suggestedNfsClients: suggestNfsClients(callerIp(ctx)), lanAddress: lanAddress(undefined, callerIp(ctx)),
     }
   }),
@@ -356,8 +374,14 @@ export const sharingRouter = router({
         id: s.id, name, placeName: s.place.name, placePath: s.place.path, enabled: s.enabled,
         readOnly: s.readOnly, guestOk: s.guestOk, hidden: s.hidden, smbName: s.smbName,
         timeMachine: s.timeMachine, timeMachineMaxGb: s.timeMachineMaxGb,
-        smb: s.smb, nfs: s.nfs, nfsClients: s.nfsClients, nfsWriteAs: s.nfsWriteAs,
+        smb: s.smb, nfs: s.nfs, nfsClients: s.nfsClients, nfsWriteAs: s.nfsWriteAs, sftp: s.sftp,
       },
+      sftp: s.sftp ? await sftpNow([...new Set([...users.validUsers, ...adminLinux])]).then(st => ({
+        port: st.port,
+        // Accounts with a login shell keep their own SSH and get no SFTP view.
+        leftOut: st.leftOut,
+        sessions: st.sessions.filter(u => users.validUsers.includes(u) || adminLinux.includes(u)),
+      })) : null,
       nfs: s.nfs ? await nfsNow().then(n => ({
         clients: n.clients.filter(ip => clientAllowed(ip, s.nfsClients.split(" ").filter(Boolean))),
         // The account new files belong to, unless it lost write access.
@@ -443,6 +467,7 @@ export const sharingRouter = router({
       serviceActive: state?.active ?? false,
       netbiosName: settings.netbiosName,
       lanAddress: lanAddress(undefined, callerIp(ctx)),
+      sftp: shares.some(x => x.sftp) ? await sftpNow([viewer.username]).then(st => ({ port: st.port, usable: st.supported && st.leftOut.length === 0 })) : null,
       discovery: { wsd: settings.discoveryWsd && !!state?.wsddOn, mdns: settings.discoveryMdns && !!state?.avahiOn },
     }
   }),
