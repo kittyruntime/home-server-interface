@@ -166,6 +166,8 @@ export async function desiredShareDefs(prisma: PrismaClient, change?: ShareChang
       readOnly: s.readOnly,
       guestOk: s.guestOk,
       hidden: s.hidden,
+      timeMachine: s.timeMachine ?? false,
+      timeMachineMaxGb: s.timeMachineMaxGb ?? 0,
       validUsers: uniqSorted([...users.validUsers, ...adminLinux]),
       writeUsers: s.readOnly ? [] : uniqSorted([...users.writeUsers, ...adminLinux]),
       unavailable: holdFor(holds, s.place.path) !== null,

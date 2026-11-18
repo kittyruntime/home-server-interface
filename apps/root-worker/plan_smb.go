@@ -68,6 +68,19 @@ func planSmbSync(raw json.RawMessage) (*opPlan, *fsError) {
 			Diff: unifiedDiff(smbConfPath, current, conf),
 			run:  func() (string, error) { return "", hostWriteFile(smbConfPath, conf) }})
 	}
+	// macOS discovery is on: keep its Time Machine records in step with the
+	// shares (Avahi reloads its services folder on its own).
+	if avahi := filepath.Join(avahiServicesDir, avahiServiceName); hostExists(avahi) {
+		cur, _ := hostReadFile(avahi)
+		want := avahiServiceFile(req.Settings.NetbiosName, timeMachineNames(req.Shares))
+		obs["avahi"] = string(cur)
+		if string(cur) != want {
+			steps = append(steps, planStep{Kind: "update", Target: avahi,
+				Summary: "Update what the NAS announces to Macs (Time Machine disks)",
+				Diff:    unifiedDiff(avahi, string(cur), want),
+				run:     func() (string, error) { return "", hostWriteFile(avahi, want) }})
+		}
+	}
 	enable := cmdStep("smbd", "Enable smbd at boot", []string{"systemctl", "enable", "--quiet", "smbd"})
 	enable.OnFailure = "warn"
 	if !dropIn {

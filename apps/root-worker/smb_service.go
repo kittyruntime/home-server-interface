@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 
 	nats "github.com/nats-io/nats.go"
@@ -139,10 +140,30 @@ func wsddUnit() string {
 	return ""
 }
 
-func avahiServiceFile(name string) string {
+// smbModuleAvailable: the VFS module is built into smbd or present as a
+// module file under MODULESDIR.
+func smbModuleAvailable(buildInfo, name string, exists func(string) bool) bool {
+	if strings.Contains(buildInfo, "vfs_"+name+"_init") {
+		return true
+	}
+	dir := smbModulesDir(buildInfo)
+	return dir != "" && exists(filepath.Join(dir, "vfs", name+".so"))
+}
+
+// avahiServiceFile announces SMB, and the Time Machine shares (one dkN
+// record each) so they show in Time Machine's list of disks.
+func avahiServiceFile(name string, timeMachine []string) string {
 	n := `<name replace-wildcards="yes">%h</name>`
 	if name != "" {
 		n = "<name>" + html.EscapeString(name) + "</name>"
+	}
+	adisk := ""
+	if len(timeMachine) > 0 {
+		adisk = "\n  <service>\n    <type>_adisk._tcp</type>\n    <port>9</port>\n    <txt-record>sys=waMa=0,adVF=0x100</txt-record>\n"
+		for i, s := range timeMachine {
+			adisk += "    <txt-record>dk" + strconv.Itoa(i) + "=adVN=" + html.EscapeString(s) + ",adVF=0x82</txt-record>\n"
+		}
+		adisk += "  </service>"
 	}
 	return `<?xml version="1.0" standalone="no"?>
 <!DOCTYPE service-group SYSTEM "avahi-service.dtd">
@@ -152,7 +173,7 @@ func avahiServiceFile(name string) string {
   <service>
     <type>_smb._tcp</type>
     <port>445</port>
-  </service>
+  </service>` + adisk + `
 </service-group>
 `
 }
@@ -160,7 +181,7 @@ func avahiServiceFile(name string) string {
 // applySmbDiscovery turns the announcements that are asked about on or off
 // (nil leaves one as it is, so a wsdd the admin runs is never touched by an
 // unrelated change). Turning one off only removes what HSI added.
-func applySmbDiscovery(wsd, mdns *bool, name string) *fsError {
+func applySmbDiscovery(wsd, mdns *bool, name string, timeMachine []string) *fsError {
 	if wsd != nil {
 		unit := wsddUnit()
 		switch {
@@ -192,7 +213,7 @@ func applySmbDiscovery(wsd, mdns *bool, name string) *fsError {
 	if err := os.MkdirAll(avahiServicesDir, 0o755); err != nil {
 		return &fsError{Code: "ERR", Message: err.Error()}
 	}
-	if err := writeFileAtomic(path, []byte(avahiServiceFile(name)), 0o644); err != nil {
+	if err := writeFileAtomic(path, []byte(avahiServiceFile(name, timeMachine)), 0o644); err != nil {
 		return &fsError{Code: "ERR", Message: err.Error()}
 	}
 	return nil
@@ -200,7 +221,7 @@ func applySmbDiscovery(wsd, mdns *bool, name string) *fsError {
 
 func handleSharingService(nc *nats.Conn, msg *nats.Msg) {
 	res := map[string]any{"installed": smbdInstalled(), "active": false, "version": "", "audit": false,
-		"wsdd": wsddUnit(), "avahi": hostLookPath("avahi-daemon"), "wsddOn": false, "avahiOn": false}
+		"wsdd": wsddUnit(), "avahi": hostLookPath("avahi-daemon"), "wsddOn": false, "avahiOn": false, "timeMachine": false}
 	if unit := res["wsdd"].(string); unit != "" {
 		res["wsddOn"] = smbRun("systemctl", "is-enabled", "--quiet", unit) == nil
 	}
@@ -214,6 +235,7 @@ func handleSharingService(nc *nats.Conn, msg *nats.Msg) {
 		info := smbBuildInfo()
 		dir := smbModulesDir(info)
 		res["audit"] = smbAuditSupported(info, dir != "" && hostExists(filepath.Join(dir, "vfs", "full_audit.so")))
+		res["timeMachine"] = smbModuleAvailable(info, "fruit", hostExists) && smbModuleAvailable(info, "streams_xattr", hostExists)
 	}
 	replyOk(nc, msg.Reply, res)
 }
@@ -253,12 +275,14 @@ func handleSharingDiscovery(nc *nats.Conn, msg *nats.Msg) {
 		Wsd  *bool  `json:"wsd"`
 		Mdns *bool  `json:"mdns"`
 		Name string `json:"name"`
+		// TimeMachine: the Time Machine shares to announce with SMB.
+		TimeMachine []string `json:"timeMachine"`
 	}
 	if err := json.Unmarshal(msg.Data, &req); err != nil {
 		replyErr(nc, msg.Reply, badRequest(err))
 		return
 	}
-	if fe := applySmbDiscovery(req.Wsd, req.Mdns, req.Name); fe != nil {
+	if fe := applySmbDiscovery(req.Wsd, req.Mdns, req.Name, req.TimeMachine); fe != nil {
 		replyErr(nc, msg.Reply, fe)
 		return
 	}
