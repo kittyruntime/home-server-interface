@@ -4411,3 +4411,46 @@ async function testRepairPasswordVerifiesFirst() {
   assert.deepEqual(synced, ["right"])
 }
 await testRepairPasswordVerifiesFirst()
+
+async function testPerfParsesProcFiles() {
+  const perf = await import("../services/system-perf.service")
+  const stat = "cpu  100 0 100 700 100 0 0 0 0 0\ncpu0 50 0 50 350 50 0 0 0 0 0\ncpu1 50 0 50 350 50 0 0 0 0 0\nintr 1 2\nprocs_running 2\n"
+  const later = "cpu  200 0 200 1200 100 0 0 0 0 0\ncpu0 150 0 50 400 50 0 0 0 0 0\ncpu1 50 0 150 800 50 0 0 0 0 0\n"
+  const a = perf.parseCpuTimes(stat), b = perf.parseCpuTimes(later)
+  assert.equal(a.length, 3, "the total then one line per core")
+  assert.deepEqual(perf.cpuBusy(a, b), [28.6, 66.7, 18.2], "iowait counts as idle")
+  assert.deepEqual(perf.cpuBusy(b, b), [0, 0, 0], "no time passed")
+
+  const mem = perf.parseMeminfo("MemTotal: 8000 kB\nMemFree: 1000 kB\nMemAvailable: 5000 kB\nBuffers: 500 kB\nCached: 2500 kB\nSReclaimable: 500 kB\nShmem: 200 kB\nSwapTotal: 2000 kB\nSwapFree: 1500 kB\n")
+  assert.deepEqual(mem, { total: 8192000, available: 5120000, used: 3072000, cached: 3072000, buffers: 512000, free: 1024000, swapTotal: 2048000, swapUsed: 512000 })
+
+  const disks = perf.parseDiskstats("   8       0 sda 100 0 2000 50 300 0 4000 80 0 120 130 0 0 0 0\n   8       1 sda1 1 0 8 0 0 0 0 0 0 1 1 0 0 0 0\n   7       0 loop0 1 0 8 0 0 0 0 0 0 1 1\n")
+  assert.deepEqual(Object.keys(disks), ["sda"], "only whole disks")
+  assert.deepEqual(disks.sda, { read: 2000 * 512, write: 4000 * 512, ioMs: 120 })
+  assert.ok(perf.isWholeDisk("nvme0n1") && perf.isWholeDisk("vdb") && perf.isWholeDisk("mmcblk0"))
+  assert.ok(!perf.isWholeDisk("nvme0n1p2") && !perf.isWholeDisk("md0") && !perf.isWholeDisk("dm-1") && !perf.isWholeDisk("sr0"))
+  assert.deepEqual(perf.diskRates({ read: 0, write: 1000, ioMs: 100 }, { read: 4096, write: 3000, ioMs: 600 }, 2000),
+    { readBps: 2048, writeBps: 1000, busy: 25 })
+  assert.equal(perf.diskRates({ read: 0, write: 0, ioMs: 0 }, { read: 0, write: 0, ioMs: 9000 }, 2000).busy, 100, "busy is capped")
+
+  const net = perf.parseNetDev("Inter-|   Receive\n face |bytes\n    lo: 50 1 0 0 0 0 0 0 50 1 0 0 0 0 0 0\n  eth0: 1000 10 0 0 0 0 0 0 2000 20 0 0 0 0 0 0\n")
+  assert.deepEqual(net, { lo: { rx: 50, tx: 50 }, eth0: { rx: 1000, tx: 2000 } })
+}
+await testPerfParsesProcFiles()
+
+async function testProcessRatesFollowEachProcess() {
+  const perf = await import("../services/system-perf.service")
+  const row = (pid: number, ticks: number, read: number, start = "100") =>
+    ({ pid, ppid: 1, name: "p" + pid, cmd: "", user: "root", state: "S", ticks, threads: 1, rss: 4096, start, read, write: 0, protected: false })
+  const first = perf.processRates(new Map(), [row(10, 100, 0)], 2, 4)
+  assert.equal(first.rows[0]!.cpu, 0, "no rate before a second sample")
+  const second = perf.processRates(first.seen, [row(10, 300, 8192), row(11, 50, 0)], 2, 4)
+  const p10 = second.rows.find(r => r.pid === 10)!
+  assert.equal(p10.cpu, 25, "200 ticks over 2 s on 4 cores is a quarter of the machine")
+  assert.equal(p10.readBps, 4096)
+  assert.equal(second.rows.find(r => r.pid === 11)!.cpu, 0, "a new process starts at zero")
+  const reused = perf.processRates(second.seen, [row(10, 5, 0, "999")], 2, 4)
+  assert.equal(reused.rows[0]!.cpu, 0, "a reused pid is a new process")
+  assert.ok(!reused.seen.has("11:100"), "ended processes are forgotten")
+}
+await testProcessRatesFollowEachProcess()

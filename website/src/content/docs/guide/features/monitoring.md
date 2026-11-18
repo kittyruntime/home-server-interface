@@ -8,7 +8,24 @@ sidebar:
 
 ![Monitoring](../../../../assets/monitoring.png)
 
-- **Metrics**: CPU, RAM, network and storage, live and over 1 hour to 7 days.
+The Monitor app has five sections: Performance, Processes, History, Alerts and
+Audit log.
+
+- **Performance**: every resource in a list on the left, each with a small live
+  graph: the CPU, the memory, each disk and each network port. Pick one to see
+  its graph over the last two minutes, refreshed every 2 seconds, and its
+  figures: usage, speed, processes and threads for the CPU (with a graph per
+  core), memory composition and swap, a disk's active time, read and write
+  speed, a port's receive and send rates, link speed and addresses.
+- **Processes**: every program running on the server, sortable by name, PID,
+  user, CPU, memory or disk activity, with a search. The column headers show
+  the machine totals and busy cells are shaded. Select a process to see its
+  command line, then **End process** asks it to stop; if it keeps running, the
+  same button forces it. The system, its kernel threads and the processes that
+  run HSI are protected and cannot be ended. Ending a process is recorded in
+  the audit trail.
+- **History**: CPU, memory and network over 1 hour to 7 days, with the average
+  and the peak of each curve.
 - **Alerts**: background checks raise alerts for a degraded array, a failing disk,
   a missing volume, a RAID consistency mismatch, a failed backup or update.
   Monitor > Alerts lists them; an alert whose condition is still true comes back

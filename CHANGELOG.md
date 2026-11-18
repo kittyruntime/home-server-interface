@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **Monitor**: the app is reorganized into Performance, Processes, History,
+  Alerts and Audit log. Performance lists the CPU, the memory, each disk and
+  each network port with a live graph, and shows the chosen one in detail over
+  the last two minutes: a graph per CPU core, memory composition, a disk's
+  active time and transfer rates, a port's throughput, link speed and
+  addresses. History gives the average and the peak of each curve. The
+  Summary and System info sections are folded into Performance.
+
+### Added
+- **Monitor**: a Processes section lists every program on the server with its
+  CPU, memory and disk activity, sortable and searchable. An admin can end a
+  process, or force it to stop; the system and HSI's own processes are
+  protected.
+
 ## [1.86.1] - 2026-11-18
 
 ### Changed
