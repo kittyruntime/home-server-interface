@@ -1563,12 +1563,28 @@ await testSharePlans()
 
   // A user outside the share group: a worker before v1.80.3 sent null steps
   // and results for group.leave, which made the delete plan fail.
-  const nullWorker = async (subject: string, payload: any) =>
+  const nullWorker = async (subject: string, _payload: any) =>
     subject === "root.plan.preview" ? { steps: null, fingerprint: "g0" } : { ok: true, steps: null, results: null }
   const outside = await up.previewUserDelete("alice", deps({ currentShareDefs: async () => [], worker: nullWorker }))
   assert.deepEqual(outside.steps.map(s => s.kind), ["delete"])
   const outsideDone = await up.applyUserDelete("alice", outside.fingerprint, deps({ currentShareDefs: async () => [], worker: nullWorker }))
   assert.equal(outsideDone.ok, true)
+
+  // NFS files belong to the user: the exports drop them in the same plan, even
+  // without Samba, so no export keeps a uid a later account could get.
+  let sentNfs: any = null
+  const nfsOnly = await up.previewUserDelete("alice", deps({
+    smbdInstalled: async () => false,
+    currentShareDefs: async () => [],
+    nfsExports: async () => [{ path: "/srv/x", writeAs: "" }],
+    currentNfsExports: async () => [{ path: "/srv/x", writeAs: "alice" }],
+    worker: async (_subject: string, payload: any) => {
+      if (payload.op === "smb.sync") { sentNfs = payload.input.nfs; return { steps: [{ kind: "update", target: "/etc/exports.d/hsi.exports", summary: "exports" }], fingerprint: "n1" } }
+      return { steps: [], fingerprint: "g0" }
+    },
+  }))
+  assert.deepEqual(sentNfs, { exports: [{ path: "/srv/x", writeAs: "" }] })
+  assert.deepEqual(nfsOnly.steps.map(s => s.kind), ["update", "delete"])
 
   // No share access, but smb.conf out of date: the user's delete does not
   // reconcile unrelated drift (no smb.conf step, no smbd reload).
@@ -4198,6 +4214,71 @@ async function testTimeMachineNeedsTheMacModules() {
   assert.equal(sp.timeMachineRefusal({ installed: true, timeMachine: true } as any), null)
 }
 await testTimeMachineNeedsTheMacModules()
+
+async function testNfsClientsAreAddressesOrNetworks() {
+  const nfs = await import("../services/nfs")
+  assert.deepEqual(nfs.parseNfsClients("192.168.1.0/24, 10.0.0.5  fd00::/64"), { clients: ["192.168.1.0/24", "10.0.0.5", "fd00::/64"] })
+  for (const bad of ["", "*", "0.0.0.0/0", "::/0", "pc.lan", "10.0.0.1(rw)", "10.0.0.0/33", Array(17).fill("10.0.0.1").join(" ")])
+    assert.ok("error" in nfs.parseNfsClients(bad), `accepted ${JSON.stringify(bad)}`)
+  assert.equal(nfs.clientAllowed("192.168.1.47", ["192.168.1.0/24"]), true)
+  assert.equal(nfs.clientAllowed("192.168.2.1", ["192.168.1.0/24", "10.0.0.5"]), false)
+  assert.equal(nfs.clientAllowed("10.0.0.5", ["10.0.0.5"]), true)
+  assert.equal(nfs.suggestNfsClients("192.168.1.47"), "192.168.1.0/24")
+  assert.equal(nfs.suggestNfsClients("::ffff:10.1.2.3"), "10.1.2.0/24")
+  assert.equal(nfs.suggestNfsClients("8.8.8.8"), "")
+  assert.equal(nfs.suggestNfsClients(undefined), "")
+}
+await testNfsClientsAreAddressesOrNetworks()
+
+async function testNfsExportsFollowWritePermission() {
+  const { desiredShareDefs, desiredNfsExports } = await import("../services/sharing.service")
+  const { prisma } = fakeSharingDb()
+  prisma.volumeHold = { findMany: async () => [] }
+  const base = { nfs: true, nfsClients: "192.168.1.0/24" }
+  const change: any = { kind: "update", id: "s-films", patch: { ...base, nfsWriteAs: "alice", smb: false } }
+  const exports: any[] = await desiredNfsExports(prisma, change)
+  assert.deepEqual(exports, [{ path: "/srv/films", clients: ["192.168.1.0/24"], writeAs: "alice", fsid: "s-films", unavailable: false }])
+  assert.ok(!(await desiredShareDefs(prisma, change)).some((d: any) => d.name === "Films"), "an NFS-only share is not in smb.conf")
+  const bob: any[] = await desiredNfsExports(prisma, { kind: "update", id: "s-docs", patch: { ...base, nfsWriteAs: "bob" } } as any)
+  assert.equal(bob[0].writeAs, "", "bob only reads Docs: the export is read-only")
+  const ro: any[] = await desiredNfsExports(prisma, { kind: "update", id: "s-films", patch: { ...base, nfsWriteAs: "alice", readOnly: true } } as any)
+  assert.equal(ro[0].writeAs, "", "a read-only share exports read-only")
+  const admin: any[] = await desiredNfsExports(prisma, { kind: "update", id: "s-docs", patch: { ...base, nfsWriteAs: "admin" } } as any)
+  assert.equal(admin[0].writeAs, "admin", "an admin writes everywhere")
+}
+await testNfsExportsFollowWritePermission()
+
+async function testLanAddressIsTheServersOwn() {
+  const { lanAddress } = await import("../services/lan-address")
+  const v4 = (address: string, internal = false) => ({ address, family: "IPv4", internal, netmask: "255.255.255.0", mac: "", cidr: null }) as any
+  assert.equal(lanAddress({
+    lo: [v4("127.0.0.1", true)], docker0: [v4("172.17.0.1")], "br-1a2b": [v4("172.18.0.1")], veth9: [v4("10.0.5.1")],
+    tailscale0: [v4("100.64.0.3")], enp3s0: [{ address: "fe80::1", family: "IPv6", internal: false } as any, v4("192.168.1.222")],
+  }), "192.168.1.222")
+  assert.equal(lanAddress({ wlan0: [v4("10.0.0.7")], virbr0: [v4("192.168.122.1")] }), "10.0.0.7", "a VM bridge is not the LAN")
+  assert.equal(lanAddress({ lo: [v4("127.0.0.1", true)], eth0: [v4("203.0.113.5")] }), "", "a public address is not a LAN address")
+  const two = { ens18: [v4("192.168.1.48")], ens19: [v4("10.42.0.4")] }
+  assert.equal(lanAddress(two, "10.42.0.77"), "10.42.0.4", "the address on the viewer's own network")
+  assert.equal(lanAddress(two, "::ffff:192.168.1.5"), "192.168.1.48")
+  assert.equal(lanAddress(two, "203.0.113.9"), "192.168.1.48", "from outside: the first one")
+}
+await testLanAddressIsTheServersOwn()
+
+async function testNfsOnlySharesDoNotNeedSamba() {
+  const sp = await import("../services/sharing-plan")
+  let sent: any = null
+  const deps: any = {
+    smbdInstalled: async () => false, defs: async () => [], nfs: async () => [{ path: "/srv/x" }],
+    worker: async (_s: string, p: any) => { sent = p; return { steps: [], fingerprint: "f" } },
+  }
+  await sp.previewShareChange("share.update", "x", deps)
+  assert.deepEqual(sent.input.nfs, { exports: [{ path: "/srv/x" }] })
+  await assert.rejects(sp.previewShareChange("share.update", "x", { ...deps, defs: async () => [{ name: "x" }] }),
+    (e: any) => e.code === "PRECONDITION_FAILED")
+  await assert.rejects(sp.previewShareChange("share.update", "x", { ...deps, worker: async () => { throw Object.assign(new Error("no"), { code: "NFS_MISSING" }) } }),
+    (e: any) => e.code === "PRECONDITION_FAILED" && /NFS/.test(e.message))
+}
+await testNfsOnlySharesDoNotNeedSamba()
 
 async function testSharingNonAdminSeesOnlyOwnData() {
   const view = await import("../services/sharing-view.service")

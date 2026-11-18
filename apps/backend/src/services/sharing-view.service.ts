@@ -85,7 +85,8 @@ export interface ReachableShare {
 /** The enabled shares the viewer can open, with what they may do there. */
 export async function reachableShares(prisma: PrismaClient, v: Viewer): Promise<ReachableShare[]> {
   const shares = await prisma.share.findMany({
-    where: { enabled: true },
+    // NFS has no sign-in: only what a person opens with their account.
+    where: { enabled: true, smb: true },
     include: { place: { select: { name: true, path: true } } },
     orderBy: { createdAt: "asc" },
   })

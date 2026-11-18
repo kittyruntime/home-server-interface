@@ -25,7 +25,7 @@ const { t } = useI18n()
             <HistoryIcon v-if="s.timeMachine" class="size-3.5 shrink-0 text-base-content/60" :aria-label="t('sharing.detail.timeMachineOption')" role="img" />
           </p>
           <p class="truncate text-xs text-base-content/70">
-            {{ s.placeName }} · {{ s.readOnly ? t('sharing.list.readOnly') : t('sharing.list.readWrite') }}
+            {{ s.placeName }} · {{ s.readOnly ? t('sharing.list.readOnly') : t('sharing.list.readWrite') }}<template v-if="s.nfs"> · {{ s.smb ? 'SMB, NFS' : 'NFS' }}</template>
           </p>
         </div>
         <Badge v-if="!s.enabled" variant="secondary">{{ t('sharing.list.disabled') }}</Badge>

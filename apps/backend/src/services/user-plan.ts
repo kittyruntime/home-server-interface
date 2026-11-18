@@ -18,6 +18,10 @@ export interface UserPlanDeps {
   /** Share definitions as they are now. */
   currentShareDefs(): Promise<unknown[]>
   smbSettings?(): Promise<unknown>
+  /** NFS exports without the deleted user as the owner of new files. */
+  nfsExports?(): Promise<unknown[]>
+  /** NFS exports as they are now. */
+  currentNfsExports?(): Promise<unknown[]>
   serialize<T>(fn: () => Promise<T>): Promise<T>
   resync(): Promise<void>
   commit(): Promise<unknown>
@@ -82,8 +86,12 @@ async function deletePreviews(username: string, deps: UserPlanDeps) {
   let smb: (Preview & { input: Record<string, unknown> }) | null = null
   const shares = await deps.shareDefs()
   const named = JSON.stringify(shares) !== JSON.stringify(await deps.currentShareDefs())
-  if (named && await deps.smbdInstalled()) {
-    const input = { shares, settings: await deps.smbSettings?.() }
+  // An export whose new files are the user's must not keep their uid, which a
+  // later account could get.
+  const exports = deps.nfsExports ? await deps.nfsExports() : undefined
+  const nfsNamed = exports !== undefined && JSON.stringify(exports) !== JSON.stringify(await deps.currentNfsExports?.())
+  if (nfsNamed || (named && await deps.smbdInstalled())) {
+    const input = { shares, settings: await deps.smbSettings?.(), ...(exports && { nfs: { exports } }) }
     smb = { ...await preview(deps, "smb.sync", input), input }
   }
   const group = await preview(deps, "group.leave", { username })

@@ -567,6 +567,27 @@ sys.exit(0 if ok and bad else 1)' <<<"$events" && break
   log "SMB: a share becomes a Time Machine destination and back"
 }
 
+# NFS: the mirror exported to the VM itself. Every client user writes as the
+# chosen account; with nobody chosen the export is read-only; turning NFS off
+# removes HSI's exports file.
+nfs_feature() {
+  local share mount='mkdir -p /mnt/nfs && mount -t nfs -o vers=4.2 127.0.0.1:/srv/vm-mirror /mnt/nfs'
+  share=$(api_query sharing.list | python3 -c 'import json,sys; print(next(s["id"] for s in json.load(sys.stdin) if s["effectiveName"]=="mirror"))')
+  apply_plan share.update "{\"id\":\"$share\",\"nfs\":true,\"nfsClients\":\"127.0.0.1\",\"nfsWriteAs\":\"vmuser\"}" sharing >/dev/null
+  vm_ssh 'exportfs -v' | grep -q '^/srv/vm-mirror' || { vm_ssh 'cat /etc/exports.d/hsi.exports; exportfs -v'; fail "the mirror is not exported over NFS"; }
+  vm_ssh "$mount && echo nfs > /mnt/nfs/from-nfs.txt; r=\$?; umount /mnt/nfs; exit \$r" || fail "could not write over NFS"
+  [[ $(vm_ssh 'stat -c %U:%G /srv/vm-mirror/from-nfs.txt') == vmuser:hsi-share ]] \
+    || fail "the file written over NFS is $(vm_ssh 'stat -c %U:%G /srv/vm-mirror/from-nfs.txt'), expected vmuser's in the share group"
+  api_get sharing.detail "{\"id\":\"$share\"}" | python3 -c 'import json,sys; n=json.load(sys.stdin)["nfs"]; assert n and n["writeAs"]=="vmuser", n' \
+    || fail "the share's detail does not show NFS"
+  apply_plan share.update "{\"id\":\"$share\",\"nfsWriteAs\":\"\"}" sharing >/dev/null
+  vm_ssh "$mount && ! touch /mnt/nfs/refused.txt 2>/dev/null; r=\$?; umount /mnt/nfs; exit \$r" || fail "a read-only NFS export took a write"
+  apply_plan share.update "{\"id\":\"$share\",\"nfs\":false}" sharing >/dev/null
+  vm_ssh '! test -e /etc/exports.d/hsi.exports && ! exportfs -v | grep -q vm-mirror' || fail "turning NFS off left the export"
+  vm_ssh 'rm -f /srv/vm-mirror/from-nfs.txt'
+  log "NFS: written as the chosen account, read-only without one, removed when turned off"
+}
+
 stack_state() { vm_ssh "docker compose ls -a --format json" | python3 -c 'import json,sys; s=[x for x in json.load(sys.stdin) if x["Name"]==sys.argv[1]]; print(s[0]["Status"] if s else "absent")' "$1"; }
 
 # An App Store app: installed, its port changed, removed; each step checked
@@ -1046,8 +1067,8 @@ case "$scenario" in
     expect_mirror; expect_mirror_data
     ;;
   features)
-    { vm_apt_install samba smbclient docker.io docker-compose && vm_ssh 'docker compose version'; } \
-      || fail "could not install Samba and Docker"
+    { vm_apt_install samba smbclient nfs-kernel-server docker.io docker-compose && vm_ssh 'docker compose version'; } \
+      || fail "could not install Samba, the NFS server and Docker"
     install_build
     expect_running "$version"
     api_setup
@@ -1061,6 +1082,7 @@ case "$scenario" in
     account_feature
     files_feature
     smb_feature
+    nfs_feature
     trash_feature
     mcp_feature
     assistant_feature

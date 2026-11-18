@@ -1271,6 +1271,7 @@ func main() {
 		"root.sharing.serviceAction":     handleSharingServiceAction,
 		"root.sharing.disconnect":        handleSharingDisconnect,
 		"root.sharing.discovery":         handleSharingDiscovery,
+		"root.sharing.nfs":               handleSharingNfs,
 	} {
 		h, s := handler, subj // capture
 		if _, err := nc.Subscribe(subj, func(msg *nats.Msg) { serveSync(nc, s, h, msg) }); err != nil {

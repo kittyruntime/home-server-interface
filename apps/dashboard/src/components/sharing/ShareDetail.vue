@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import LoadingState from '../ui/LoadingState.vue'
 import BusyLabel from '../ui/BusyLabel.vue'
 import ConnectBlock from './ConnectBlock.vue'
+import NfsBlock from './NfsBlock.vue'
 import ShareAccess from './ShareAccess.vue'
 import ShareSessions from './ShareSessions.vue'
 import ShareActivity from './ShareActivity.vue'
@@ -151,10 +152,15 @@ async function disconnect(session: ShareSession) {
         </div>
       </div>
 
-      <ConnectBlock :share="data.share.name" :guest-ok="data.share.guestOk" v-bind="connect" />
+      <ConnectBlock v-if="data.share.smb" :share="data.share.name" :guest-ok="data.share.guestOk" v-bind="connect"
+        :title="data.share.nfs ? t('sharing.detail.connectSmb') : undefined" />
+      <NfsBlock v-if="data.share.nfs && data.nfs" :share="data.share.name" :path="data.share.placePath"
+        :clients="data.share.nfsClients" :write-as="data.nfs.writeAs" :connected="data.nfs.clients" :host="connect.host" />
       <ShareAccess :access="data.access" />
-      <ShareSessions :sessions="data.sessions" can-disconnect :busy-key="disconnecting" @disconnect="disconnect" />
-      <ShareActivity :events="data.recent" :sessions="data.sessions" show-user see-all :max-lines="6" @see-all="emit('seeAll', data.share.name)" />
+      <template v-if="data.share.smb">
+        <ShareSessions :sessions="data.sessions" can-disconnect :busy-key="disconnecting" @disconnect="disconnect" />
+        <ShareActivity :events="data.recent" :sessions="data.sessions" show-user see-all :max-lines="6" @see-all="emit('seeAll', data.share.name)" />
+      </template>
       <ShareChecks :checks="data.checks" :read-only="data.share.readOnly" />
     </template>
   </div>

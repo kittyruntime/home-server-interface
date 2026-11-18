@@ -3,6 +3,7 @@ import { holdFor } from "./volume-guard"
 import { requestSync } from "../nats"
 import { log } from "../utils/log"
 import { overlayShares, type ShareChange } from "./sharing-plan"
+import { parseNfsClients } from "./nfs"
 import { noteRenderedSmb, smbAuditSupported, workerSmbSettings, type SmbSettingsPatch } from "./smb-events.service"
 
 /** The settings every smb.sync input carries, so no sync drops them. */
@@ -146,7 +147,7 @@ export async function desiredShareDefs(prisma: PrismaClient, change?: ShareChang
     // A fixed order: the plan fingerprint and smb.conf must not depend on scan order.
     orderBy: { createdAt: "asc" },
   })
-  const shares = overlayShares(rows, change).filter(s => s.enabled)
+  const shares = overlayShares(rows, change).filter(s => s.enabled && s.smb !== false)
 
   // Admins always have full access in the app: mirror that into Samba so an
   // admin can read/write every share without needing an explicit per-place grant.
@@ -176,6 +177,35 @@ export async function desiredShareDefs(prisma: PrismaClient, change?: ShareChang
   return opts.withoutUser ? dropUserFromDefs(defs, opts.withoutUser) : defs
 }
 
+/** The NFS exports, with `change` applied as `desiredShareDefs` does. New files
+ *  belong to the chosen account only while it may write to the place; else
+ *  the export is read-only. */
+export async function desiredNfsExports(prisma: PrismaClient, change?: ShareChange, opts: { withoutUser?: string } = {}) {
+  const rows = await prisma.share.findMany({
+    include: { place: { select: { name: true, path: true } } },
+    orderBy: { createdAt: "asc" },
+  })
+  const shares = overlayShares(rows, change).filter(s => s.enabled && s.nfs)
+  const adminLinux = await adminLinuxUsers(prisma)
+  const holds = await prisma.volumeHold.findMany()
+  const out = []
+  for (const s of shares) {
+    const parsed = parseNfsClients(s.nfsClients ?? "")
+    if ("error" in parsed) continue
+    const writers = new Set([...(await resolveShareUsers(prisma, s.placeId)).writeUsers, ...adminLinux])
+    if (opts.withoutUser) writers.delete(opts.withoutUser)
+    const owner = s.nfsWriteAs ?? ""
+    out.push({
+      path: s.place.path,
+      clients: parsed.clients,
+      writeAs: !s.readOnly && owner && writers.has(owner) ? owner : "",
+      fsid: s.id,
+      unavailable: holdFor(holds, s.place.path) !== null,
+    })
+  }
+  return out
+}
+
 // Share syncs and applied share plans run one at a time: a sync reading the
 // database while a plan is between its smb.conf write and its database write
 // would put the old state back.
@@ -191,7 +221,7 @@ export function withShareLock<T>(fn: () => Promise<T>): Promise<T> {
 export async function syncShares(prisma: PrismaClient): Promise<void> {
   await withShareLock(async () => {
     const settings = await currentSmbSettings(prisma)
-    await requestSync("root.sharing.sync", { shares: await desiredShareDefs(prisma), settings })
+    await requestSync("root.sharing.sync", { shares: await desiredShareDefs(prisma), settings, nfs: { exports: await desiredNfsExports(prisma) } })
     noteRenderedSmb(settings)
   })
 }

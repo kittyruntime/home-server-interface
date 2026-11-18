@@ -8,6 +8,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **NFS**: a share can be exported over NFS to the machines listed on it, as
+  well as or instead of SMB. Every NFS client writes as one account chosen
+  among the Place's writers (read-only when none is chosen), the share's detail
+  shows how to mount it from Linux and macOS and which machines have it
+  mounted, and the settings show the NFS server's state.
+- **Connect addresses use the NAS's local address**: when HSI is opened
+  through a domain name or a proxy, the SMB and NFS addresses of a share now
+  use the server's address on the local network (the one on the viewer's own
+  network when it has several), unless the NAS announces its network name.
 - **Time Machine over SMB**: a share can be a Time Machine destination, with an
   optional size limit. Macs find it in Time Machine's list of disks when macOS
   discovery is on, and the share's detail explains how to pick it otherwise.

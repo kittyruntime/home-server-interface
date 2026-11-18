@@ -11,4 +11,8 @@ model Share {
   hidden    Boolean  @default(false) // left out of network browsing
   timeMachine      Boolean @default(false) // usable as a Time Machine destination
   timeMachineMaxGb Int? // Time Machine size cap in GB; null = no cap
+  smb              Boolean @default(true) // offered over SMB
+  nfs              Boolean @default(false) // exported over NFS
+  nfsClients       String  @default("") // space-separated addresses or networks allowed over NFS
+  nfsWriteAs       String  @default("") // HSI username new NFS files belong to; "" = read-only export
 }

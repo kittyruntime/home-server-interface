@@ -34,3 +34,17 @@ export function shareAddresses(o: ShareAddressInput): { os: ShareOs; address: st
     { os: 'linux', address: `smb://${url}/${path}` },
   ]
 }
+
+export interface NfsAddressInput { host: string; path: string; share: string }
+
+const shellQuote = (s: string) => (/^[A-Za-z0-9_@%+=:,./[\]-]+$/.test(s) ? s : `'${s.replace(/'/g, `'\\''`)}'`)
+
+/** How to mount an NFS export: a command for Linux, an address for the macOS Finder. */
+export function nfsAddresses(o: NfsAddressInput): { os: 'linux' | 'macos'; address: string }[] {
+  const host = urlHost(o.host)
+  const encoded = o.path.split('/').map(encodeURIComponent).join('/')
+  return [
+    { os: 'linux', address: `sudo mount -t nfs ${shellQuote(`${host}:${o.path}`)} ${shellQuote(`/mnt/${o.share}`)}` },
+    { os: 'macos', address: `nfs://${host}${encoded}` },
+  ]
+}
