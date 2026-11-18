@@ -71,6 +71,13 @@ async function refresh() {
 }
 onMounted(() => { void refresh(); void refreshHolds() })
 
+const retrying = ref(false)
+async function retry() {
+  retrying.value = true
+  await refresh()
+  retrying.value = false
+}
+
 function select(id: string) {
   if (id !== selectedId.value) detail.value = null
   selectedId.value = id
@@ -143,11 +150,16 @@ const protocols = (s: ShareListRow) => [s.smb && 'SMB', s.nfs && 'NFS', s.sftp &
       <AlertDescription class="min-w-0 flex-1">{{ smbState === 'missing' ? t('sharing.banner.missing') : t('sharing.banner.stopped') }}</AlertDescription>
       <Button variant="outline" size="xs" class="shrink-0" @click="emit('openServices')">{{ t('sharing.list.openServices') }}</Button>
     </Alert>
-    <Alert v-if="error" variant="destructive"><AlertDescription>{{ error }}</AlertDescription></Alert>
+    <Alert v-if="error" variant="destructive" class="flex flex-wrap items-center gap-x-4 gap-y-2">
+      <AlertDescription class="min-w-0 flex-1">{{ error }}</AlertDescription>
+      <Button variant="outline" size="xs" class="shrink-0" :disabled="retrying" @click="retry">
+        <BusyLabel :busy="retrying">{{ t('common.retry') }}</BusyLabel>
+      </Button>
+    </Alert>
 
     <LoadingState v-if="loading" variant="compact" />
 
-    <template v-else>
+    <template v-else-if="!(error && shares.length === 0)">
       <!-- Narrow: the detail replaces the list, with a way back. -->
       <div v-if="narrow && selectedId" class="flex items-center gap-2">
         <Button variant="ghost" size="sm" class="-ml-2 mr-auto gap-1 text-primary" @click="selectedId = null; detail = null">
@@ -161,7 +173,7 @@ const protocols = (s: ShareListRow) => [s.smb && 'SMB', s.nfs && 'NFS', s.sftp &
             :title="availablePlaces.length === 0 ? t('sharing.list.allShared') : undefined" @click="editing = 'new'">
             <PlusIcon class="size-4" />{{ t('sharing.list.newShare') }}
           </Button>
-          <template v-if="!narrow || selectedId">
+          <template v-if="shares.length && (!narrow || selectedId)">
             <Button variant="ghost" size="sm" :disabled="!selected || !detail || !!pending" @click="editing = 'edit'">
               <PencilIcon class="size-4" />{{ t('sharing.detail.edit') }}
             </Button>
@@ -169,20 +181,20 @@ const protocols = (s: ShareListRow) => [s.smb && 'SMB', s.nfs && 'NFS', s.sftp &
               <PowerIcon class="size-4" />
               <BusyLabel :busy="pending === 'toggle'">{{ selected && !selected.enabled ? t('sharing.detail.enable') : t('sharing.detail.disable') }}</BusyLabel>
             </Button>
-            <Button variant="ghost" size="sm" class="text-error" :disabled="!selected || !!pending" @click="remove">
+            <Button variant="ghost" size="sm" :class="selected && !pending && 'text-error'" :disabled="!selected || !!pending" @click="remove">
               <Trash2Icon class="size-4" />
               <BusyLabel :busy="pending === 'remove'">{{ t('sharing.detail.delete') }}</BusyLabel>
             </Button>
           </template>
-          <span v-if="!narrow" class="ml-auto pr-1 text-xs text-base-content/70 tabular-nums">{{ t('sharing.list.count', { n: shares.length }, shares.length) }}</span>
+          <span v-if="!narrow && shares.length" class="ml-auto pr-1 text-xs text-base-content/70 tabular-nums">{{ t('sharing.list.count', { n: shares.length }, shares.length) }}</span>
         </div>
 
-        <p v-if="shares.length === 0" class="px-4 py-10 text-center text-sm text-base-content/70">{{ t('sharing.list.empty') }}</p>
+        <p v-if="shares.length === 0 && !error" class="px-4 py-10 text-center text-sm text-base-content/70">{{ t('sharing.list.empty') }}</p>
 
         <!-- Wide: a table of every share. -->
-        <div v-else-if="!narrow" class="max-h-[22rem] overflow-auto">
+        <div v-else-if="!narrow" class="overflow-x-auto">
           <table class="table table-sm">
-            <thead class="sticky top-0 z-[1] bg-base-100">
+            <thead>
               <tr class="text-xs text-base-content/70">
                 <th scope="col" class="font-medium">{{ t('sharing.list.colName') }}</th>
                 <th scope="col" class="font-medium">{{ t('sharing.list.colLocation') }}</th>
@@ -218,8 +230,11 @@ const protocols = (s: ShareListRow) => [s.smb && 'SMB', s.nfs && 'NFS', s.sftp &
                   <span v-else-if="s.problem" class="flex items-center gap-1.5 text-warning"><CircleAlertIcon class="size-3.5" aria-hidden="true" />{{ t('sharing.list.problem') }}</span>
                   <span v-else class="flex items-center gap-1.5 text-success"><span class="size-1.5 rounded-full bg-success" aria-hidden="true" />{{ t('sharing.detail.active') }}</span>
                 </td>
-                <td class="text-right tabular-nums" :class="s.connected > 0 ? 'font-medium text-base-content' : 'text-base-content/50'">
-                  {{ s.connected > 0 ? s.connected : '0' }}
+                <td class="text-right tabular-nums">
+                  <span v-if="s.connected > 0" class="inline-flex items-center gap-1.5 font-medium text-base-content">
+                    <span class="size-1.5 rounded-full bg-success" aria-hidden="true" />{{ s.connected }}
+                  </span>
+                  <span v-else class="text-base-content/50"><span aria-hidden="true">–</span><span class="sr-only">{{ t('sharing.list.nobodyConnected') }}</span></span>
                 </td>
               </tr>
             </tbody>

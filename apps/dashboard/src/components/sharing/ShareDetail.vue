@@ -57,11 +57,8 @@ onMounted(() => {
 })
 onUnmounted(() => { if (timer) clearInterval(timer) })
 
-const live = computed(() => {
-  const d = data.value
-  if (!d) return 0
-  return (d.share.smb ? d.sessions.length : 0) + (d.share.nfs ? d.nfs?.clients.length ?? 0 : 0) + (d.share.sftp ? d.sftp?.sessions.length ?? 0 : 0)
-})
+// People on it now over every protocol, counted like the list does.
+const live = computed(() => data.value?.connected ?? 0)
 const warnings = computed(() => {
   const d = data.value
   if (!d) return 0
@@ -128,9 +125,9 @@ async function disconnect(session: ShareSession) {
             <ConnectBlock v-if="data.share.smb" :share="data.share.name" :guest-ok="data.share.guestOk" v-bind="connect" title="SMB" />
             <p v-if="data.share.smb && data.share.hidden" class="-mt-4 text-xs text-base-content/70">{{ t('sharing.detail.hiddenNote') }}</p>
             <NfsBlock v-if="data.share.nfs && data.nfs" :share="data.share.name" :path="data.share.placePath"
-              :clients="data.share.nfsClients" :write-as="data.nfs.writeAs" :host="connect.host" />
+              :clients="data.share.nfsClients" :write-as="data.nfs.writeAs" :host="connect.host" title="NFS" />
             <SftpBlock v-if="data.share.sftp && data.sftp" :share="data.share.name" :user="currentUsername ?? 'admin'" :port="data.sftp.port"
-              :host="connect.host" :left-out="data.sftp.leftOut" />
+              :host="connect.host" :left-out="data.sftp.leftOut" title="SFTP" />
           </TabsContent>
 
           <TabsContent value="access" class="space-y-6">

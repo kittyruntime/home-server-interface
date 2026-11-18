@@ -17,6 +17,8 @@ const props = defineProps<{
   connected?: string[]
   /** The server's local address; the browser's host otherwise. */
   host?: string
+  /** A heading naming only the protocol, under a tab that already says Connect. */
+  title?: string
 }>()
 const { t } = useI18n()
 
@@ -27,7 +29,7 @@ const allowed = computed(() => props.clients.split(' ').filter(Boolean))
 
 <template>
   <section class="space-y-2">
-    <h4 class="text-sm font-semibold text-base-content">{{ t('sharing.nfs.title') }}</h4>
+    <h4 class="text-sm font-semibold text-base-content">{{ title ?? t('sharing.nfs.title') }}</h4>
     <AddressList :items="items" />
     <p class="text-xs text-base-content/80">
       {{ t('sharing.nfs.allowed') }}

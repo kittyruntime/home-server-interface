@@ -47,6 +47,18 @@ export function peopleConnected(sessions: SmbConnection[]): number {
   return new Set(sessions.map(s => s.user || `@${s.ip || s.client}`)).size
 }
 
+/**
+ * Distinct people on one share over every protocol: an account once however it
+ * connects, a guest or an NFS machine by address.
+ */
+export function peopleOnShare(now: { smb: SmbConnection[]; nfs: string[]; sftp: string[] }): number {
+  return new Set([
+    ...now.smb.map(s => s.user || `@${s.ip || s.client}`),
+    ...now.nfs.map(ip => `@${ip}`),
+    ...now.sftp,
+  ]).size
+}
+
 export interface EventFilter {
   share?: string
   user?: string
