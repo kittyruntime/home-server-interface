@@ -19,7 +19,7 @@ function keyOf(s: ShareSession): string {
 
 <template>
   <section class="space-y-2">
-    <h4 class="eyebrow">{{ title ?? t('sharing.detail.now') }}</h4>
+    <h4 class="text-sm font-semibold text-base-content">{{ title ?? t('sharing.detail.now') }}</h4>
     <p v-if="sessions.length === 0" class="text-sm text-base-content/70">{{ t('sharing.detail.nobody') }}</p>
     <ul v-else class="divide-y divide-base-300/70">
       <li v-for="s in sessions" :key="keyOf(s)" class="flex items-center gap-3 py-2">

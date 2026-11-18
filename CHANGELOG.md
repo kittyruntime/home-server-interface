@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **Sharing**: the app is reorganized into Shared folders, File services,
+  Security and Journal. Shared folders is a table of every share (location,
+  protocols, access, state, people connected) with a toolbar for the selected
+  one, and its detail below in Connect, Access and Activity tabs; the share
+  editor has a tab per protocol (General, SMB, NFS, SFTP). File services gives
+  each protocol a card with its state, and SMB's settings sit in its card;
+  automatic blocking and blocked addresses move to Security. The number of
+  people connected to a share now counts SMB, NFS and SFTP alike, in the table
+  and in the detail.
+
 ## [1.86.0] - 2026-11-18
 
 ### Added

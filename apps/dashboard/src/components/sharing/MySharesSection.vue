@@ -138,8 +138,8 @@ async function repair() {
           <Badge v-if="s.guestOk" variant="outline">{{ t('sharing.list.guest') }}</Badge>
         </div>
         <ConnectBlock v-if="s.smb" :share="s.name" :guest-ok="s.guestOk" :username="mine.username" :netbios-name="mine.netbiosName" :wsd="mine.discovery.wsd" :mdns="mine.discovery.mdns" :host="mine.lanAddress || undefined"
-          :title="s.sftp && mine.sftp?.usable ? t('sharing.detail.connectSmb') : undefined" />
-        <SftpBlock v-if="s.sftp && mine.sftp?.usable" :share="s.name" :user="mine.username" :port="mine.sftp.port" :host="mine.lanAddress || undefined" />
+          title="SMB" />
+        <SftpBlock v-if="s.sftp && mine.sftp?.usable" :share="s.name" :user="mine.username" :port="mine.sftp.port" title="SFTP" :host="mine.lanAddress || undefined" />
       </Card>
 
       <Card class="gap-6 p-4 @2xl:p-5">

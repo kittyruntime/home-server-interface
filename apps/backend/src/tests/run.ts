@@ -4390,6 +4390,15 @@ async function testOneMountIsOneSession() {
 }
 await testOneMountIsOneSession()
 
+async function testConnectedCountsEveryProtocol() {
+  const view = await import("../services/sharing-view.service")
+  const smb = [{ user: "camille", share: "Films", client: "PC", ip: "10.0.0.2", connectedAt: "2026-11-18T10:00:00Z" }]
+  assert.equal(view.peopleOnShare({ smb, nfs: ["10.0.0.7"], sftp: ["leo"] }), 3, "one person per protocol")
+  assert.equal(view.peopleOnShare({ smb, nfs: [], sftp: ["camille"] }), 1, "one person over SMB and SFTP counts once")
+  assert.equal(view.peopleOnShare({ smb: [], nfs: ["10.0.0.7", "10.0.0.8"], sftp: [] }), 2, "NFS machines count by address")
+}
+await testConnectedCountsEveryProtocol()
+
 async function testRepairPasswordVerifiesFirst() {
   const view = await import("../services/sharing-view.service")
   const { prisma } = fakeSharingDb()

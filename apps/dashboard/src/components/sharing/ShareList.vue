@@ -7,7 +7,7 @@ import type { ShareListRow } from '../../lib/sharing-types'
 defineProps<{ shares: ShareListRow[]; selectedId: string | null; unavailable: (path: string) => boolean }>()
 const emit = defineEmits<{ select: [id: string] }>()
 const { t } = useI18n()
-const protocols = (s: ShareListRow) => [s.smb && 'SMB', s.nfs && 'NFS', s.sftp && 'SFTP'].filter(Boolean).join(', ')
+const protocols = (s: ShareListRow) => [s.smb && 'SMB', s.nfs && 'NFS', s.sftp && 'SFTP'].filter(Boolean) as string[]
 </script>
 
 <template>
@@ -26,7 +26,10 @@ const protocols = (s: ShareListRow) => [s.smb && 'SMB', s.nfs && 'NFS', s.sftp &
             <HistoryIcon v-if="s.timeMachine" class="size-3.5 shrink-0 text-base-content/60" :aria-label="t('sharing.detail.timeMachineOption')" role="img" />
           </p>
           <p class="truncate text-xs text-base-content/70">
-            {{ s.placeName }} · {{ s.readOnly ? t('sharing.list.readOnly') : t('sharing.list.readWrite') }}<template v-if="s.nfs || s.sftp"> · {{ protocols(s) }}</template>
+            {{ s.placeName }} · {{ s.readOnly ? t('sharing.list.readOnly') : t('sharing.list.readWrite') }}
+          </p>
+          <p class="mt-1 flex gap-1">
+            <span v-for="p in protocols(s)" :key="p" class="badge badge-ghost badge-xs font-medium">{{ p }}</span>
           </p>
         </div>
         <Badge v-if="!s.enabled" variant="secondary">{{ t('sharing.list.disabled') }}</Badge>

@@ -23,7 +23,7 @@ import {
 import { planAuditMeta } from "../../services/storage-plan"
 import { getSmbSettings, liftBlock, listBlocks, smbServiceState } from "../../services/smb-events.service"
 import {
-  groupSessions, listEvents, peopleConnected, reachableShares, repairNetworkPassword, viewerOf, visibleSessions,
+  groupSessions, listEvents, peopleConnected, peopleOnShare, reachableShares, repairNetworkPassword, viewerOf, visibleSessions,
   type SmbConnection, type SmbSession,
 } from "../../services/sharing-view.service"
 import { syncSystemPassword, verifyPassword } from "../../services/user.service"
@@ -298,8 +298,9 @@ export const sharingRouter = router({
       include: { place: { select: { id: true, name: true, path: true } } },
       orderBy: { createdAt: "asc" },
     })
-    const [sessions, facts, adminLinux] = await Promise.all([
+    const [sessions, facts, adminLinux, nfs, sftp] = await Promise.all([
       sessionsNow(), sambaFacts([...new Set(shares.map(s => s.place.path))]), adminLinuxUsers(ctx.prisma),
+      shares.some(s => s.nfs) ? nfsNow() : null, shares.some(s => s.sftp) ? sftpNow([]) : null,
     ])
     return Promise.all(
       shares.map(async (s) => {
@@ -310,7 +311,11 @@ export const sharingRouter = router({
         return {
           id: s.id,
           hidden: s.hidden,
-          connected: peopleConnected(sessions.filter(c => c.share === name)),
+          connected: peopleOnShare({
+            smb: s.smb ? sessions.filter(c => c.share === name) : [],
+            nfs: s.nfs && nfs ? nfs.clients.filter(ip => clientAllowed(ip, s.nfsClients.split(" ").filter(Boolean))) : [],
+            sftp: s.sftp && sftp ? sftp.sessions.filter(u => users.validUsers.includes(u) || adminLinux.includes(u)) : [],
+          }),
           problem: s.enabled && (users.excludedUsernames.length > 0 || (facts.sambaUsers.size > 0 && noPassword) || (dir !== undefined && !(dir.exists && dir.groupWritable && dir.setgid))),
           placeId: s.placeId,
           placeName: s.place.name,
@@ -369,6 +374,18 @@ export const sharingRouter = router({
     access.sort((a, b) => a.username.localeCompare(b.username))
     const dir = facts.dirs.get(s.place.path) ?? null
     const recent = await listEvents(ctx.prisma, viewer, { share: name, limit: 40 })
+    const sftpPart = s.sftp ? await sftpNow([...new Set([...users.validUsers, ...adminLinux])]).then(st => ({
+      port: st.port,
+      // Accounts with a login shell keep their own SSH and get no SFTP view.
+      leftOut: st.leftOut,
+      sessions: st.sessions.filter(u => users.validUsers.includes(u) || adminLinux.includes(u)),
+    })) : null
+    const nfsPart = s.nfs ? await nfsNow().then(n => ({
+      clients: n.clients.filter(ip => clientAllowed(ip, s.nfsClients.split(" ").filter(Boolean))),
+      // The account new files belong to, unless it lost write access.
+      writeAs: !s.readOnly && s.nfsWriteAs && [...users.writeUsers, ...adminLinux].includes(s.nfsWriteAs) ? s.nfsWriteAs : "",
+    })) : null
+    const smbHere = sessions.filter(c => c.share === name)
     return {
       share: {
         id: s.id, name, placeName: s.place.name, placePath: s.place.path, enabled: s.enabled,
@@ -376,19 +393,12 @@ export const sharingRouter = router({
         timeMachine: s.timeMachine, timeMachineMaxGb: s.timeMachineMaxGb,
         smb: s.smb, nfs: s.nfs, nfsClients: s.nfsClients, nfsWriteAs: s.nfsWriteAs, sftp: s.sftp,
       },
-      sftp: s.sftp ? await sftpNow([...new Set([...users.validUsers, ...adminLinux])]).then(st => ({
-        port: st.port,
-        // Accounts with a login shell keep their own SSH and get no SFTP view.
-        leftOut: st.leftOut,
-        sessions: st.sessions.filter(u => users.validUsers.includes(u) || adminLinux.includes(u)),
-      })) : null,
-      nfs: s.nfs ? await nfsNow().then(n => ({
-        clients: n.clients.filter(ip => clientAllowed(ip, s.nfsClients.split(" ").filter(Boolean))),
-        // The account new files belong to, unless it lost write access.
-        writeAs: !s.readOnly && s.nfsWriteAs && [...users.writeUsers, ...adminLinux].includes(s.nfsWriteAs) ? s.nfsWriteAs : "",
-      })) : null,
+      sftp: sftpPart,
+      nfs: nfsPart,
+      // Everyone on it now, over every protocol: what the list shows.
+      connected: peopleOnShare({ smb: s.smb ? smbHere : [], nfs: nfsPart?.clients ?? [], sftp: sftpPart?.sessions ?? [] }),
       access: access.map(a => ({ ...a, networkPassword: facts.sambaUsers.has(a.linuxUsername) })),
-      sessions: sessions.filter(c => c.share === name),
+      sessions: smbHere,
       checks: {
         dirOk: dir === null ? null : dir.exists && dir.groupWritable && dir.setgid,
         dirExists: dir?.exists ?? null,

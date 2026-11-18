@@ -5,9 +5,11 @@ import { cn } from "@/lib/utils"
 import { nextIndex } from "@/lib/menu-navigation"
 import { tabsKey } from "./context"
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   class?: HTMLAttributes["class"]
-}>()
+  /** box: segmented control; border: underlined tabs over a panel. */
+  variant?: "box" | "border"
+}>(), { variant: "box" })
 
 const ctx = inject(tabsKey)!
 const el = ref<HTMLElement | null>(null)
@@ -56,7 +58,7 @@ function onKeydown(event: KeyboardEvent) {
     :aria-orientation="ctx.orientation.value"
     data-slot="tabs-list"
     :data-orientation="ctx.orientation.value"
-    :class="cn('tabs tabs-box w-fit', ctx.orientation.value === 'vertical' && 'flex-col', props.class)"
+    :class="cn('tabs w-fit', props.variant === 'border' ? 'tabs-border' : 'tabs-box', ctx.orientation.value === 'vertical' && 'flex-col', props.class)"
     @focusout="onFocusout"
     @keydown="onKeydown"
   >
