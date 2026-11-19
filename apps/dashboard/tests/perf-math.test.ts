@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { niceMax, pushSample, sortProcesses, matchesProcess, heat } from '../src/lib/perf-math.ts'
+import { niceMax, pushSample, sortProcesses, matchesProcess, groupProcesses, rankGroups, climbers } from '../src/lib/perf-math.ts'
 
 test('the chart scale rounds up to a readable value', () => {
   assert.equal(niceMax([0, 0]), 1024, 'an idle rate still gets a scale')
@@ -40,13 +40,6 @@ test('search matches name, command, user or pid', () => {
   assert.ok(!matchesProcess(x, 'nginx'))
 })
 
-test('heat grows with the share of the machine', () => {
-  assert.equal(heat(0), 0)
-  assert.equal(heat(100), 4)
-  assert.equal(heat(3), 1)
-  assert.equal(heat(30), 3)
-})
-
 test('readable uptime, rate and clock speed', async () => {
   const { fmtUptime, fmtRate, fmtGhz } = await import('../src/lib/perf-math.ts')
   assert.equal(fmtUptime(4 * 86400 + 3 * 3600 + 12 * 60 + 5), '4:03:12:05')
@@ -65,4 +58,32 @@ test('a rate scale lands on round binary units', async () => {
   assert.equal(niceBytes([40 * MB, 3 * MB]), 50 * MB)
   assert.equal(niceBytes([700 * 1024]), 1000 * 1024)
   assert.equal(niceBytes([1.5 * 1024 ** 3]), 2 * 1024 ** 3)
+})
+
+const proc = (pid: number, kind: string, owner: string, cpu: number, rss: number, disk = 0) =>
+  ({ pid, name: `p${pid}`, user: 'root', cmd: '', kind, owner, cpu, rss, readBps: disk, writeBps: 0 })
+
+test('groupProcesses adds up each owner', () => {
+  const groups = groupProcesses([proc(1, 'system', '', 1, 100), proc(2, 'app', 'jellyfin', 10, 300, 50), proc(3, 'app', 'jellyfin', 5, 200), proc(4, 'user', 'camille', 0, 10)])
+  const jf = groups.find(g => g.key === 'app:jellyfin')!
+  assert.equal(groups.length, 3)
+  assert.equal(jf.cpu, 15)
+  assert.equal(jf.rss, 500)
+  assert.equal(jf.disk, 50)
+  assert.deepEqual(jf.procs.map(p => p.pid), [2, 3])
+})
+
+test('rankGroups keeps the previous order between near values', () => {
+  const a = { key: 'a', cpu: 10.1, rss: 0, disk: 0 }
+  const b = { key: 'b', cpu: 10.2, rss: 0, disk: 0 }
+  const c = { key: 'c', cpu: 30, rss: 0, disk: 0 }
+  assert.deepEqual(rankGroups([a, b, c], 'cpu', ['a', 'b']).map(g => g.key), ['c', 'a', 'b'], 'a and b round to the same step')
+  assert.deepEqual(rankGroups([a, b, c], 'cpu', []).map(g => g.key), ['c', 'a', 'b'], 'then by key')
+  assert.deepEqual(rankGroups([a, { ...b, cpu: 11 }], 'cpu', ['a', 'b']).map(g => g.key), ['b', 'a'], 'a clear lead overtakes')
+})
+
+test('climbers lists the keys that moved up', () => {
+  assert.deepEqual(climbers(['a', 'b', 'c'], ['c', 'a', 'b']), ['c'])
+  assert.deepEqual(climbers([], ['a', 'b']), [], 'nothing climbs on the first ranking')
+  assert.deepEqual(climbers(['a'], ['b', 'a']), [], 'a newcomer is not a climber')
 })

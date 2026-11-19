@@ -1,113 +1,78 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { CircleStopIcon, LockIcon } from '@lucide/vue'
+import { CircleStopIcon } from '@lucide/vue'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import SearchInput from '../ui/SearchInput.vue'
-import SortableHeader from '../ui/SortableHeader.vue'
 import LoadingState from '../ui/LoadingState.vue'
 import ErrorState from '../ui/ErrorState.vue'
 import BusyLabel from '../ui/BusyLabel.vue'
+import OwnerRow from './rank/OwnerRow.vue'
+import ProcRow from './rank/ProcRow.vue'
+import { METRICS, RANK_GRID } from './rank/owners'
+import { useOwners } from './rank/use-owners'
 import { trpc } from '../../lib/trpc'
 import { useConfirm } from '../../lib/confirm'
 import { useToast } from '../../lib/toast'
-import { perf, subscribePerf } from '../../lib/perf-live'
-import { fmtRate, heat, matchesProcess, sortProcesses, type ProcessSort } from '../../lib/perf-math'
-import { formatBytes } from '../../lib/file-details'
+import { subscribePerf } from '../../lib/perf-live'
+import { loadProcs, procs, procsError, procsLoaded, procsPaused, subscribeProcs, type ProcessRow } from '../../lib/proc-live'
+import type { RankMetric } from '../../lib/perf-math'
 
-type Row = Awaited<ReturnType<typeof trpc.system.processes.query>>[number]
-
+// Every process, gathered under who it works for (the system, HSI, each app,
+// each account) and ranked live. Open an owner to see its processes; pick one
+// to read its command or end it.
+const props = defineProps<{ focus?: string | null }>()
 const { t } = useI18n()
 const { confirm } = useConfirm()
 const toast = useToast()
 
-const rows = ref<Row[]>([])
-const loaded = ref(false)
-const error = ref(false)
 const query = ref('')
-const sortKey = ref<ProcessSort>('cpu')
-const sortDir = ref<'asc' | 'desc'>('desc')
+const metric = ref<RankMetric>('cpu')
+const { rows, lit, others } = useOwners(metric, query)
+const open = reactive(new Set<string>())
 const selected = ref<string | null>(null)
 const ending = ref(false)
 /** Processes already asked to stop: a second request forces them. */
 const asked = reactive(new Set<string>())
 
-const keyOf = (r: Row) => `${r.pid}:${r.start}`
+const keyOf = (r: ProcessRow) => `${r.pid}:${r.start}`
+const searching = computed(() => query.value.trim() !== '')
+const isOpen = (key: string) => searching.value || open.has(key)
+const toggle = (key: string) => { if (!open.delete(key)) open.add(key) }
+const current = computed(() => procs.value.find(r => keyOf(r) === selected.value) ?? null)
+const total = computed(() => rows.value.reduce((n, g) => n + g.procs.length, 0))
 
-async function load() {
-  try {
-    rows.value = await trpc.system.processes.query()
-    error.value = false
-  } catch {
-    error.value = true
-  }
-  loaded.value = true
-}
-
-let timer: ReturnType<typeof setInterval> | null = null
-let stopPerf: (() => void) | null = null
-onMounted(() => {
-  void load()
-  stopPerf = subscribePerf()
-  timer = setInterval(() => { if (!document.hidden && !ending.value) void load() }, 3000)
-})
-onUnmounted(() => {
-  if (timer) clearInterval(timer)
-  stopPerf?.()
-})
-
-function sortBy(key: ProcessSort) {
-  if (sortKey.value === key) sortDir.value = sortDir.value === 'asc' ? 'desc' : 'asc'
-  else {
-    sortKey.value = key
-    sortDir.value = key === 'name' || key === 'user' || key === 'pid' ? 'asc' : 'desc'
-  }
-}
-
-const shown = computed(() => sortProcesses(rows.value.filter(r => matchesProcess(r, query.value)), sortKey.value, sortDir.value))
-const current = computed(() => rows.value.find(r => keyOf(r) === selected.value) ?? null)
-
-const memTotal = computed(() => perf.value?.memory.total ?? 0)
-const memPct = (rss: number) => memTotal.value ? (rss / memTotal.value) * 100 : 0
-// Disk shade: 100 MB/s fills it.
-const diskPct = (bps: number) => Math.min(100, (bps / (100 * 1024 * 1024)) * 100)
-const HEAT = ['', 'bg-warning/5', 'bg-warning/12', 'bg-warning/22', 'bg-warning/35'] as const
-
-const totals = computed(() => {
-  const p = perf.value
-  return {
-    cpu: p ? `${Math.round(p.cpu.usage)} %` : '',
-    mem: p && p.memory.total ? `${Math.round((p.memory.used / p.memory.total) * 100)} %` : '',
-    disk: p ? fmtRate(p.disks.reduce((a, d) => a + d.readBps + d.writeBps, 0)) : '',
+let stops: Array<() => void> = []
+onMounted(async () => {
+  stops = [subscribeProcs(), subscribePerf()]
+  if (props.focus) {
+    open.add(props.focus)
+    await nextTick()
+    document.getElementById(`owner-${props.focus}`)?.scrollIntoView({ block: 'nearest' })
   }
 })
-
-const columns = computed(() => [
-  { key: 'name' as const, label: t('monitor.proc.name'), cls: 'text-left' },
-  { key: 'pid' as const, label: 'PID', cls: 'hidden text-right @2xl:table-cell' },
-  { key: 'user' as const, label: t('monitor.proc.user'), cls: 'hidden text-left @3xl:table-cell' },
-  { key: 'cpu' as const, label: 'CPU', total: totals.value.cpu, cls: 'text-right' },
-  { key: 'rss' as const, label: t('monitor.proc.memory'), total: totals.value.mem, cls: 'text-right' },
-  { key: 'disk' as const, label: t('monitor.proc.disk'), total: totals.value.disk, cls: 'hidden text-right @xl:table-cell' },
-])
+onUnmounted(() => stops.forEach(s => s()))
 
 function stateLabel(s: string) {
   return ['R', 'S', 'D', 'Z', 'T', 'I'].includes(s) ? t(`monitor.proc.state.${s}`) : s
 }
+const flagOf = (r: ProcessRow) => (r.state === 'Z' || r.state === 'D' || r.state === 'T') ? stateLabel(r.state) : undefined
 
 async function end() {
   const r = current.value
   if (!r || r.protected || ending.value) return
   const key = keyOf(r)
   const force = asked.has(key)
-  const ok = await confirm(
-    force ? t('monitor.proc.forceMessage', { name: r.name }) : t('monitor.proc.endMessage', { name: r.name, pid: r.pid }),
-    { title: force ? t('monitor.proc.forceTitle') : t('monitor.proc.endTitle'), confirmLabel: force ? t('monitor.proc.force') : t('monitor.proc.end'), danger: true },
-  )
-  if (!ok) return
-  ending.value = true
+  procsPaused.value = true
   try {
+    const ok = await confirm(
+      force ? t('monitor.proc.forceMessage', { name: r.name }) : t('monitor.proc.endMessage', { name: r.name, pid: r.pid }),
+      { title: force ? t('monitor.proc.forceTitle') : t('monitor.proc.endTitle'), confirmLabel: force ? t('monitor.proc.force') : t('monitor.proc.end'), danger: true },
+    )
+    if (!ok) return
+    ending.value = true
     await trpc.system.processEnd.mutate({ pid: r.pid, start: r.start, name: r.name.slice(0, 64), force })
     asked.add(key)
     toast.success(force ? t('monitor.proc.forced', { name: r.name }) : t('monitor.proc.asked', { name: r.name }))
@@ -116,21 +81,24 @@ async function end() {
     toast.error(code === 'NOT_FOUND' ? t('monitor.proc.gone') : code === 'FORBIDDEN' ? t('monitor.proc.protected') : (e as Error).message || t('monitor.proc.failed'))
   } finally {
     ending.value = false
+    procsPaused.value = false
   }
-  await load()
+  await loadProcs()
 }
 
-// Arrow keys move the selection, Delete ends the selected process.
+// Arrow keys move through the open processes, Delete ends the selected one.
 function onKey(e: KeyboardEvent) {
   if (e.key === 'Delete') { e.preventDefault(); void end(); return }
   if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return
+  const list = rows.value.flatMap(g => isOpen(g.key) ? g.procs.map(p => p.row) : [])
+  if (!list.length) return
   e.preventDefault()
-  const list = shown.value
   const i = list.findIndex(r => keyOf(r) === selected.value)
-  const next = list[Math.max(0, Math.min(list.length - 1, i + (e.key === 'ArrowDown' ? 1 : -1)))]
-  if (!next) return
+  const next = list[Math.max(0, Math.min(list.length - 1, i + (e.key === 'ArrowDown' ? 1 : -1)))]!
   selected.value = keyOf(next)
-  document.getElementById(`proc-${next.pid}`)?.scrollIntoView({ block: 'nearest' })
+  const el = document.getElementById(`proc-${keyOf(next)}`)
+  el?.focus()
+  el?.scrollIntoView({ block: 'nearest' })
 }
 </script>
 
@@ -143,7 +111,11 @@ function onKey(e: KeyboardEvent) {
 
     <div class="flex flex-wrap items-center gap-2">
       <SearchInput v-model="query" :placeholder="t('monitor.proc.search')" class="w-full @md:w-64" />
-      <span class="text-xs tabular-nums text-base-content/70">{{ t('monitor.proc.count', { n: shown.length }, shown.length) }}</span>
+      <ToggleGroup type="single" variant="tabs" size="sm" :model-value="metric" :aria-label="t('monitor.owners.rankBy')"
+        @update:model-value="v => { if (typeof v === 'string' && v) metric = v as RankMetric }">
+        <ToggleGroupItem v-for="m in METRICS" :key="m" :value="m">{{ t(`monitor.owners.metric.${m}`) }}</ToggleGroupItem>
+      </ToggleGroup>
+      <span class="text-xs tabular-nums text-base-content/70">{{ t('monitor.proc.count', { n: total }, total) }}</span>
       <Button variant="outline" size="sm" class="ml-auto" :class="current && !current.protected && 'text-error'"
         :disabled="!current || current.protected || ending" @click="end">
         <BusyLabel :busy="ending"><CircleStopIcon class="size-4" aria-hidden="true" />
@@ -151,44 +123,32 @@ function onKey(e: KeyboardEvent) {
       </Button>
     </div>
 
-    <LoadingState v-if="!loaded" variant="block" />
-    <ErrorState v-else-if="error && !rows.length" :message="t('monitor.proc.loadFailed')" :retry-label="t('common.retry')" @retry="load" />
+    <LoadingState v-if="!procsLoaded" variant="block" />
+    <ErrorState v-else-if="procsError && !procs.length" :message="t('monitor.proc.loadFailed')" :retry-label="t('common.retry')" @retry="loadProcs" />
 
-    <Card v-else class="min-h-72 flex-1 gap-0 overflow-hidden py-0">
-      <div class="min-h-0 flex-1 overflow-auto" tabindex="-1">
-        <table class="w-full text-sm" @keydown="onKey">
-          <thead class="sticky top-0 z-10 bg-base-100 shadow-[inset_0_-1px_0_var(--color-base-300)]">
-            <tr>
-              <th v-for="c in columns" :key="c.key" scope="col" :class="['px-3 py-2 align-bottom text-xs font-medium text-base-content/70', c.cls]"
-                :aria-sort="sortKey === c.key ? (sortDir === 'asc' ? 'ascending' : 'descending') : undefined">
-                <span v-if="c.total" class="block text-base font-semibold tabular-nums text-base-content">{{ c.total }}</span>
-                <SortableHeader :active="sortKey === c.key" :dir="sortDir" @click="sortBy(c.key)">{{ c.label }}</SortableHeader>
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="r in shown" :id="`proc-${r.pid}`" :key="keyOf(r)" tabindex="0" :aria-selected="keyOf(r) === selected"
-              class="cursor-default border-b border-base-300/50 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-base-content/30"
-              :class="keyOf(r) === selected ? 'bg-primary/20 shadow-[inset_3px_0_0_var(--color-primary)]' : 'hover:bg-base-200/60'"
-              @click="selected = keyOf(r)" @keydown.enter.space.prevent="selected = keyOf(r)">
-              <td class="max-w-0 px-3 py-1.5">
-                <div class="flex min-w-0 items-center gap-2">
-                  <span class="truncate text-base-content" :title="r.cmd || r.name">{{ r.name }}</span>
-                  <LockIcon v-if="r.protected" class="size-3 shrink-0 text-base-content/50" :aria-label="t('monitor.proc.protectedShort')" />
-                  <span v-if="r.state === 'Z' || r.state === 'D' || r.state === 'T'" class="shrink-0 text-2xs text-warning">{{ stateLabel(r.state) }}</span>
-                </div>
-              </td>
-              <td class="hidden px-3 py-1.5 text-right tabular-nums text-base-content/70 @2xl:table-cell">{{ r.pid }}</td>
-              <td class="hidden max-w-32 truncate px-3 py-1.5 text-base-content/80 @3xl:table-cell">{{ r.user }}</td>
-              <td class="w-20 px-3 py-1.5 text-right tabular-nums" :class="HEAT[heat(r.cpu)]">{{ r.cpu.toFixed(1) }} %</td>
-              <td class="w-24 px-3 py-1.5 text-right tabular-nums" :class="HEAT[heat(memPct(r.rss))]">{{ formatBytes(r.rss) }}</td>
-              <td class="hidden w-28 px-3 py-1.5 text-right tabular-nums @xl:table-cell" :class="HEAT[heat(diskPct(r.readBps + r.writeBps))]">
-                {{ fmtRate(r.readBps + r.writeBps) }}
-              </td>
-            </tr>
-          </tbody>
-        </table>
-        <p v-if="!shown.length" class="px-4 py-10 text-center text-sm text-base-content/70">{{ t('monitor.proc.none') }}</p>
+    <Card v-else class="@container min-h-72 flex-1 gap-0 overflow-hidden py-0">
+      <div :class="[RANK_GRID, 'border-b border-base-300/70 px-6 py-2 text-2xs font-medium uppercase tracking-caps text-base-content/60']" aria-hidden="true">
+        <span>{{ t('monitor.owners.owner') }}</span>
+        <span class="text-right">{{ t(`monitor.owners.metric.${metric}`) }}</span>
+        <span v-for="m in others" :key="m" class="hidden text-right @xl:block">{{ t(`monitor.owners.metric.${m}`) }}</span>
+      </div>
+
+      <div class="min-h-0 flex-1 overflow-auto px-3 py-2" @keydown="onKey">
+        <TransitionGroup tag="ol" move-class="transition-transform duration-(--dur-slow) ease-out" :aria-label="t('monitor.owners.title')">
+          <li v-for="g in rows" :id="`owner-${g.key}`" :key="g.key" class="scroll-mt-2">
+            <OwnerRow :icon="g.icon" :name="g.name" :sub="g.sub" :level="g.level" :value="g.value" :color="g.color" :others="g.others"
+              :lit="lit.has(g.key)" :expanded="isOpen(g.key)" @activate="toggle(g.key)" />
+            <ol v-if="isOpen(g.key)" class="mb-1.5">
+              <li v-for="p in g.procs" :key="keyOf(p.row)">
+                <ProcRow :id="`proc-${keyOf(p.row)}`" :name="p.row.name" :title="p.row.cmd || p.row.name"
+                  :sub="`PID ${p.row.pid} · ${p.row.user}`" :level="p.level" :value="p.value" :color="g.color" :others="p.others"
+                  :selected="keyOf(p.row) === selected" :locked="p.row.protected ? t('monitor.proc.protectedShort') : undefined"
+                  :flag="flagOf(p.row)" @select="selected = keyOf(p.row)" />
+              </li>
+            </ol>
+          </li>
+        </TransitionGroup>
+        <p v-if="!rows.length" class="px-4 py-10 text-center text-sm text-base-content/70">{{ t('monitor.proc.none') }}</p>
       </div>
 
       <footer v-if="current" class="border-t border-base-300 bg-base-200/40 px-4 py-2.5 text-xs">

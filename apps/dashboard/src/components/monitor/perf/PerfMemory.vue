@@ -43,10 +43,10 @@ const parts = computed(() => {
     </div>
 
     <dl class="grid grid-cols-2 gap-x-6 gap-y-4 @xl:grid-cols-4">
-      <PerfStat big :label="t('monitor.perf.inUse')" :value="formatBytes(perf.memory.used)" />
-      <PerfStat big :label="t('monitor.perf.available')" :value="formatBytes(perf.memory.available)" />
-      <PerfStat big :label="t('monitor.perf.cached')" :value="formatBytes(perf.memory.cached + perf.memory.buffers)" />
-      <PerfStat big :label="t('monitor.perf.total')" :value="formatBytes(perf.memory.total)" />
+      <PerfStat :label="t('monitor.perf.inUse')" :value="formatBytes(perf.memory.used)" />
+      <PerfStat :label="t('monitor.perf.available')" :value="formatBytes(perf.memory.available)" />
+      <PerfStat :label="t('monitor.perf.cached')" :value="formatBytes(perf.memory.cached + perf.memory.buffers)" />
+      <PerfStat :label="t('monitor.perf.total')" :value="formatBytes(perf.memory.total)" />
       <PerfStat :label="t('monitor.perf.swap')"
         :value="perf.memory.swapTotal ? `${formatBytes(perf.memory.swapUsed)} / ${formatBytes(perf.memory.swapTotal)}` : t('monitor.perf.noSwap')" />
     </dl>

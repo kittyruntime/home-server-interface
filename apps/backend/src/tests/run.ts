@@ -4452,5 +4452,9 @@ async function testProcessRatesFollowEachProcess() {
   const reused = perf.processRates(second.seen, [row(10, 5, 0, "999")], 2, 4)
   assert.equal(reused.rows[0]!.cpu, 0, "a reused pid is a new process")
   assert.ok(!reused.seen.has("11:100"), "ended processes are forgotten")
+  assert.equal(p10.kind, "system", "a worker without owners puts everything under the system")
+  const app = perf.processRates(new Map(), [{ ...row(12, 1, 0), kind: "app", owner: "jellyfin" }], 2, 4).rows[0]!
+  assert.equal(app.kind, "app")
+  assert.equal(app.owner, "jellyfin")
 }
 await testProcessRatesFollowEachProcess()

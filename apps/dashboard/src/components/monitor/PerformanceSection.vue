@@ -1,19 +1,22 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, ref, type Component } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { CpuIcon, HardDriveIcon, MemoryStickIcon, NetworkIcon } from '@lucide/vue'
 import { Card } from '@/components/ui/card'
 import LoadingState from '../ui/LoadingState.vue'
 import ErrorState from '../ui/ErrorState.vue'
-import PerfTile from './perf/PerfTile.vue'
+import PerfGauge from './perf/PerfGauge.vue'
 import PerfCpu from './perf/PerfCpu.vue'
 import PerfMemory from './perf/PerfMemory.vue'
-import PerfDisk from './perf/PerfDisk.vue'
-import PerfNetwork from './perf/PerfNetwork.vue'
-import { curve, perf, perfError, subscribePerf, RESOURCE_COLOR } from '../../lib/perf-live'
-import { fmtRate, fmtUptime, niceBytes } from '../../lib/perf-math'
+import PerfDisks from './perf/PerfDisks.vue'
+import PerfNetworks from './perf/PerfNetworks.vue'
+import OwnerBoard from './rank/OwnerBoard.vue'
+import { perf, perfError, subscribePerf, RESOURCE_COLOR } from '../../lib/perf-live'
+import { fmtRate, fmtUptime } from '../../lib/perf-math'
 import { formatBytes } from '../../lib/file-details'
 import { trpc } from '../../lib/trpc'
 
+const emit = defineEmits<{ openProcesses: [key: string | null] }>()
 const { t } = useI18n()
 
 let stop: (() => void) | null = null
@@ -24,38 +27,30 @@ onMounted(async () => {
 })
 onUnmounted(() => stop?.())
 
-interface Resource { id: string; title: string; heading: string; value: string; sub?: string; values: number[]; max: number; color: string }
+type GaugeId = 'cpu' | 'mem' | 'disk' | 'net'
+interface Gauge { id: GaugeId; icon: Component; label: string; value: string; sub: string; level: number | null; color: string; flow?: { rx: string; tx: string } }
 
-const resources = computed<Resource[]>(() => {
+const selected = ref<GaugeId>('cpu')
+
+const gauges = computed<Gauge[]>(() => {
   const p = perf.value
   if (!p) return []
-  const memPct = p.memory.total ? Math.round((p.memory.used / p.memory.total) * 100) : 0
-  const out: Resource[] = [
-    { id: 'cpu', title: 'CPU', heading: 'CPU', value: `${Math.round(p.cpu.usage)} %`, sub: p.cpu.model, values: curve('cpu'), max: 100, color: RESOURCE_COLOR.cpu },
-    { id: 'mem', title: t('monitor.perf.memory'), heading: t('monitor.perf.memory'), value: `${formatBytes(p.memory.used)} / ${formatBytes(p.memory.total)} (${memPct} %)`, values: curve('mem'), max: 100, color: RESOURCE_COLOR.mem },
+  const memPct = p.memory.total ? (p.memory.used / p.memory.total) * 100 : 0
+  const disk = p.disks.reduce((a, d) => ({ r: a.r + d.readBps, w: a.w + d.writeBps, busy: Math.max(a.busy, d.busy) }), { r: 0, w: 0, busy: 0 })
+  const net = p.nets.reduce((a, n) => ({ rx: a.rx + n.rxBps, tx: a.tx + n.txBps, cap: a.cap + (n.up ? n.speedMbps ?? 0 : 0) }), { rx: 0, tx: 0, cap: 0 })
+  // A link's speed is per direction: the busier direction against the links' total.
+  const netLevel = net.cap ? (Math.max(net.rx, net.tx) * 8 / (net.cap * 1_000_000)) * 100 : null
+  return [
+    { id: 'cpu', icon: CpuIcon, label: 'CPU', value: `${Math.round(p.cpu.usage)} %`, sub: t('monitor.perf.coresAt', { n: p.cpu.cores }, p.cpu.cores), level: p.cpu.usage, color: RESOURCE_COLOR.cpu },
+    { id: 'mem', icon: MemoryStickIcon, label: t('monitor.perf.memory'), value: `${Math.round(memPct)} %`,
+      sub: t('monitor.perf.memOf', { used: formatBytes(p.memory.used), total: formatBytes(p.memory.total) }), level: memPct, color: RESOURCE_COLOR.mem },
+    { id: 'disk', icon: HardDriveIcon, label: t('monitor.perf.disks'), value: fmtRate(disk.r + disk.w),
+      sub: t('monitor.perf.busiest', { pct: Math.round(disk.busy) }), level: disk.busy, color: RESOURCE_COLOR.disk },
+    { id: 'net', icon: NetworkIcon, label: t('monitor.perf.networkAll'), value: fmtRate(net.rx + net.tx),
+      sub: t('monitor.perf.rxTx', { rx: fmtRate(net.rx), tx: fmtRate(net.tx) }), flow: { rx: fmtRate(net.rx), tx: fmtRate(net.tx) }, level: netLevel, color: RESOURCE_COLOR.net },
   ]
-  p.disks.forEach((d, i) => out.push({
-    id: `disk:${d.name}`, title: t('monitor.perf.disk', { n: i, name: d.name }), heading: t('monitor.perf.disk', { n: i, name: d.name }),
-    value: `${Math.round(d.busy)} %`, sub: [d.rotational ? t('monitor.perf.hdd') : t('monitor.perf.ssd'), d.model].filter(Boolean).join(' · '),
-    values: curve(`disk:${d.name}:busy`), max: 100, color: RESOURCE_COLOR.disk,
-  }))
-  for (const n of p.nets) {
-    const values = curve(`net:${n.name}:rx`).map((v, i) => v + (curve(`net:${n.name}:tx`)[i] ?? 0))
-    out.push({
-      id: `net:${n.name}`, title: n.name, heading: t('monitor.perf.network', { name: n.name }),
-      value: n.up ? `↓ ${fmtRate(n.rxBps)}  ↑ ${fmtRate(n.txBps)}` : t('monitor.perf.down'),
-      sub: n.addrs.find(a => a.family === 'IPv4')?.addr, values, max: niceBytes(values), color: RESOURCE_COLOR.net,
-    })
-  }
-  return out
 })
-
-const selected = ref('cpu')
-// A disk or port that disappears falls back to the CPU.
-watch(resources, list => { if (list.length && !list.some(r => r.id === selected.value)) selected.value = 'cpu' })
-const current = computed(() => resources.value.find(r => r.id === selected.value) ?? resources.value[0])
-const disk = computed(() => perf.value?.disks.find(d => `disk:${d.name}` === selected.value))
-const net = computed(() => perf.value?.nets.find(n => `net:${n.name}` === selected.value))
+const current = computed(() => gauges.value.find(g => g.id === selected.value))
 </script>
 
 <template>
@@ -74,25 +69,23 @@ const net = computed(() => perf.value?.nets.find(n => `net:${n.name}` === select
     <LoadingState v-if="!perf && !perfError" variant="block" />
     <ErrorState v-else-if="!perf && perfError" :message="t('monitor.perf.failed')" />
 
-    <div v-else-if="perf && current" class="grid items-start gap-4 @3xl:grid-cols-[16rem_minmax(0,1fr)]">
-      <nav :aria-label="t('monitor.perf.resources')"
-        class="-mx-1 flex snap-x gap-1 overflow-x-auto px-1 pb-1 @3xl:mx-0 @3xl:flex-col @3xl:overflow-visible @3xl:px-0 @3xl:pb-0">
-        <div v-for="r in resources" :key="r.id" class="w-56 shrink-0 snap-start @3xl:w-auto">
-          <PerfTile :title="r.title" :value="r.value" :sub="r.sub" :values="r.values" :max="r.max" :color="r.color"
-            :selected="r.id === current.id" @select="selected = r.id" />
+    <template v-else-if="perf">
+      <!-- One instrument panel: the four readings, and under them the detail of the one picked. -->
+      <Card class="@container gap-0 overflow-hidden p-0">
+        <div class="grid grid-cols-2 divide-base-300/70 @3xl:grid-cols-4 @3xl:divide-x [&>*:nth-child(-n+2)]:border-b [&>*:nth-child(-n+2)]:border-base-300/70 @3xl:[&>*:nth-child(-n+2)]:border-b-0 [&>*:nth-child(odd)]:border-r [&>*:nth-child(odd)]:border-base-300/70 @3xl:[&>*:nth-child(odd)]:border-r-0"
+          role="group" :aria-label="t('monitor.perf.resources')">
+          <PerfGauge v-for="g in gauges" :key="g.id" :icon="g.icon" :label="g.label" :value="g.value" :sub="g.sub" :flow="g.flow" :level="g.level"
+            :color="g.color" :selected="g.id === selected" controls="perf-detail" @select="selected = g.id" />
         </div>
-      </nav>
-
-      <Card class="@container gap-0 p-4 @2xl:p-5">
-        <header class="mb-4 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-          <h3 class="text-xl font-semibold text-base-content">{{ current.heading }}</h3>
-          <p v-if="current.sub" class="min-w-0 truncate text-sm text-base-content/70">{{ current.sub }}</p>
-        </header>
-        <PerfCpu v-if="current.id === 'cpu'" :perf="perf" />
-        <PerfMemory v-else-if="current.id === 'mem'" :perf="perf" />
-        <PerfDisk v-else-if="disk" :disk="disk" />
-        <PerfNetwork v-else-if="net" :net="net" />
+        <div id="perf-detail" class="border-t border-base-300/70 p-4 @2xl:p-5" role="region" :aria-label="current?.label">
+          <PerfCpu v-if="selected === 'cpu'" :perf="perf" />
+          <PerfMemory v-else-if="selected === 'mem'" :perf="perf" />
+          <PerfDisks v-else-if="selected === 'disk'" :disks="perf.disks" />
+          <PerfNetworks v-else :nets="perf.nets" />
+        </div>
       </Card>
-    </div>
+
+      <OwnerBoard @open="key => emit('openProcesses', key)" />
+    </template>
   </section>
 </template>

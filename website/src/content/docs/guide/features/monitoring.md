@@ -11,19 +11,22 @@ sidebar:
 The Monitor app has five sections: Performance, Processes, History, Alerts and
 Audit log.
 
-- **Performance**: every resource in a list on the left, each with a small live
-  graph: the CPU, the memory, each disk and each network port. Pick one to see
-  its graph over the last two minutes, refreshed every 2 seconds, and its
-  figures: usage, speed, processes and threads for the CPU (with a graph per
-  core), memory composition and swap, a disk's active time, read and write
-  speed, a port's receive and send rates, link speed and addresses.
-- **Processes**: every program running on the server, sortable by name, PID,
-  user, CPU, memory or disk activity, with a search. The column headers show
-  the machine totals and busy cells are shaded. Select a process to see its
-  command line, then **End process** asks it to stop; if it keeps running, the
-  same button forces it. The system, its kernel threads and the processes that
-  run HSI are protected and cannot be ended. Ending a process is recorded in
-  the audit trail.
+- **Performance**: one panel with four readings, refreshed every 2 seconds:
+  CPU, memory, disks and network. Pick one to see its detail under them: the
+  last two minutes of CPU use with every core side by side, speed, load,
+  processes and threads; memory composition and swap; every disk on its own
+  line with its active time, read and write speeds and model; every network
+  port with its receive and send rates, link speed and addresses. Below,
+  **Who is using the server** ranks what runs on the machine by CPU, memory or
+  disk activity: each app (its Docker containers), each account, HSI itself and
+  the system. Picking one opens it in Processes.
+- **Processes**: every program running on the server, gathered under the app,
+  account or part of the system it works for and ranked the same way, with a
+  search. Open an owner to see its processes, and select one to read its
+  command line; **End process** then asks it to stop, and if it keeps running,
+  the same button forces it. The system, its kernel threads and the processes
+  that run HSI are protected and cannot be ended. Ending a process is recorded
+  in the audit trail.
 - **History**: CPU, memory and network over 1 hour to 7 days, with the average
   and the peak of each curve.
 - **Alerts**: background checks raise alerts for a degraded array, a failing disk,

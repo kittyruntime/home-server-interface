@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"testing"
 )
 
@@ -142,5 +143,47 @@ func TestKillChecksTheProcessIsTheSameOne(t *testing.T) {
 	}
 	if len(sent) != 1 || sent[0] != "500:true" {
 		t.Fatalf("signals sent: %v", sent)
+	}
+}
+
+func TestContainerFromCgroup(t *testing.T) {
+	id := "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+	cases := map[string]string{
+		"0::/system.slice/docker-" + id + ".scope\n":     id,
+		"12:pids:/docker/" + id + "\n0::/docker/" + id:   id,
+		"0::/kubepods/burstable/cri-containerd-" + id:    id,
+		"0::/user.slice/user-1000.slice/session-2.scope": "",
+		"": "",
+	}
+	for in, want := range cases {
+		if got := containerFromCgroup(in); got != want {
+			t.Errorf("containerFromCgroup(%q) = %q, want %q", in, got, want)
+		}
+	}
+}
+
+func TestListGroupsProcessesByOwner(t *testing.T) {
+	root := t.TempDir()
+	id := "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+	fakeProc(t, root, 2, statLine(2, "kthreadd", "S", 0, pfKthread, 0, 0, 1, 1, 0), "Uid:\t0\t0\t0\t0\n", "", "")
+	fakeProc(t, root, 300, statLine(300, "sshd", "S", 1, 0, 1, 1, 1, 10, 1), "Uid:\t0\t0\t0\t0\n", "/usr/sbin/sshd\x00", "")
+	fakeProc(t, root, 301, statLine(301, "node", "S", 1, 0, 1, 1, 1, 11, 1), "Uid:\t998\t998\t998\t998\n", "/usr/bin/node\x00/opt/hsi/current/backend/dist/index.js\x00", "")
+	fakeProc(t, root, 302, statLine(302, "jellyfin", "S", 1, 0, 1, 1, 1, 12, 1), "Uid:\t1000\t1000\t1000\t1000\n", "/jellyfin/jellyfin\x00", "")
+	fakeProc(t, root, 303, statLine(303, "bash", "S", 1, 0, 1, 1, 1, 13, 1), "Uid:\t1000\t1000\t1000\t1000\n", "-bash\x00", "")
+	fakeProc(t, root, 304, statLine(304, "orphan", "S", 1, 0, 1, 1, 1, 14, 1), "Uid:\t0\t0\t0\t0\n", "/bin/orphan\x00", "")
+	for pid, body := range map[int]string{302: "0::/system.slice/docker-" + id + ".scope\n", 304: "0::/docker/" + strings.Repeat("f", 64) + "\n"} {
+		if err := os.WriteFile(filepath.Join(root, strconv.Itoa(pid), "cgroup"), []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	pr := procReader{root: root, pageSize: 4096, self: 1, install: "/opt/hsi",
+		user:       func(uid string) string { return map[string]string{"1000": "camille"}[uid] },
+		containers: func() map[string]string { return map[string]string{id: "jellyfin"} }}
+	want := map[int][2]string{2: {"system", ""}, 300: {"system", ""}, 301: {"hsi", ""}, 302: {"app", "jellyfin"}, 303: {"user", "camille"}, 304: {"app", "ffffffffffff"}}
+	for _, p := range pr.list() {
+		w := want[p.Pid]
+		if p.Kind != w[0] || p.Owner != w[1] {
+			t.Errorf("pid %d: kind %q owner %q, want %v", p.Pid, p.Kind, p.Owner, w)
+		}
 	}
 }

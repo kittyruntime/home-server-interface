@@ -6,10 +6,12 @@ import (
 	"os"
 	"os/user"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 	"sync"
 	"syscall"
+	"time"
 
 	nats "github.com/nats-io/nats.go"
 )
@@ -48,6 +50,21 @@ type procInfo struct {
 	Read      uint64 `json:"read"`
 	Write     uint64 `json:"write"`
 	Protected bool   `json:"protected"`
+	// Kind says who the process works for: system, hsi, app or user; Owner
+	// names the app or the account.
+	Kind  string `json:"kind"`
+	Owner string `json:"owner"`
+}
+
+var containerID = regexp.MustCompile(`(?:docker[-/]|cri-containerd-|libpod-)([0-9a-f]{64})`)
+
+// containerFromCgroup finds the container a process runs in from
+// /proc/<pid>/cgroup, or "" outside any container.
+func containerFromCgroup(cgroup string) string {
+	if m := containerID.FindStringSubmatch(cgroup); m != nil {
+		return m[1]
+	}
+	return ""
 }
 
 // parseProcStat reads /proc/<pid>/stat. The name sits between the first "("
@@ -82,12 +99,14 @@ type procReader struct {
 	install  string
 	user     func(uid string) string
 	signal   func(pid int, force bool) error
+	// containers maps a container id to its app (compose project or name).
+	containers func() map[string]string
 }
 
 func newProcReader() procReader {
 	return procReader{
 		root: "/proc", pageSize: int64(os.Getpagesize()), self: os.Getpid(), install: installRoot(),
-		user: cachedUserName, signal: func(pid int, force bool) error {
+		user: cachedUserName, containers: dockerApps, signal: func(pid int, force bool) error {
 			sig := syscall.SIGTERM
 			if force {
 				sig = syscall.SIGKILL
@@ -111,6 +130,38 @@ func cachedUserName(uid string) string {
 	return name
 }
 
+var appCache struct {
+	sync.Mutex
+	at   time.Time
+	apps map[string]string
+}
+
+// dockerApps lists running containers by id, refreshed every 10 seconds at
+// most since the Monitor asks for processes every few seconds.
+func dockerApps() map[string]string {
+	appCache.Lock()
+	defer appCache.Unlock()
+	if appCache.apps != nil && time.Since(appCache.at) < 10*time.Second {
+		return appCache.apps
+	}
+	apps := map[string]string{}
+	if out, err := runDocker("ps", "--no-trunc", "--format", "{{.ID}}\t{{.Label \"com.docker.compose.project\"}}\t{{.Names}}"); err == nil {
+		for _, l := range strings.Split(out, "\n") {
+			f := strings.Split(l, "\t")
+			if len(f) < 3 {
+				continue
+			}
+			if f[1] != "" {
+				apps[f[0]] = f[1]
+			} else {
+				apps[f[0]] = f[2]
+			}
+		}
+	}
+	appCache.at, appCache.apps = time.Now(), apps
+	return apps
+}
+
 func (pr procReader) read(pid int) (procStat, []string, error) {
 	dir := filepath.Join(pr.root, strconv.Itoa(pid))
 	b, err := os.ReadFile(filepath.Join(dir, "stat"))
@@ -132,10 +183,13 @@ func (pr procReader) read(pid int) (procStat, []string, error) {
 	return s, cmd, nil
 }
 
-// protected: init, kernel threads, and what runs HSI (this worker, the
-// backend under the install directory, its message bus).
-func (pr procReader) protected(s procStat, cmd []string) bool {
-	if s.pid <= 2 || s.ppid == 2 || s.flags&pfKthread != 0 || s.pid == pr.self || s.name == "nats-server" {
+func isKernel(s procStat) bool {
+	return s.pid <= 2 || s.ppid == 2 || s.flags&pfKthread != 0
+}
+
+// isHSI: this worker, the backend under the install directory, its message bus.
+func (pr procReader) isHSI(s procStat, cmd []string) bool {
+	if s.pid == pr.self || s.name == "nats-server" {
 		return true
 	}
 	prefix := strings.TrimRight(pr.install, "/") + "/"
@@ -147,12 +201,18 @@ func (pr procReader) protected(s procStat, cmd []string) bool {
 	return len(cmd) > 0 && filepath.Base(cmd[0]) == "nats-server"
 }
 
+// protected: init, kernel threads, and what runs HSI.
+func (pr procReader) protected(s procStat, cmd []string) bool {
+	return isKernel(s) || pr.isHSI(s, cmd)
+}
+
 func (pr procReader) list() []procInfo {
 	entries, err := os.ReadDir(pr.root)
 	if err != nil {
 		return nil
 	}
 	out := make([]procInfo, 0, len(entries))
+	var apps map[string]string // asked once, and only when a container shows up
 	for _, e := range entries {
 		pid, err := strconv.Atoi(e.Name())
 		if err != nil {
@@ -172,14 +232,39 @@ func (pr procReader) list() []procInfo {
 			cmdline = cmdline[:512]
 		}
 		info.Cmd = cmdline
+		uid := -1
 		if st, err := os.ReadFile(filepath.Join(dir, "status")); err == nil {
 			for _, l := range strings.Split(string(st), "\n") {
 				if rest, ok := strings.CutPrefix(l, "Uid:"); ok {
-					if f := strings.Fields(rest); len(f) > 0 && pr.user != nil {
-						info.User = pr.user(f[0])
+					if f := strings.Fields(rest); len(f) > 0 {
+						uid, _ = strconv.Atoi(f[0])
+						if pr.user != nil {
+							info.User = pr.user(f[0])
+						}
 					}
 					break
 				}
+			}
+		}
+		switch {
+		case isKernel(s):
+			info.Kind = "system"
+		case pr.isHSI(s, cmd):
+			info.Kind = "hsi"
+		default:
+			cg, _ := os.ReadFile(filepath.Join(dir, "cgroup"))
+			if id := containerFromCgroup(string(cg)); id != "" {
+				if apps == nil && pr.containers != nil {
+					apps = pr.containers()
+				}
+				info.Kind, info.Owner = "app", apps[id]
+				if info.Owner == "" {
+					info.Owner = id[:12]
+				}
+			} else if uid >= 1000 && uid != 65534 {
+				info.Kind, info.Owner = "user", info.User
+			} else {
+				info.Kind = "system"
 			}
 		}
 		if io, err := os.ReadFile(filepath.Join(dir, "io")); err == nil {

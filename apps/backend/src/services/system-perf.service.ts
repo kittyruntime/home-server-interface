@@ -107,9 +107,15 @@ export function parseNetDev(text: string): Record<string, { rx: number; tx: numb
 export interface RawProcess {
   pid: number; ppid: number; name: string; cmd: string; user: string; state: string
   ticks: number; threads: number; rss: number; start: string; read: number; write: number; protected: boolean
+  /** Who the process works for: system, hsi, an app (owner = its name) or an account (owner = its name). */
+  kind?: ProcessKind; owner?: string
 }
 
-export interface ProcessRow extends Omit<RawProcess, "ticks" | "read" | "write"> {
+export type ProcessKind = "system" | "hsi" | "app" | "user"
+
+export interface ProcessRow extends Omit<RawProcess, "ticks" | "read" | "write" | "kind" | "owner"> {
+  kind: ProcessKind
+  owner: string
   /** Share of the whole machine, like the CPU graph. */
   cpu: number
   readBps: number
@@ -130,6 +136,8 @@ export function processRates(seen: Seen, list: RawProcess[], dtSec: number, core
     const ok = prev && dtSec > 0
     return {
       ...p,
+      kind: p.kind ?? "system",
+      owner: p.owner ?? "",
       cpu: ok ? round1(Math.min(100, Math.max(0, ((ticks - prev.ticks) / USER_HZ / dtSec / Math.max(1, cores)) * 100))) : 0,
       readBps: ok ? Math.round(Math.max(0, read - prev.read) / dtSec) : 0,
       writeBps: ok ? Math.round(Math.max(0, write - prev.write) / dtSec) : 0,
