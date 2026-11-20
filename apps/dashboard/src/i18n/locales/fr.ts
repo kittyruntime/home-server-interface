@@ -663,6 +663,7 @@ export default {
   appearance: {
     theme: 'Thème',
     auto: 'Auto',
+    themes: { light: 'Papier', dark: 'Graphite', fog: 'Brume', sage: 'Sauge', chalk: 'Craie', ink: 'Encre', moss: 'Mousse', plum: 'Prune', onyx: 'Onyx' },
     accent: 'Couleur d’accent',
     accents: { theme: 'Thème', red: 'Rouge', orange: 'Orange', blue: 'Bleu', green: 'Vert', purple: 'Violet' },
     roundness: 'Arrondi',

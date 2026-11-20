@@ -17,6 +17,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   system by CPU, memory or disk, live. History gives the average and the peak
   of each curve. The Summary and System info sections are folded into
   Performance.
+- **Appearance**: the default look (Auto, and the Light and Dark themes) is
+  now HSI's own: warm graphite surfaces with copper as the main color,
+  instead of daisyUI's stock light and dark. Text selection, the caret,
+  scrollbars and native checkboxes follow the theme too.
+- **Appearance**: the 35 stock daisyUI themes give way to a family of nine
+  HSI themes built on the same structure: Paper, Fog, Sage and Chalk (light),
+  Graphite, Ink, Moss, Plum and Onyx (dark, Onyx in true black for OLED
+  screens). Settings shows each one as a miniature of the interface. A saved
+  stock theme moves to the closest one, light or dark as before.
+- **First-run setup**: the assistant is rebuilt in two panes. A rail lists the
+  steps and, under each one, the commands and files it uses on the server
+  (`useradd`, `smbpasswd`, `hostnamectl`, `/etc/hosts`, `timedatectl`,
+  `/var/lib/hsi/tls`); phones get a compact progress bar. The last screen
+  links straight to volumes, sharing, alerts and configuration restore.
+  Messages that were still English only are translated.
+- **Sign-in and Getting started**: the sign-in screen and the Getting started
+  panel of the overview follow the same look, with HSI's new mark. A failed
+  sign-in is shown in the error color.
 
 ### Added
 - **Monitor**: a Processes section gathers every program on the server under
@@ -24,6 +42,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ranked by CPU, memory or disk activity and searchable; open an owner to see
   its processes. An admin can end a process, or force it to stop; the system
   and HSI's own processes are protected.
+- HSI has its own icon in the browser tab, in place of the build tool's.
 
 ## [1.86.1] - 2026-11-18
 

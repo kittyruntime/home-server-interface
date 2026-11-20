@@ -1,13 +1,39 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
-import { createRequire } from 'node:module'
-import { dirname, join } from 'node:path'
-import { THEMES, DARK_THEMES, DEFAULT_APPEARANCE, normalizeAppearance, fromLegacy, toLegacy, appearanceVars, hydrateAppearance, resolveStored } from '../src/lib/appearance.ts'
+import { join } from 'node:path'
+import { THEMES, DARK_THEMES, LIGHT_THEMES, RETIRED_THEMES, DEFAULT_APPEARANCE, normalizeAppearance, fromLegacy, toLegacy, appearanceVars, hydrateAppearance, resolveStored } from '../src/lib/appearance.ts'
 
-test('theme lists contain the supported daisyUI themes in order', () => {
-  assert.deepEqual(THEMES, ['light', 'dark', 'cupcake', 'bumblebee', 'emerald', 'corporate', 'synthwave', 'retro', 'cyberpunk', 'valentine', 'halloween', 'garden', 'forest', 'aqua', 'lofi', 'pastel', 'fantasy', 'wireframe', 'black', 'luxury', 'dracula', 'cmyk', 'autumn', 'business', 'acid', 'lemonade', 'night', 'coffee', 'winter', 'dim', 'nord', 'sunset', 'caramellatte', 'abyss', 'silk'])
-  assert.deepEqual(DARK_THEMES, ['dark', 'synthwave', 'halloween', 'forest', 'aqua', 'black', 'luxury', 'dracula', 'business', 'night', 'coffee', 'dim', 'sunset', 'abyss'])
+const styleCss = readFileSync(join(import.meta.dirname, '../src/style.css'), 'utf8')
+const themeBlocks = [...styleCss.matchAll(/@plugin "daisyui\/theme" \{([^}]*)\}/g)].map(m => ({
+  name: /name:\s*"([a-z]+)"/.exec(m[1]!)?.[1],
+  scheme: /color-scheme:\s*(dark|light)/.exec(m[1]!)?.[1],
+}))
+
+test('theme lists are the HSI themes, light ones first', () => {
+  assert.deepEqual(LIGHT_THEMES, ['light', 'fog', 'sage', 'chalk'])
+  assert.deepEqual(DARK_THEMES, ['dark', 'ink', 'moss', 'plum', 'onyx'])
+  assert.deepEqual(THEMES, [...LIGHT_THEMES, ...DARK_THEMES])
+})
+
+test('every theme is defined in style.css with the matching color scheme', () => {
+  assert.deepEqual(themeBlocks.map(b => b.name).sort(), [...THEMES].sort())
+  for (const b of themeBlocks) assert.equal(b.scheme, (DARK_THEMES as readonly string[]).includes(b.name!) ? 'dark' : 'light', b.name)
+})
+
+test('the pre-paint script knows the same themes', () => {
+  const html = readFileSync(join(import.meta.dirname, '../index.html'), 'utf8')
+  const list = /var themes = \[([^\]]*)\]/.exec(html)?.[1]?.match(/[a-z]+/g)
+  assert.deepEqual(list?.sort(), [...THEMES].sort())
+})
+
+test('retired stock themes map to an HSI theme of the same scheme', () => {
+  const darkStock = ['synthwave', 'halloween', 'forest', 'aqua', 'black', 'luxury', 'dracula', 'business', 'night', 'coffee', 'dim', 'sunset', 'abyss']
+  assert.equal(Object.keys(RETIRED_THEMES).length, 33)
+  for (const [old, now] of Object.entries(RETIRED_THEMES)) {
+    assert.ok((THEMES as readonly string[]).includes(now), old)
+    assert.equal((DARK_THEMES as readonly string[]).includes(now), darkStock.includes(old), old)
+  }
 })
 
 test('normalizeAppearance falls back per field', () => {
@@ -16,9 +42,11 @@ test('normalizeAppearance falls back per field', () => {
   assert.deepEqual(normalizeAppearance(null), DEFAULT_APPEARANCE)
 })
 
-test('normalizeAppearance keeps a stored appearance from another release', () => {
-  const stored = { theme: 'dracula', accent: 'theme', radius: 0, density: 'roomy' }
+test('normalizeAppearance keeps an HSI theme and moves a retired one to its successor', () => {
+  const stored = { theme: 'moss', accent: 'theme', radius: 0, density: 'roomy' } as const
   assert.deepEqual(normalizeAppearance(stored), stored)
+  assert.equal(normalizeAppearance({ theme: 'dracula' }).theme, 'plum')
+  assert.equal(normalizeAppearance({ theme: 'nord' }).theme, 'fog')
 })
 
 test('fromLegacy treats orange as never chosen', () => {
@@ -29,8 +57,8 @@ test('fromLegacy treats orange as never chosen', () => {
 })
 
 test('toLegacy only emits values old releases accept', () => {
-  assert.deepEqual(toLegacy({ ...DEFAULT_APPEARANCE, theme: 'dracula', accent: 'red' }), { theme: 'dark', accent: 'orange' })
-  assert.deepEqual(toLegacy({ ...DEFAULT_APPEARANCE, theme: 'cupcake', accent: 'theme' }), { theme: 'light', accent: 'orange' })
+  assert.deepEqual(toLegacy({ ...DEFAULT_APPEARANCE, theme: 'plum', accent: 'red' }), { theme: 'dark', accent: 'orange' })
+  assert.deepEqual(toLegacy({ ...DEFAULT_APPEARANCE, theme: 'sage', accent: 'theme' }), { theme: 'light', accent: 'orange' })
   assert.deepEqual(toLegacy({ ...DEFAULT_APPEARANCE, accent: 'purple' }), { theme: 'auto', accent: 'purple' })
 })
 
@@ -73,17 +101,8 @@ test('appearanceVars maps accents, radius steps, and density', () => {
   })
 })
 
-test('DARK_THEMES matches the color-scheme of each daisyUI theme file', () => {
-  const themeDir = join(dirname(createRequire(import.meta.url).resolve('daisyui/package.json')), 'theme')
-  for (const name of THEMES) {
-    const css = readFileSync(join(themeDir, `${name}.css`), 'utf8')
-    const scheme = /color-scheme:\s*(dark|light)/.exec(css)?.[1]
-    assert.equal((DARK_THEMES as readonly string[]).includes(name), scheme === 'dark', name)
-  }
-})
-
 test('hydrateAppearance prefers the stored appearance', () => {
-  const stored = { theme: 'dracula', accent: 'red', radius: 0, density: 'roomy' }
+  const stored = { theme: 'ink', accent: 'red', radius: 0, density: 'roomy' }
   assert.deepEqual(hydrateAppearance({ appearance: stored, theme: 'light', accent: 'blue' }), stored)
 })
 
@@ -103,8 +122,8 @@ test('normalizeAppearance rejects inherited object keys as accent or theme', () 
 })
 
 test('resolveStored uses the stored appearance when it has a theme', () => {
-  assert.deepEqual(resolveStored('{"theme":"nord","accent":"blue"}', 'dark', 'red'),
-    normalizeAppearance({ theme: 'nord', accent: 'blue' }))
+  assert.deepEqual(resolveStored('{"theme":"fog","accent":"blue"}', 'dark', 'red'),
+    normalizeAppearance({ theme: 'fog', accent: 'blue' }))
 })
 
 test('resolveStored falls back to the legacy keys without a string theme', () => {

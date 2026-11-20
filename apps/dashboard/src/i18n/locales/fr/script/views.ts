@@ -28,6 +28,12 @@ export default {
     alreadyHadHsiRestoreIts: 'Vous aviez déjà HSI ? Restaurez sa sauvegarde de configuration chiffrée.',
     useAtLeast6Characters: 'Au moins 6 caractères',
     thePasswordsDoNotMatch: 'Les mots de passe ne correspondent pas',
+    couldNotReachTheServer: 'Impossible de joindre le serveur',
+    thisSetupLinkIsNotValid: 'Ce lien de configuration n’est pas valide',
+    couldNotCreateTheAdministrator: 'Impossible de créer l’administrateur',
+    couldNotReadTheServerIdentity: 'Impossible de lire l’identité du serveur',
+    couldNotReadTheSecureAccess: 'Impossible de lire l’état de l’accès sécurisé',
+    hostnameRule: 'Lettres, chiffres et tirets (63 au plus), sans tiret au début ni à la fin',
   },
   SharePublicView: {
     somethingWentWrongPleaseTry: 'Une erreur est survenue. Réessayez.',

@@ -662,6 +662,7 @@ export default {
   appearance: {
     theme: 'Theme',
     auto: 'Auto',
+    themes: { light: 'Paper', dark: 'Graphite', fog: 'Fog', sage: 'Sage', chalk: 'Chalk', ink: 'Ink', moss: 'Moss', plum: 'Plum', onyx: 'Onyx' },
     accent: 'Accent color',
     accents: { theme: 'Theme', red: 'Red', orange: 'Orange', blue: 'Blue', green: 'Green', purple: 'Purple' },
     roundness: 'Roundness',
