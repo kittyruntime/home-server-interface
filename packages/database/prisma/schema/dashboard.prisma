@@ -66,3 +66,22 @@ model WidgetSourceSample {
 
   @@index([sourceId, timestamp])
 }
+
+// A wall display: a screen (a tablet, a TV) that shows a copy of one of its
+// owner's boards without signing in. Its token (kept as its SHA-256) opens
+// only the reads that board's widgets need, with the owner's current rights.
+model DashboardWall {
+  id         String    @id @default(uuid())
+  ownerId    String
+  owner      User      @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  name       String
+  // JSON array of widgets, as on a board.
+  widgets    String    @default("[]")
+  tokenHash  String    @unique
+  // The start of the token, to tell displays apart.
+  prefix     String
+  lastSeenAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([ownerId])
+}

@@ -27,6 +27,7 @@ model User {
   assistantConversations AssistantConversation[]
   assistantUsage AssistantUsage[]
   dashboardBoards DashboardBoard[]
+  dashboardWalls  DashboardWall[]
 }
 
 model UserCapability {

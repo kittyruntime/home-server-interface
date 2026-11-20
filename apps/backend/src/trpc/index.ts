@@ -1,5 +1,6 @@
 import { TRPCError, initTRPC } from "@trpc/server"
 import type { Context } from "./context"
+import { wallMayCall } from "../services/dashboard-walls"
 import { currentMaintenance } from "../services/maintenance"
 
 /**
@@ -36,9 +37,13 @@ export function closedToApiTokens(path: string): boolean {
     path.startsWith("auth.") || path.startsWith("setup.") || path === "user.changePassword"
 }
 
-const isAuthed = t.middleware(({ ctx, path, next }) => {
+const isAuthed = t.middleware(({ ctx, path, type, next }) => {
   if (!ctx.user) {
     throw new TRPCError({ code: "UNAUTHORIZED", message: SESSION_REJECTION_MESSAGE, cause: new SessionRejectedError() })
+  }
+  // A wall display reads what its widgets show, nothing else.
+  if (ctx.wall && !wallMayCall(ctx.wall, path, type)) {
+    throw new TRPCError({ code: "FORBIDDEN", message: "Not available to a wall display." })
   }
   if ((ctx.apiToken || ctx.via === "assistant") && closedToApiTokens(path)) {
     throw new TRPCError({ code: "FORBIDDEN", message: "Not available to an AI assistant." })

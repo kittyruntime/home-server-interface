@@ -108,7 +108,9 @@ export const widgetSourceRouter = router({
   // The last value of each source the viewer may read, and its history.
   data: protectedProcedure.input(z.object({ ids: z.array(id).max(24), history: z.boolean().default(false) }))
     .query(async ({ ctx, input }) => {
-      const rows = await ctx.prisma.widgetSource.findMany({ where: { id: { in: input.ids } } })
+      // A wall display reads only the sources of its own widgets.
+      const ids = ctx.wall ? input.ids.filter(i => ctx.wall!.sourceIds.has(i)) : input.ids
+      const rows = await ctx.prisma.widgetSource.findMany({ where: { id: { in: ids } } })
       const visible = rows.filter(r => ctx.user.isAdmin || r.visibility === "everyone")
       const since = new Date(Date.now() - 86_400_000)
       return Promise.all(visible.map(async r => ({

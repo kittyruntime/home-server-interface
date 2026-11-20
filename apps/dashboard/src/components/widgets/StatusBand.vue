@@ -10,7 +10,7 @@ import { requestApp } from '../../lib/app-focus'
 // from the alerts HSI raises (disks, arrays, space, backups, certificate) and
 // the update check. Shown to those who may read the alerts.
 
-const props = defineProps<{ isAdmin: boolean }>()
+const props = defineProps<{ isAdmin: boolean; readonly?: boolean }>()
 const { t } = useI18n()
 const alerts = useSource('alerts', () => trpc.alert.list.query(), 60_000)
 const update = props.isAdmin ? useSource('update', () => trpc.update.status.query(), 600_000) : null
@@ -44,7 +44,7 @@ const TONE = {
       <span v-if="state.detail" class="ml-2 hidden text-base-content/80 sm:inline">{{ state.detail }}</span>
     </p>
     <button
-      v-if="state.go" type="button"
+      v-if="state.go && !readonly" type="button"
       class="btn btn-ghost btn-sm shrink-0 text-current"
       @click="requestApp(state.go.app, state.go.section)"
     >

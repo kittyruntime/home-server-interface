@@ -9,6 +9,7 @@ import GettingStartedCard from './GettingStartedCard.vue'
 import HttpsBanner from './HttpsBanner.vue'
 import WidgetBoard from '../widgets/WidgetBoard.vue'
 import StatusBand from '../widgets/StatusBand.vue'
+import WallDisplaysDialog from '../widgets/WallDisplaysDialog.vue'
 import { canUse, widgetDef } from '../widgets/registry'
 import { defaultBoards, MAX_BOARDS, useBoards } from '../../lib/dashboard-boards'
 import { useAuth } from '../../lib/auth'
@@ -28,6 +29,7 @@ const fallback = () => defaultBoards(isAdmin.value, type => canUse(widgetDef(typ
 onMounted(() => { void store.load(fallback) })
 
 const result = ref<{ ok: boolean; text: string } | null>(null)
+const showWalls = ref(false)
 const boardName = computed({
   get: () => boards.value[active.value]?.name ?? '',
   set: v => store.renameBoard(active.value, v.slice(0, 40)),
@@ -105,6 +107,8 @@ async function reset() {
           <Button variant="ghost" size="icon-sm" :aria-label="t('widgets.boards.menu')"><EllipsisIcon aria-hidden="true" /></Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" class="min-w-56">
+          <DropdownMenuItem @select="showWalls = true">{{ t('widgets.wall.menu') }}</DropdownMenuItem>
+          <DropdownMenuSeparator />
           <DropdownMenuItem :disabled="source !== 'own'" @select="reset">{{ t('widgets.boards.reset') }}</DropdownMenuItem>
           <template v-if="isAdmin">
             <DropdownMenuSeparator />
@@ -126,6 +130,7 @@ async function reset() {
         <StatusBand v-if="isAdmin || storageCap" :is-admin="isAdmin" />
         <WidgetBoard v-if="loaded" :viewer="viewer" surface="panel" />
       </div>
+      <WallDisplaysDialog v-if="showWalls && boards[active]" :board="boards[active]!" @close="showWalls = false" />
     </div>
   </div>
 </template>

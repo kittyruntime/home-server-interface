@@ -23,3 +23,9 @@ export function reportSources(...sources: Array<Source<unknown>>): void {
     status.error = sources.map(s => s.error.value).find(e => e) ?? null
   })
 }
+
+// Who looks at the widgets: the signed-in account, or a wall display's owner.
+export type Viewer = { isAdmin: boolean; storage: boolean }
+const VIEWER: InjectionKey<{ value: Viewer }> = Symbol('widget-viewer')
+export function provideViewer(viewer: { value: Viewer }): void { provide(VIEWER, viewer) }
+export function injectViewer(): { value: Viewer } | null { return inject(VIEWER, null) }

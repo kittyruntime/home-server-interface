@@ -6,12 +6,15 @@ import Empty from '../kit/Empty.vue'
 import { useSource } from '../../../lib/widget-data'
 import { trpc } from '../../../lib/trpc'
 import { useAuth } from '../../../lib/auth'
+import { injectViewer } from '../card-status'
 import { parseLinks } from '../links'
 import type { BoardWidget, WidgetSize } from '../../../lib/dashboard-boards'
 
 const props = defineProps<{ widget: BoardWidget; size: WidgetSize }>()
 const { t } = useI18n()
-const { isAdmin } = useAuth()
+const viewer = injectViewer()
+const { isAdmin: signedInAdmin } = useAuth()
+const isAdmin = computed(() => viewer ? viewer.value.isAdmin : signedInAdmin.value)
 const links = computed(() => parseLinks(props.widget.settings?.links))
 
 // The server checks the addresses (admins only: it can reach the whole local

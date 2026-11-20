@@ -9,6 +9,7 @@ import CustomWidgetEditor from './CustomWidgetEditor.vue'
 import { canUse, widgetDef, type WidgetDef } from './registry'
 import { useBoards, type BoardWidget, type WidgetSize } from '../../lib/dashboard-boards'
 import { requestApp } from '../../lib/app-focus'
+import { provideViewer } from './card-status'
 
 // The widgets of the open board. In edit mode a widget moves by its handle
 // (mouse, finger or arrow keys), changes size, opens its settings or goes.
@@ -17,6 +18,7 @@ const props = defineProps<{ viewer: { isAdmin: boolean; storage: boolean }; surf
 const { t } = useI18n()
 const store = useBoards()
 const { current, editing } = store
+provideViewer(computed(() => props.viewer))
 
 const SPAN: Record<WidgetSize, string> = {
   s: 'col-span-1',

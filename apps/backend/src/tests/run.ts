@@ -4741,3 +4741,48 @@ async function testWidgetPushRoute() {
   await app.close()
 }
 await testWidgetPushRoute()
+
+async function testWallDisplaysOnlyReadTheirWidgets() {
+  const walls = await import("../services/dashboard-walls")
+  const access = walls.wallAccess([
+    { id: "a", type: "cpu", size: "s" },
+    { id: "b", type: "backups", size: "m" },
+    { id: "c", type: "custom", size: "m", settings: { custom: { sources: ["s1", 3, "s2"] } } },
+    { id: "d", type: "from.newer.release", size: "s" },
+  ])
+  assert.deepEqual([...access.allowed].sort(), ["alert.list", "backup.status", "dashboard.wall", "system.metrics", "update.status", "widgetSource.data"])
+  assert.deepEqual([...access.sourceIds], ["s1", "s2"])
+  assert.ok(walls.wallMayCall(access, "backup.status", "query"))
+  assert.ok(!walls.wallMayCall(access, "backup.runNow", "mutation"), "never a change")
+  assert.ok(!walls.wallMayCall(access, "backup.status", "mutation"))
+  assert.ok(!walls.wallMayCall(access, "fs.list", "query"), "nothing its widgets do not read")
+  const t = walls.newWallToken()
+  assert.ok(t.token.startsWith(walls.WALL_PREFIX) && t.hash === walls.hashWallToken(t.token) && t.token.startsWith(t.prefix))
+
+  const { appRouter } = await import("../trpc/routers/index")
+  const wall = { id: "w1", allowed: access.allowed, sourceIds: access.sourceIds }
+  const rows = [{ id: "s1", name: "A", visibility: "admins", lastValue: '{"v":1}', lastAt: null, lastError: null, trackPath: "" }]
+  let asked: string[] = []
+  const ctx = {
+    user: { userId: "owner", isAdmin: true, capabilities: [] }, wall, via: "dashboard", apiToken: null,
+    prisma: {
+      auditLog: { create: async () => ({}) },
+      widgetSource: { findMany: async (a: { where: { id: { in: string[] } } }) => { asked = a.where.id.in; return rows } },
+      dashboardWall: { findUnique: async () => ({ id: "w1", name: "Hall", widgets: '[{"id":"a","type":"cpu","size":"s"}]' }) },
+    },
+    req: { ip: "127.0.0.1", headers: {} },
+  } as any
+  const caller = appRouter.createCaller(ctx)
+  for (const call of [() => caller.dashboard.save({ boards: [{ name: "x", widgets: [] }] }), () => caller.dashboard.sensors(), () => caller.user.preferences()]) {
+    const err = await call().then(() => null, (e: { code?: string }) => e)
+    assert.equal(err?.code, "FORBIDDEN", "a display reaches only its widgets' reads")
+  }
+  assert.deepEqual(await caller.dashboard.wall(), { name: "Hall", widgets: [{ id: "a", type: "cpu", size: "s" }], viewer: { isAdmin: true, storage: true } })
+  await caller.widgetSource.data({ ids: ["00000000-0000-4000-8000-000000000009"] })
+  assert.deepEqual(asked, [], "and only its own widgets' sources")
+
+  const signedIn = appRouter.createCaller({ ...ctx, wall: null })
+  const err = await signedIn.dashboard.wall().then(() => null, (e: { code?: string }) => e)
+  assert.equal(err?.code, "FORBIDDEN", "the display endpoint needs a display token")
+}
+await testWallDisplaysOnlyReadTheirWidgets()

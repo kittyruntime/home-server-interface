@@ -32,6 +32,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   source's data. A source can keep a value's history and raise an alert that
   notifies like any other. Templates cover Jellyfin, Immich, Nextcloud,
   AdGuard Home, Home Assistant, Syncthing and the server commands.
+- **Dashboard**: wall displays show a board full screen on a tablet or a TV
+  without signing in. Each has its own link, shown once, that can only read
+  what its widgets show, with its owner's rights, and stops working as soon as
+  the display is removed. The screen stays awake and the pointer hides.
 
 ## [1.87.0] - 2026-11-20
 

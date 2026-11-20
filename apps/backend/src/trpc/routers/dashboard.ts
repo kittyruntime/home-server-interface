@@ -1,6 +1,7 @@
 import { z } from "zod"
 import { router, protectedProcedure, adminProcedure, storageProcedure } from "../index"
-import { boardView, replaceBoards, zBoardsInput } from "../../services/dashboard-boards"
+import { boardView, parseWidgets, replaceBoards, zBoardInput, zBoardsInput } from "../../services/dashboard-boards"
+import { MAX_WALLS, newWallToken } from "../../services/dashboard-walls"
 import { readSensors } from "../../services/hw-sensors"
 import { readUps, type UpsReading } from "../../services/ups"
 import { checkUrls, checkableUrl } from "../../services/link-status"
@@ -74,4 +75,49 @@ export const dashboardRouter = router({
         throw new TRPCError({ code: "BAD_GATEWAY", message: e instanceof Error ? e.message : "The assistant did not answer" })
       }
     }),
+
+  // ── Wall displays ──────────────────────────────────────────────────────────
+
+  walls: protectedProcedure.query(async ({ ctx }) =>
+    (await ctx.prisma.dashboardWall.findMany({ where: { ownerId: ctx.user.userId }, orderBy: { createdAt: "asc" } }))
+      .map(w => ({ id: w.id, name: w.name, prefix: w.prefix, widgets: parseWidgets(w.widgets).length, lastSeenAt: w.lastSeenAt, createdAt: w.createdAt }))),
+
+  // A display showing a copy of a board; its token is shown this once.
+  createWall: protectedProcedure.input(zBoardInput).mutation(async ({ ctx, input }) => {
+    if (await ctx.prisma.dashboardWall.count({ where: { ownerId: ctx.user.userId } }) >= MAX_WALLS) {
+      throw new TRPCError({ code: "BAD_REQUEST", message: `At most ${MAX_WALLS} wall displays per account` })
+    }
+    const { token, hash, prefix } = newWallToken()
+    const wall = await ctx.prisma.dashboardWall.create({
+      data: { ownerId: ctx.user.userId, name: input.name, widgets: JSON.stringify(input.widgets), tokenHash: hash, prefix },
+    })
+    return { id: wall.id, token }
+  }),
+
+  // Shows the board as it is now on an existing display, keeping its link.
+  updateWall: protectedProcedure.input(zBoardInput.extend({ id: z.string().uuid() }))
+    .mutation(async ({ ctx, input }) => {
+      const n = await ctx.prisma.dashboardWall.updateMany({
+        where: { id: input.id, ownerId: ctx.user.userId },
+        data: { name: input.name, widgets: JSON.stringify(input.widgets) },
+      })
+      if (!n.count) throw new TRPCError({ code: "NOT_FOUND", message: "This display no longer exists" })
+      return { ok: true }
+    }),
+
+  removeWall: protectedProcedure.input(z.object({ id: z.string().uuid() })).mutation(async ({ ctx, input }) => {
+    await ctx.prisma.dashboardWall.deleteMany({ where: { id: input.id, ownerId: ctx.user.userId } })
+    return { ok: true }
+  }),
+
+  // What a display shows; only its own token reaches it.
+  wall: protectedProcedure.query(async ({ ctx }) => {
+    if (!ctx.wall) throw new TRPCError({ code: "FORBIDDEN", message: "Open this with a wall display link" })
+    const w = await ctx.prisma.dashboardWall.findUnique({ where: { id: ctx.wall.id } })
+    if (!w) throw new TRPCError({ code: "NOT_FOUND", message: "This display was removed" })
+    return {
+      name: w.name, widgets: parseWidgets(w.widgets),
+      viewer: { isAdmin: ctx.user.isAdmin, storage: ctx.user.isAdmin || (ctx.user.capabilities ?? []).includes("storage") },
+    }
+  }),
 })

@@ -11,7 +11,7 @@ import { SIZES, type BoardWidget, type WidgetSize } from '../../lib/dashboard-bo
 // and a status line when its data is old or could not be read. In edit mode
 // the header carries the handle, the sizes, the settings and the remove button.
 
-const props = defineProps<{ widget: BoardWidget; def: WidgetDef; editing: boolean; surface?: 'panel' | 'desktop' }>()
+const props = defineProps<{ widget: BoardWidget; def: WidgetDef; editing: boolean; surface?: 'panel' | 'desktop' | 'wall' }>()
 const emit = defineEmits<{
   open: []
   resize: [size: WidgetSize]
@@ -79,7 +79,7 @@ function onKey(e: KeyboardEvent) {
         </Button>
       </template>
       <Button
-        v-else-if="def.open"
+        v-else-if="def.open && surface !== 'wall'"
         variant="ghost" size="icon-sm" class="text-base-content/60"
         :aria-label="t('widgets.open', { name: title })" :tooltip="t('widgets.openShort')"
         @click="emit('open')"

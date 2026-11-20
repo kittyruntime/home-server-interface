@@ -137,3 +137,22 @@ key to write its path in the field you are editing.
   and value, where `@` is the item), or text.
 - **Thresholds**: a warning and a critical level color the value; tick
   **Lower is worse** for a battery or free space.
+
+## Wall displays
+
+A wall display shows one of your boards on a tablet or a TV, full screen,
+without signing in. In the Overview, open the **…** menu, then **Wall
+displays…**, and create a display of the open board. HSI shows its link once:
+open it on the screen.
+
+- The display only **reads** what its widgets show, as your account, with your
+  rights as they are now. It cannot change anything, and cannot reach any other
+  part of HSI.
+- The token is in the part of the link after `#`, which the browser never sends
+  to the server, so it does not appear in logs.
+- The screen stays awake while the page is visible, the pointer hides after
+  3 seconds, and the board is read again every 5 minutes.
+- A display shows a copy of the board: **Show this board** updates it from the
+  board as it is now, keeping its link.
+- **Remove** a display to stop its link at once, for example if the link leaked.
+  An account has up to 10 displays.
