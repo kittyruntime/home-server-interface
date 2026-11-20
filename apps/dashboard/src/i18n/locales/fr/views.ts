@@ -49,6 +49,12 @@ export default {
     yourServerIsReady: 'Votre serveur est prêt',
     aFewThingsWorthDoing: 'Quelques étapes utiles pour la suite. Tout reste accessible ensuite depuis le tableau de bord.',
     goToTheDashboard: 'Aller au tableau de bord',
+    stepOf: 'Étape {n} sur {total}',
+    uses: 'Utilise',
+    railNote: 'Sous chaque étape, les commandes et fichiers qu’elle utilise sur le serveur.',
+    creating: 'Création…',
+    applyEllipsis: 'Appliquer…',
+    serverReadyLead: 'L’administrateur peut se connecter et le serveur est configuré. Quelques étapes utiles pour la suite, toutes accessibles ensuite depuis le tableau de bord.',
   },
   SharePublicView: {
     linkUnavailable: 'Lien indisponible',

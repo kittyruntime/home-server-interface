@@ -29,6 +29,12 @@ export default {
     alreadyHadHsiRestoreIts: 'Already had HSI? Restore its encrypted configuration backup.',
     useAtLeast6Characters: 'Use at least 6 characters',
     thePasswordsDoNotMatch: 'The passwords do not match',
+    couldNotReachTheServer: 'Could not reach the server',
+    thisSetupLinkIsNotValid: 'This setup link is not valid',
+    couldNotCreateTheAdministrator: 'Could not create the administrator',
+    couldNotReadTheServerIdentity: 'Could not read the server identity',
+    couldNotReadTheSecureAccess: 'Could not read the secure access status',
+    hostnameRule: 'Use letters, digits and hyphens (up to 63), not starting or ending with a hyphen',
   },
   SharePublicView: {
     somethingWentWrongPleaseTry: 'Something went wrong. Please try again.',

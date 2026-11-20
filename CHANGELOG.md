@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **Appearance**: the default look (Auto, and the Light and Dark themes) is
+  now HSI's own: warm graphite surfaces with copper as the main color,
+  instead of daisyUI's stock light and dark. Saved choices keep working, and
+  the other themes are unchanged. Text selection, the caret, scrollbars and
+  native checkboxes follow the theme too.
+- **First-run setup**: the assistant is rebuilt in two panes. A rail lists the
+  steps and, under each one, the commands and files it uses on the server
+  (`useradd`, `smbpasswd`, `hostnamectl`, `/etc/hosts`, `timedatectl`,
+  `/var/lib/hsi/tls`); phones get a compact progress bar. The last screen
+  links straight to volumes, sharing, alerts and configuration restore.
+  Messages that were still English only are translated.
+- **Sign-in and Getting started**: the sign-in screen and the Getting started
+  panel of the overview follow the same look, with HSI's new mark. A failed
+  sign-in is shown in the error color.
+
+### Added
+- HSI has its own icon in the browser tab, in place of the build tool's.
+
 ## [1.86.1] - 2026-11-18
 
 ### Changed

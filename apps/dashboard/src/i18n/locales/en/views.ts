@@ -50,6 +50,12 @@ export default {
     yourServerIsReady: 'Your server is ready',
     aFewThingsWorthDoing: 'A few things worth doing next. Everything stays available later from the dashboard.',
     goToTheDashboard: 'Go to the dashboard',
+    stepOf: 'Step {n} of {total}',
+    uses: 'Uses',
+    railNote: 'Under each step, the commands and files it uses on the server.',
+    creating: 'Creating…',
+    applyEllipsis: 'Apply…',
+    serverReadyLead: 'The administrator can sign in, and the server is set up. A few things worth doing next, all available later from the dashboard.',
   },
   SharePublicView: {
     linkUnavailable: 'Link unavailable',

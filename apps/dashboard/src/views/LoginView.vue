@@ -8,6 +8,7 @@ import { useAuth } from '../lib/auth'
 import { trpc } from '../lib/trpc'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import HsiMark from '../components/ui/HsiMark.vue'
 
 const { t } = useI18n()
 
@@ -51,34 +52,20 @@ async function handleLogin() {
 </script>
 
 <template>
-  <div class="login-root min-h-screen flex items-center justify-center bg-base-100 px-4 relative overflow-hidden">
-    <!-- Ambient backdrop -->
-    <div class="ambient" aria-hidden="true">
-      <span class="glow glow-a"></span>
-      <span class="glow glow-b"></span>
-      <span class="glow glow-c"></span>
-    </div>
-
-    <div :class="['relative z-10 w-full max-w-sm login-card', mounted && 'is-in']">
-      <div class="text-center mb-10">
-        <div class="flex justify-center mb-4">
-          <!-- Logo mark -->
-          <svg class="w-12 h-12" viewBox="0 0 48 48" fill="none" aria-hidden="true">
-            <rect x="6" y="20" width="36" height="22" rx="4" fill="var(--color-primary)" opacity="0.12"/>
-            <path d="M24 6 L42 20 H6 Z" fill="var(--color-primary)"/>
-            <rect x="20" y="28" width="8" height="14" rx="1.5" fill="var(--color-primary)"/>
-          </svg>
-        </div>
-        <div class="text-4xl font-semibold text-base-content mb-1">{{ t('ui.views.LoginView.homeServer') }}</div>
-        <div class="eyebrow">{{ t('ui.views.LoginView.homeServerInterface') }}</div>
+  <div class="min-h-dvh flex items-center justify-center bg-base-200 px-4 py-10">
+    <div :class="['w-full max-w-sm login-card', mounted && 'is-in']">
+      <div class="mb-8 flex flex-col items-center text-center">
+        <HsiMark class="size-11" />
+        <h1 class="mt-5 text-2xl font-semibold tracking-tight text-base-content">{{ t('ui.views.LoginView.homeServer') }}</h1>
+        <p class="mt-1 text-sm text-base-content/70">{{ t('ui.views.LoginView.homeServerInterface') }}</p>
       </div>
 
       <form
         @submit.prevent="handleLogin"
-        class="bg-base-100 border border-base-300 rounded-xl p-8 shadow-sm"
+        class="rounded-box border border-base-300 bg-base-100 p-7"
       >
         <div class="mb-5">
-          <label for="login-username" class="eyebrow block mb-2">{{ t('login.username') }}</label>
+          <label for="login-username" class="mb-2 block text-sm font-medium text-base-content">{{ t('login.username') }}</label>
           <Input
             id="login-username"
             v-model="username"
@@ -89,7 +76,7 @@ async function handleLogin() {
         </div>
 
         <div class="mb-6">
-          <label for="login-password" class="eyebrow block mb-2">{{ t('login.password') }}</label>
+          <label for="login-password" class="mb-2 block text-sm font-medium text-base-content">{{ t('login.password') }}</label>
           <div class="relative">
             <Input
               id="login-password"
@@ -114,7 +101,7 @@ async function handleLogin() {
           </div>
         </div>
 
-        <div v-if="error" role="alert" class="mb-4 flex items-center justify-center gap-1.5 text-sm text-primary">
+        <div v-if="error" role="alert" class="mb-4 flex items-center justify-center gap-1.5 text-sm text-error">
           <CircleAlertIcon class="w-4 h-4 shrink-0" aria-hidden="true" />
           {{ error }}
         </div>
@@ -128,65 +115,21 @@ async function handleLogin() {
         </Button>
       </form>
 
-      <p class="text-center text-xs text-base-content/70 mt-6">
-        {{ t('ui.views.LoginView.homeServerInterface') }}
-      </p>
     </div>
   </div>
 </template>
 
 <style scoped>
-/* Follow the active theme's color-scheme for the ambient glow strength. */
-.ambient {
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-  overflow: hidden;
-}
-.glow {
-  position: absolute;
-  border-radius: 9999px;
-  filter: blur(80px);
-  will-change: transform;
-}
-.glow-a {
-  opacity: light-dark(0.28, 0.50);
-  width: 460px; height: 460px;
-  top: -120px; left: -100px;
-  background: var(--color-primary);
-  animation: drift-a 26s ease-in-out infinite;
-}
-.glow-b {
-  opacity: light-dark(0.20, 0.35);
-  width: 380px; height: 380px;
-  bottom: -140px; right: -80px;
-  background: var(--color-primary);
-  animation: drift-b 32s ease-in-out infinite;
-}
-.glow-c {
-  opacity: light-dark(0.14, 0.25);
-  width: 300px; height: 300px;
-  top: 40%; right: 20%;
-  background: var(--color-info);
-  animation: drift-c 30s ease-in-out infinite;
-}
 .login-card {
   opacity: 0;
-  transform: scale(0.98) translateY(6px);
-  transition: opacity 0.35s ease, transform 0.35s ease;
+  transform: translateY(6px);
+  transition: opacity var(--dur-slow) var(--ease-out), transform var(--dur-slow) var(--ease-out);
 }
 .login-card.is-in {
   opacity: 1;
   transform: none;
 }
-
-@keyframes drift-a { 0%,100% { transform: translate(0,0); } 50% { transform: translate(40px,30px); } }
-@keyframes drift-b { 0%,100% { transform: translate(0,0); } 50% { transform: translate(-30px,-40px); } }
-@keyframes drift-c { 0%,100% { transform: translate(0,0); } 50% { transform: translate(-20px,25px); } }
-
 @media (prefers-reduced-motion: reduce) {
-  .glow { animation: none; }
   .login-card { transition: none; opacity: 1; transform: none; }
 }
 </style>
