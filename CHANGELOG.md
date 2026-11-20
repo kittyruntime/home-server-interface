@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **Dashboard**: widgets live on boards, named tabs kept on your account
+  instead of in the browser, shared by the Overview and the desktop. An edit
+  mode moves widgets (mouse, finger or arrow keys), gives them a size (small,
+  wide, large), opens their settings and removes them. An admin can publish
+  boards for every account. A line above the widgets says whether anything
+  needs attention. The widgets of this browser's former dashboard move to the
+  account; System info is folded into the Monitor app. Failing disks and full
+  memory show in the error color again.
+
+### Added
+- **Dashboard**: new widgets: alerts, volumes, disk health, space forecast,
+  backups, trash, apps, updates and HTTPS, activity, sharing, journal, my
+  places, history, temperatures, UPS (through Network UPS Tools), who uses the
+  server, a daily summary by the assistant, notes and links that show whether
+  each service answers.
+
 ## [1.87.0] - 2026-11-20
 
 ### Changed

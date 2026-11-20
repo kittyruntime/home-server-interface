@@ -5,8 +5,8 @@ import { ref, computed, watch, onMounted, onUnmounted, nextTick, defineAsyncComp
 import { useRoute, useRouter } from 'vue-router'
 import { useAuth } from '../lib/auth'
 import { useAlerts } from '../composables/useAlerts'
-import { useDesktop } from '../lib/desktop'
-import { pendingAppFocus, pendingFolder, pendingPlaceAccess, pendingSettings } from '../lib/app-focus'
+import { useDesktop, type AppId, type SettingsSection } from '../lib/desktop'
+import { pendingApp, pendingAppFocus, pendingFolder, pendingPlaceAccess, pendingSettings } from '../lib/app-focus'
 import { useSystemNotifications } from '../lib/systemNotifications'
 import { useNotifications } from '../lib/notifications'
 import { trpc } from '../lib/trpc'
@@ -76,7 +76,7 @@ async function checkUpdateBadge() {
 }
 
 const activeApp        = ref<string>('dashboard')
-const settingsSection  = ref<'profile' | 'users' | 'places' | 'permissions' | 'groups' | 'notifications' | 'data-backups' | 'secure' | null>(null)
+const settingsSection  = ref<'profile' | 'users' | 'places' | 'permissions' | 'groups' | 'notifications' | 'data-backups' | 'secure' | 'updates' | 'alerting' | null>(null)
 const appsPanelRef     = ref<InstanceType<typeof AppsPanelT> | null>(null)
 
 // Unread system notifications plus operations that are running or failed.
@@ -105,6 +105,22 @@ watch(pendingSettings, section => {
     activeApp.value = 'settings'
     settingsSection.value = section
   }
+})
+
+// A dashboard widget asks for the app it is about.
+watch(pendingApp, req => {
+  if (!req) return
+  pendingApp.value = null
+  if (!allowedApps().includes(req.app)) return
+  const desktop = desktopMode.value && !isMobile.value
+  if (req.app === 'settings') {
+    if (desktop) openApp('settings', req.section as SettingsSection | undefined)
+    else {
+      activeApp.value = 'settings'
+      settingsSection.value = (req.section ?? null) as typeof settingsSection.value
+    }
+  } else if (desktop) openApp(req.app as AppId)
+  else activeApp.value = req.app
 })
 
 // A place's properties ask for its access settings (#194).

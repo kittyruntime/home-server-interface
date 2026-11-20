@@ -3,6 +3,7 @@ import ui from './fr/index'
 import uip from './fr/params/index'
 import uis from './fr/script/index'
 import lib from './fr/lib'
+import widgets from './fr/widgets'
 
 // Messages en français : mêmes clés que en.ts (un test le vérifie).
 export default {
@@ -459,6 +460,7 @@ export default {
   uip,
   uis,
   lib,
+  widgets,
   agentRequests: {
     prompt: 'Un assistant IA demande une modification | Un assistant IA demande {n} modifications',
     review: 'Examiner',
