@@ -53,6 +53,8 @@ model WidgetSource {
   lastError   String?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
+  // Accept a self-signed certificate on https (off: the certificate is checked).
+  allowSelfSigned Boolean @default(false)
 }
 
 // The tracked value of a source over time, kept 7 days.

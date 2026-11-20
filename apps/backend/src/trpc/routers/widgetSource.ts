@@ -2,7 +2,7 @@ import { z } from "zod"
 import { TRPCError } from "@trpc/server"
 import { router, protectedProcedure, adminProcedure } from "../index"
 import {
-  ALERT_SOURCE, WIDGET_COMMANDS, hashToken, headersToStore, lastValueOf, newPushToken, readSource,
+  ALERT_SOURCE, WIDGET_COMMANDS, hashToken, headersToStore, lastValueOf, newPushToken, readSource, sameOrigin,
   refreshSource, sourceView, storedHeaders, zSourceInput,
 } from "../../services/widget-sources"
 
@@ -36,6 +36,7 @@ export const widgetSourceRouter = router({
         headers: JSON.stringify(input.kind === "http" ? headersToStore(input.headers, []) : []),
         intervalSec: input.intervalSec, visibility: input.visibility, trackPath: input.trackPath,
         alert: input.alert ? JSON.stringify(input.alert) : "", pushHash: token ? hashToken(token) : null,
+        allowSelfSigned: input.kind === "http" && input.allowSelfSigned,
       },
     })
     if (row.kind !== "push") void refreshSource(row.id)
@@ -52,8 +53,9 @@ export const widgetSourceRouter = router({
       where: { id: input.id },
       data: {
         name: s.name, kind: s.kind, url: s.kind === "http" ? s.url : "", command: s.kind === "command" ? s.command : "",
-        headers: JSON.stringify(s.kind === "http" ? headersToStore(s.headers, storedHeaders(prev.headers)) : []),
+        headers: JSON.stringify(s.kind === "http" ? headersToStore(s.headers, sameOrigin(prev.url, s.url) ? storedHeaders(prev.headers) : []) : []),
         intervalSec: s.intervalSec, visibility: s.visibility, trackPath: s.trackPath,
+        allowSelfSigned: s.kind === "http" && s.allowSelfSigned,
         alert: s.alert ? JSON.stringify(s.alert) : "",
         ...(token && { pushHash: hashToken(token) }),
         ...(s.kind !== "push" && { pushHash: null }),
@@ -90,7 +92,8 @@ export const widgetSourceRouter = router({
     }
     const prev = input.id ? await ctx.prisma.widgetSource.findUnique({ where: { id: input.id } }) : null
     try {
-      const value = await readSource({ kind: s.kind, url: s.url, command: s.command, headers: JSON.stringify(headersToStore(s.headers, storedHeaders(prev?.headers ?? "[]"))) })
+      const kept = prev && sameOrigin(prev.url, s.url) ? storedHeaders(prev.headers) : []
+      const value = await readSource({ kind: s.kind, url: s.url, command: s.command, allowSelfSigned: s.allowSelfSigned, headers: JSON.stringify(headersToStore(s.headers, kept)) })
       return { ok: true as const, value }
     } catch (e) {
       return { ok: false as const, error: e instanceof Error ? e.message : String(e) }

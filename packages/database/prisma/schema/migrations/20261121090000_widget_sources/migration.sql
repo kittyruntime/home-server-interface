@@ -15,7 +15,8 @@ CREATE TABLE "WidgetSource" (
     "lastAt" DATETIME,
     "lastError" TEXT,
     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL
+    "updatedAt" DATETIME NOT NULL,
+    "allowSelfSigned" BOOLEAN NOT NULL DEFAULT false
 );
 
 -- CreateTable

@@ -4658,7 +4658,11 @@ async function testWidgetSourceSecretsStayOnTheServer() {
     assert.equal(decryptSecret(stored[0]!.value), "s3cret")
     const kept = w.headersToStore([{ name: "x-api-key", value: "", secret: true }], stored)
     assert.equal(kept[0]!.value, stored[0]!.value, "an empty secret keeps the stored one")
-    const view = w.sourceView({ id: "i", name: "n", kind: "http", url: "http://h", headers: JSON.stringify(stored), command: "", intervalSec: 60, visibility: "admins", pushHash: null, trackPath: "", alert: "", lastValue: null, lastAt: null, lastError: null })
+    assert.ok(w.sameOrigin("http://10.0.0.2:8096/Sessions", "http://10.0.0.2:8096/Other"))
+    assert.ok(!w.sameOrigin("http://10.0.0.2:8096/x", "http://evil.example/x"), "another host needs the secret again")
+    assert.ok(!w.sameOrigin("http://10.0.0.2:8096/x", "https://10.0.0.2:8096/x"))
+    assert.equal(w.headersToStore([{ name: "X-Api-Key", value: "", secret: true }], [])[0]!.value, "", "without the stored headers nothing is kept")
+    const view = w.sourceView({ id: "i", name: "n", kind: "http", url: "http://h", headers: JSON.stringify(stored), command: "", intervalSec: 60, visibility: "admins", pushHash: null, trackPath: "", alert: "", lastValue: null, lastAt: null, lastError: null, allowSelfSigned: false })
     assert.deepEqual(view.headers, [{ name: "X-Api-Key", value: "", secret: true }, { name: "Accept-Language", value: "fr", secret: false }])
     const { redactForAudit } = await import("../trpc/index")
     const logged = JSON.stringify(redactForAudit({ source: { headers: [{ name: "X-Thing", value: "s3cret", secret: true }, { name: "Authorization", value: "Bearer abc", secret: false }, { name: "Accept", value: "json", secret: false }] } }))
@@ -4713,8 +4717,8 @@ async function testWidgetSourceAccess() {
     assert.equal(err?.code, "FORBIDDEN", "only admins configure sources")
   }
   const rows = [
-    { id: "a", name: "A", kind: "http", visibility: "admins", url: "http://secret-host", headers: "[]", command: "", intervalSec: 60, pushHash: null, trackPath: "", alert: "", lastValue: '{"v":1}', lastAt: null, lastError: null },
-    { id: "b", name: "B", kind: "http", visibility: "everyone", url: "http://h", headers: "[]", command: "", intervalSec: 60, pushHash: null, trackPath: "", alert: "", lastValue: '{"v":2}', lastAt: null, lastError: null },
+    { id: "a", name: "A", kind: "http", visibility: "admins", url: "http://secret-host", headers: "[]", command: "", intervalSec: 60, pushHash: null, trackPath: "", alert: "", lastValue: '{"v":1}', lastAt: null, lastError: null, allowSelfSigned: false },
+    { id: "b", name: "B", kind: "http", visibility: "everyone", url: "http://h", headers: "[]", command: "", intervalSec: 60, pushHash: null, trackPath: "", alert: "", lastValue: '{"v":2}', lastAt: null, lastError: null, allowSelfSigned: false },
   ]
   const reader = widgetSourceRouter.createCaller({ user: { userId: "u", isAdmin: false }, prisma: { widgetSource: { findMany: async () => rows } }, req: { ip: "127.0.0.1", headers: {} } } as any)
   assert.deepEqual(await reader.list(), [{ id: "a", name: "A", kind: "http", editable: false }, { id: "b", name: "B", kind: "http", editable: false }].filter(r => r.id === "b"), "members see shared sources by name only")

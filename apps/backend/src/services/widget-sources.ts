@@ -47,6 +47,7 @@ export const zSourceInput = z.object({
   visibility: z.enum(["admins", "everyone"]).default("admins"),
   trackPath: zPath.default(""),
   alert: zRule.nullable().default(null),
+  allowSelfSigned: z.boolean().default(false),
 }).superRefine((s, ctx) => {
   if (s.kind === "http") {
     try {
@@ -124,11 +125,13 @@ export function parseBody(text: string): unknown {
 
 // ── Reading ───────────────────────────────────────────────────────────────────
 
-export function httpGet(url: string, headers: Record<string, string>, timeoutMs = 8000): Promise<unknown> {
+export function httpGet(url: string, headers: Record<string, string>, timeoutMs = 8000, allowSelfSigned = false): Promise<unknown> {
   const u = new URL(url)
   return new Promise((resolve, reject) => {
     const req = (u.protocol === "https:" ? httpsRequest : httpRequest)(u, {
-      method: "GET", timeout: timeoutMs, rejectUnauthorized: false,
+      // The certificate is checked unless the admin accepted a self-signed one
+      // for this source.
+      method: "GET", timeout: timeoutMs, rejectUnauthorized: !allowSelfSigned,
       headers: { Accept: "application/json, text/plain;q=0.8", "User-Agent": "hsi-widget", ...headers },
     }, res => {
       const status = res.statusCode ?? 0
@@ -154,6 +157,7 @@ type SourceRow = {
   id: string; name: string; kind: string; url: string; headers: string; command: string
   intervalSec: number; visibility: string; pushHash: string | null; trackPath: string; alert: string
   lastValue: string | null; lastAt: Date | null; lastError: string | null
+  allowSelfSigned: boolean
 }
 
 export function storedHeaders(text: string): StoredHeader[] {
@@ -163,7 +167,14 @@ export function storedHeaders(text: string): StoredHeader[] {
   } catch { return [] }
 }
 
-/** The headers to store: secret values encrypted, an empty secret keeping the old one. */
+/** Same scheme, host and port: a stored secret only ever goes where it was meant to. */
+export function sameOrigin(a: string, b: string): boolean {
+  try { return new URL(a).origin === new URL(b).origin } catch { return false }
+}
+
+/** The headers to store: secret values encrypted; an empty secret keeps the old
+ *  one only while the address stays on the same origin (`previous` is then
+ *  the stored headers, else []), so a changed address needs the secret again. */
 export function headersToStore(input: SourceInput["headers"], previous: StoredHeader[]): StoredHeader[] {
   return input.map(h => {
     if (!h.secret) return { name: h.name, value: h.value, secret: false }
@@ -187,8 +198,8 @@ export function parseRule(text: string): AlertRule | null {
 }
 
 /** Reads a source now, from its address or command (push sources are not read). */
-export async function readSource(src: Pick<SourceRow, "kind" | "url" | "headers" | "command">): Promise<unknown> {
-  if (src.kind === "http") return httpGet(src.url, sentHeaders(storedHeaders(src.headers)))
+export async function readSource(src: Pick<SourceRow, "kind" | "url" | "headers" | "command" | "allowSelfSigned">): Promise<unknown> {
+  if (src.kind === "http") return httpGet(src.url, sentHeaders(storedHeaders(src.headers)), 8000, src.allowSelfSigned)
   if (src.kind === "command") return (await requestSync<{ value: unknown }>("root.widget.command", { id: src.command }, 15_000)).value
   throw new Error("This source receives its data from a script")
 }
@@ -274,7 +285,7 @@ export function sourceView(s: SourceRow) {
     id: s.id, name: s.name, kind: s.kind, url: s.url, command: s.command, intervalSec: s.intervalSec,
     visibility: s.visibility, trackPath: s.trackPath, alert: parseRule(s.alert),
     headers: storedHeaders(s.headers).map(h => ({ name: h.name, value: h.secret ? "" : h.value, secret: h.secret })),
-    hasPushToken: !!s.pushHash, lastAt: s.lastAt, lastError: s.lastError,
+    hasPushToken: !!s.pushHash, lastAt: s.lastAt, lastError: s.lastError, allowSelfSigned: s.allowSelfSigned,
   }
 }
 
