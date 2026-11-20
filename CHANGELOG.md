@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.87.0] - 2026-11-20
+
 ### Changed
 - **Monitor**: the app is reorganized into Performance, Processes, History,
   Alerts and Audit log. Performance opens on one panel with four readings (CPU,
@@ -2282,7 +2284,8 @@ First stable release.
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.86.1...HEAD
+[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.87.0...HEAD
+[1.87.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.86.1...v1.87.0
 [1.86.1]: https://github.com/kittyruntime/home-server-interface/compare/v1.86.0...v1.86.1
 [1.86.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.85.1...v1.86.0
 [1.85.1]: https://github.com/kittyruntime/home-server-interface/compare/v1.85.0...v1.85.1
