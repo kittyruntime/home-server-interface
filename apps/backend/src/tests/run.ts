@@ -4752,6 +4752,8 @@ async function testWallDisplaysOnlyReadTheirWidgets() {
   ])
   assert.deepEqual([...access.allowed].sort(), ["alert.list", "backup.status", "dashboard.wall", "system.metrics", "update.status", "widgetSource.data"])
   assert.deepEqual([...access.sourceIds], ["s1", "s2"])
+  const linked = walls.wallAccess([{ id: "l", type: "links", size: "m", settings: { links: [{ label: "J", url: "http://10.0.0.2:8096" }, { url: 3 }] } }])
+  assert.deepEqual([...linked.linkUrls], ["http://10.0.0.2:8096"])
   assert.ok(walls.wallMayCall(access, "backup.status", "query"))
   assert.ok(!walls.wallMayCall(access, "backup.runNow", "mutation"), "never a change")
   assert.ok(!walls.wallMayCall(access, "backup.status", "mutation"))
@@ -4760,7 +4762,7 @@ async function testWallDisplaysOnlyReadTheirWidgets() {
   assert.ok(t.token.startsWith(walls.WALL_PREFIX) && t.hash === walls.hashWallToken(t.token) && t.token.startsWith(t.prefix))
 
   const { appRouter } = await import("../trpc/routers/index")
-  const wall = { id: "w1", allowed: access.allowed, sourceIds: access.sourceIds }
+  const wall = { id: "w1", allowed: new Set([...access.allowed, "dashboard.linkStatus", "audit.list"]), sourceIds: access.sourceIds, linkUrls: new Set(["http://127.0.0.1:1/"]) }
   const rows = [{ id: "s1", name: "A", visibility: "admins", lastValue: '{"v":1}', lastAt: null, lastError: null, trackPath: "" }]
   let asked: string[] = []
   const ctx = {
@@ -4780,6 +4782,13 @@ async function testWallDisplaysOnlyReadTheirWidgets() {
   assert.deepEqual(await caller.dashboard.wall(), { name: "Hall", widgets: [{ id: "a", type: "cpu", size: "s" }], viewer: { isAdmin: true, storage: true } })
   await caller.widgetSource.data({ ids: ["00000000-0000-4000-8000-000000000009"] })
   assert.deepEqual(asked, [], "and only its own widgets' sources")
+
+  const checked = await caller.dashboard.linkStatus({ urls: ["http://127.0.0.1:1/", "http://169.254.169.254/latest"] })
+  assert.deepEqual(checked.map(c => c.url), ["http://127.0.0.1:1/"], "a display checks only its own links")
+  let auditArgs: { skip: number; take: number; where: object } | null = null
+  const auditCaller = appRouter.createCaller({ ...ctx, prisma: { ...ctx.prisma, auditLog: { create: async () => ({}), count: async () => 0, findMany: async (a: typeof auditArgs) => { auditArgs = a; return [] } } } })
+  await auditCaller.audit.list({ page: 9, limit: 200, userId: "someone" })
+  assert.deepEqual([auditArgs!.skip, auditArgs!.take, auditArgs!.where], [0, 40, {}], "a display reads only the latest entries, unfiltered")
 
   const signedIn = appRouter.createCaller({ ...ctx, wall: null })
   const err = await signedIn.dashboard.wall().then(() => null, (e: { code?: string }) => e)

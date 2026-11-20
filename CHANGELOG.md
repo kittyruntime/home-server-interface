@@ -35,7 +35,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Dashboard**: wall displays show a board full screen on a tablet or a TV
   without signing in. Each has its own link, shown once, that can only read
   what its widgets show, with its owner's rights, and stops working as soon as
-  the display is removed. The screen stays awake and the pointer hides.
+  the display is removed or its owner changes their password. The screen
+  stays awake and the pointer hides.
 
 ## [1.87.0] - 2026-11-20
 

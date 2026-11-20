@@ -74,6 +74,9 @@ export async function changePassword(
     select: { id: true, username: true },
   })
   void syncSystemPassword(prisma, userId, newPassword)
+  // Wall displays sign in with their own links: a new password, often meant to
+  // shut out whoever knew the old one, stops them too.
+  await prisma.dashboardWall.deleteMany({ where: { ownerId: userId } })
   return result
 }
 

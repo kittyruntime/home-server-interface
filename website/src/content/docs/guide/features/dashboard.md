@@ -156,3 +156,7 @@ open it on the screen.
   board as it is now, keeping its link.
 - **Remove** a display to stop its link at once, for example if the link leaked.
   An account has up to 10 displays.
+- Changing your password removes all your displays. While an account must
+  change its password, its displays show nothing.
+- A display's links widget is checked only for the addresses saved on it, and
+  its journal widget reads only the latest entries.

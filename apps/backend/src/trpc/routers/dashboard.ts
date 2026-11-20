@@ -61,7 +61,9 @@ export const dashboardRouter = router({
   // local network.
   linkStatus: adminProcedure
     .input(z.object({ urls: z.array(z.string().max(2048)).max(24) }))
-    .query(({ input }) => checkUrls([...new Set(input.urls)].filter(u => checkableUrl(u) != null))),
+    .query(({ ctx, input }) => checkUrls([...new Set(input.urls)]
+      // A wall display checks only the links saved on its widgets.
+      .filter(u => checkableUrl(u) != null && (!ctx.wall || ctx.wall.linkUrls.has(u))))),
 
   // Today's summary by the assistant: admin only, since it reads every alert.
   digest: adminProcedure.input(z.object({ locale: z.enum(["en", "fr"]) }))

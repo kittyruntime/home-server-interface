@@ -36,20 +36,26 @@ const WIDGET_READS: Record<string, string[]> = {
 // The display itself, and the status line above the widgets.
 const ALWAYS = ["dashboard.wall", "alert.list", "update.status"]
 
-export type WallAuth = { id: string; allowed: Set<string>; sourceIds: Set<string> }
+export type WallAuth = { id: string; allowed: Set<string>; sourceIds: Set<string>; linkUrls: Set<string> }
 
-/** The queries a board's widgets read, and the custom widgets' sources. */
-export function wallAccess(widgets: BoardWidget[]): { allowed: Set<string>; sourceIds: Set<string> } {
+/** The queries a board's widgets read, the custom widgets' sources and the
+ *  addresses of its link widgets: a display's inputs are bound to them. */
+export function wallAccess(widgets: BoardWidget[]): { allowed: Set<string>; sourceIds: Set<string>; linkUrls: Set<string> } {
   const allowed = new Set(ALWAYS)
   const sourceIds = new Set<string>()
+  const linkUrls = new Set<string>()
   for (const w of widgets) {
     for (const p of WIDGET_READS[w.type] ?? []) allowed.add(p)
     const custom = w.settings?.custom as { sources?: unknown } | undefined
     if (w.type === "custom" && Array.isArray(custom?.sources)) {
       for (const s of custom.sources) if (typeof s === "string") sourceIds.add(s)
     }
+    const links = w.settings?.links
+    if (w.type === "links" && Array.isArray(links)) {
+      for (const l of links) if (l && typeof (l as { url?: unknown }).url === "string") linkUrls.add((l as { url: string }).url)
+    }
   }
-  return { allowed, sourceIds }
+  return { allowed, sourceIds, linkUrls }
 }
 
 /** A call a display may make: a query its widgets read. */
@@ -70,7 +76,8 @@ export async function authenticateWall(authorization: string | undefined) {
   const wall = await prisma.dashboardWall.findUnique({ where: { tokenHash: hashWallToken(authorization.slice(7).trim()) } })
   if (!wall) return null
   const owner = await loadCurrentUserAuthorization(wall.ownerId)
-  if (!owner) return null
+  // An account that must change its password shows nothing until it has.
+  if (!owner || owner.mustChangePassword) return null
   if (!wall.lastSeenAt || Date.now() - wall.lastSeenAt.getTime() > SEEN_EVERY_MS) {
     void prisma.dashboardWall.update({ where: { id: wall.id }, data: { lastSeenAt: new Date() } }).catch(() => {})
   }
@@ -81,7 +88,6 @@ export async function authenticateWall(authorization: string | undefined) {
       jti: "wall:" + wall.id,
       isAdmin: owner.isAdmin,
       isUserManager: owner.isAdmin || owner.isUserManager,
-      // A display only reads; a pending password change does not stop it.
       mustChangePassword: false,
       capabilities: owner.capabilities.map(c => c.capability),
     },
