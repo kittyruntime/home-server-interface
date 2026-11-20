@@ -20,6 +20,8 @@ const router = createRouter({
     { path: '/login', component: LoginView },
     { path: '/setup', component: () => import('./views/SetupView.vue') },
     { path: '/s/:token', component: () => import('./views/SharePublicView.vue') },
+    // A wall display: its token is in the fragment, never sent to the server.
+    { path: '/wall', component: () => import('./views/WallView.vue') },
     {
       path: '/',
       component: () => import('./views/DashboardLayout.vue'),

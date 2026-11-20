@@ -53,3 +53,13 @@ export function takeFolderFocus(): string | null {
   pendingFolder.value = null
   return path
 }
+
+// A dashboard widget opens the app it is about (and a Settings section): the
+// shell opens it as a window on the desktop, or switches to it elsewhere.
+
+export type AppRequest = { app: string; section?: string }
+export const pendingApp = ref<AppRequest | null>(null)
+
+export function requestApp(app: string, section?: string): void {
+  pendingApp.value = { app, section }
+}

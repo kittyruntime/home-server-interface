@@ -1,40 +1,28 @@
 <script setup lang="ts">
-import { computed, reactive } from 'vue'
-import WidgetBody from '../dashboard/WidgetBody.vue'
-import { useDashboardWidgets, catalogFor, type Widget } from '../../lib/dashboard-widgets'
+import { computed, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
+import WidgetBoard from '../widgets/WidgetBoard.vue'
+import { canUse, widgetDef } from '../widgets/registry'
+import { defaultBoards, useBoards } from '../../lib/dashboard-boards'
 import { useAuth } from '../../lib/auth'
 
-defineEmits<{
-  'contextmenu-widget': [widget: Widget, event: MouseEvent]
-}>()
+// The open board's widgets on the desktop, under the windows. The same boards
+// as Overview; the desktop's context menu switches between them and edits.
 
-const {
-  widgets, metrics,
-  cpuHist, rxHist, txHist,
-  ctrRunning, ctrStopped, ctrError,
-  disks, sysinfo, smart, smartDevices,
-  toggleCols, removeWidget, addWidget,
-} = useDashboardWidgets()
-
+const { t } = useI18n()
 const { isAdmin, hasCapability } = useAuth()
-const addableTypes = computed(() =>
-  catalogFor(isAdmin.value, cap => hasCapability(cap).value).filter(cat => !widgets.value.some(w => w.type === cat.type))
-)
+const storageCap = hasCapability('storage')
+const viewer = computed(() => ({ isAdmin: isAdmin.value, storage: storageCap.value }))
+const store = useBoards()
+const { loaded } = store
 
-// What every widget body reads (reactive() unwraps the refs for v-bind).
-const body = reactive({ metrics, cpuHist, rxHist, txHist, ctrRunning, ctrStopped, ctrError, disks, sysinfo, smart, smartDevices })
-
-defineExpose({ addableTypes, addWidget, removeWidget, toggleCols })
+onMounted(() => {
+  void store.load(() => defaultBoards(isAdmin.value, type => canUse(widgetDef(type), viewer.value), t('widgets.boards.defaultName')))
+})
 </script>
 
 <template>
-  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 p-6">
-    <div
-      v-for="w in widgets" :key="w.id"
-      :class="['relative bg-base-200/90 border border-base-300 rounded-box p-5 min-h-[130px] flex flex-col', w.cols === 2 ? 'col-span-2' : 'col-span-1']"
-      @contextmenu="$emit('contextmenu-widget', w, $event)"
-    >
-      <WidgetBody :w="w" v-bind="body" />
-    </div>
+  <div class="p-6">
+    <WidgetBoard v-if="loaded" :viewer="viewer" surface="desktop" />
   </div>
 </template>

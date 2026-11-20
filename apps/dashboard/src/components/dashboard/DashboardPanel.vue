@@ -1,100 +1,136 @@
 <script setup lang="ts">
+import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { ArrowLeftIcon, ArrowRightIcon, CheckIcon, EllipsisIcon, PencilIcon, PlusIcon, Trash2Icon } from '@lucide/vue'
 import { Button } from '@/components/ui/button'
-import { ChevronsLeftRightIcon, ChevronsUpDownIcon, LayoutGridIcon, PlusIcon, XIcon } from '@lucide/vue'
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
-import { computed, reactive } from 'vue'
-import WidgetBody from './WidgetBody.vue'
+import { Input } from '@/components/ui/input'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import GettingStartedCard from './GettingStartedCard.vue'
 import HttpsBanner from './HttpsBanner.vue'
-import { useDashboardWidgets, catalogFor } from '../../lib/dashboard-widgets'
+import WidgetBoard from '../widgets/WidgetBoard.vue'
+import StatusBand from '../widgets/StatusBand.vue'
+import WallDisplaysDialog from '../widgets/WallDisplaysDialog.vue'
+import { canUse, widgetDef } from '../widgets/registry'
+import { defaultBoards, MAX_BOARDS, useBoards } from '../../lib/dashboard-boards'
 import { useAuth } from '../../lib/auth'
+import { useConfirm } from '../../lib/confirm'
 
 const { t } = useI18n()
-
-const {
-  widgets, metrics,
-  cpuHist, rxHist, txHist,
-  uptimeStr, ctrRunning, ctrStopped, ctrError,
-  disks, sysinfo, smart, smartDevices,
-  toggleCols, removeWidget, addWidget,
-} = useDashboardWidgets()
-
 const emit = defineEmits<{ navigate: [target: 'places' | 'store' | 'backups' | 'secure'] }>()
 
 const { isAdmin, hasCapability } = useAuth()
-const catalog = computed(() => catalogFor(isAdmin.value, cap => hasCapability(cap).value))
+const storageCap = hasCapability('storage')
+const viewer = computed(() => ({ isAdmin: isAdmin.value, storage: storageCap.value }))
+const store = useBoards()
+const { boards, active, editing, loaded, source, saving, saveError } = store
+const { confirm } = useConfirm()
 
-// What every widget body reads (reactive() unwraps the refs for v-bind).
-const body = reactive({ metrics, cpuHist, rxHist, txHist, ctrRunning, ctrStopped, ctrError, disks, sysinfo, smart, smartDevices })
+const fallback = () => defaultBoards(isAdmin.value, type => canUse(widgetDef(type), viewer.value), t('widgets.boards.defaultName'))
+onMounted(() => { void store.load(fallback) })
 
+const result = ref<{ ok: boolean; text: string } | null>(null)
+const showWalls = ref(false)
+const boardName = computed({
+  get: () => boards.value[active.value]?.name ?? '',
+  set: v => store.renameBoard(active.value, v.slice(0, 40)),
+})
+
+function finishEditing() {
+  const b = boards.value[active.value]
+  if (b && !b.name.trim()) store.renameBoard(active.value, t('widgets.boards.defaultName'))
+  editing.value = false
+}
+
+async function removeBoard() {
+  const b = boards.value[active.value]
+  if (!b || boards.value.length <= 1) return
+  if (b.widgets.length && !await confirm(t('widgets.boards.removeConfirm', { name: b.name }), { title: t('widgets.boards.remove'), confirmLabel: t('widgets.boards.remove'), danger: true })) return
+  store.removeBoard(active.value)
+}
+
+async function run(fn: () => Promise<void>, ok: string) {
+  result.value = null
+  try { await fn(); result.value = { ok: true, text: ok } }
+  catch (e) { result.value = { ok: false, text: (e as Error).message } }
+}
+
+async function publish() {
+  if (!await confirm(t('widgets.boards.publishConfirm'), { title: t('widgets.boards.publish'), confirmLabel: t('widgets.boards.publish') })) return
+  await run(() => store.publish(), t('widgets.boards.published'))
+}
+async function unpublish() {
+  await run(() => store.unpublish(), t('widgets.boards.unpublished'))
+}
+async function reset() {
+  if (!await confirm(t('widgets.boards.resetConfirm'), { title: t('widgets.boards.reset'), confirmLabel: t('widgets.boards.reset'), danger: true })) return
+  await run(() => store.reset(fallback), t('widgets.boards.resetDone'))
+  editing.value = false
+}
 </script>
 
 <template>
-  <div class="flex flex-col h-full">
-
-    <!-- Toolbar -->
-    <div class="flex items-center justify-between px-4 sm:px-6 py-3.5 sm:py-4 border-b border-base-300 flex-shrink-0">
-      <div class="flex items-center gap-3">
-        <h3 class="text-sm font-semibold text-base-content">{{ t('ui.home.DashboardPanel.overview') }}</h3>
-        <span v-if="metrics" class="text-xs tabular-nums text-base-content/70">{{ uptimeStr }}</span>
+  <div class="flex h-full flex-col">
+    <!-- Toolbar: the boards, then edit and the board menu. -->
+    <div class="flex flex-shrink-0 flex-wrap items-center gap-x-3 gap-y-2 border-b border-base-300 px-4 py-3 sm:px-6">
+      <h3 class="sr-only">{{ t('ui.home.DashboardPanel.overview') }}</h3>
+      <div v-if="!editing" role="tablist" class="-mx-1 flex min-w-0 flex-1 items-center gap-1 overflow-x-auto px-1" :aria-label="t('widgets.boards.label')">
+        <button
+          v-for="(b, i) in boards" :key="b.id" role="tab" type="button"
+          :aria-selected="i === active"
+          :class="['btn btn-sm shrink-0', i === active ? 'btn-active' : 'btn-ghost text-base-content/70']"
+          @click="store.select(i)"
+        >{{ b.name }}</button>
+      </div>
+      <div v-else class="flex min-w-0 flex-1 flex-wrap items-center gap-2">
+        <Input v-model="boardName" class="h-8 w-44 max-w-full" maxlength="40" :aria-label="t('widgets.boards.name')" />
+        <Button variant="ghost" size="icon-sm" :disabled="active === 0" :aria-label="t('widgets.boards.moveLeft')" :tooltip="t('widgets.boards.moveLeft')" @click="store.moveBoard(active, active - 1)"><ArrowLeftIcon aria-hidden="true" /></Button>
+        <Button variant="ghost" size="icon-sm" :disabled="active >= boards.length - 1" :aria-label="t('widgets.boards.moveRight')" :tooltip="t('widgets.boards.moveRight')" @click="store.moveBoard(active, active + 1)"><ArrowRightIcon aria-hidden="true" /></Button>
+        <Button variant="ghost" size="icon-sm" class="hover:text-error" :disabled="boards.length <= 1" :aria-label="t('widgets.boards.remove')" :tooltip="t('widgets.boards.remove')" @click="removeBoard"><Trash2Icon aria-hidden="true" /></Button>
+        <span class="mx-1 h-5 w-px bg-base-300" aria-hidden="true" />
+        <div role="tablist" class="flex min-w-0 items-center gap-1 overflow-x-auto" :aria-label="t('widgets.boards.label')">
+          <button
+            v-for="(b, i) in boards" :key="b.id" role="tab" type="button" :aria-selected="i === active"
+            :class="['btn btn-xs shrink-0', i === active ? 'btn-active' : 'btn-ghost text-base-content/70']"
+            @click="store.select(i)"
+          >{{ b.name || '…' }}</button>
+        </div>
+        <Button variant="ghost" size="sm" :disabled="boards.length >= MAX_BOARDS" @click="store.addBoard(t('widgets.boards.newName', { n: boards.length + 1 }))">
+          <PlusIcon aria-hidden="true" />{{ t('widgets.boards.add') }}
+        </Button>
       </div>
 
-      <!-- Add widget dropdown -->
+      <span v-if="saving" class="status-text text-base-content/60">{{ t('widgets.boards.saving') }}</span>
+      <Button v-if="editing" size="sm" @click="finishEditing"><CheckIcon aria-hidden="true" />{{ t('widgets.edit.done') }}</Button>
+      <Button v-else variant="outline" size="sm" :disabled="!loaded" @click="editing = true"><PencilIcon aria-hidden="true" />{{ t('widgets.edit.start') }}</Button>
       <DropdownMenu>
         <DropdownMenuTrigger as-child>
-          <Button variant="outline" size="sm">
-            <PlusIcon aria-hidden="true" />
-            {{ t('ui.home.DashboardPanel.add') }}
-          </Button>
+          <Button variant="ghost" size="icon-sm" :aria-label="t('widgets.boards.menu')"><EllipsisIcon aria-hidden="true" /></Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" class="min-w-[140px]">
-          <DropdownMenuItem v-for="cat in catalog" :key="cat.type" @select="addWidget(cat.type)">
-            {{ cat.label }}
-          </DropdownMenuItem>
+        <DropdownMenuContent align="end" class="min-w-56">
+          <DropdownMenuItem @select="showWalls = true">{{ t('widgets.wall.menu') }}</DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem :disabled="source !== 'own'" @select="reset">{{ t('widgets.boards.reset') }}</DropdownMenuItem>
+          <template v-if="isAdmin">
+            <DropdownMenuSeparator />
+            <DropdownMenuItem @select="publish">{{ t('widgets.boards.publish') }}</DropdownMenuItem>
+            <DropdownMenuItem @select="unpublish">{{ t('widgets.boards.unpublish') }}</DropdownMenuItem>
+          </template>
         </DropdownMenuContent>
       </DropdownMenu>
     </div>
 
-    <HttpsBanner v-if="isAdmin" @navigate="emit('navigate', $event)" />
-    <GettingStartedCard v-if="isAdmin" @navigate="emit('navigate', $event)" />
-
-    <!-- Widget grid -->
-    <div class="flex-1 overflow-y-auto p-4 sm:p-6">
-      <div v-if="widgets.length === 0" class="flex flex-col items-center justify-center h-full gap-3 text-base-content/70">
-        <LayoutGridIcon class="w-10 h-10 opacity-20" aria-hidden="true" />
-        <p class="text-sm">{{ t('ui.home.DashboardPanel.noWidgetsClick') }} <strong class="text-base-content/80">{{ t('ui.home.DashboardPanel.add') }}</strong> {{ t('ui.home.DashboardPanel.toGetStarted') }}</p>
+    <div class="flex-1 overflow-y-auto">
+      <HttpsBanner v-if="isAdmin" @navigate="emit('navigate', $event)" />
+      <GettingStartedCard v-if="isAdmin" @navigate="emit('navigate', $event)" />
+      <div class="flex flex-col gap-4 p-4 sm:p-6">
+        <p v-if="saveError" class="status-text text-error"><span class="status-tag">[ERR]</span> {{ t('widgets.boards.saveFailed', { error: saveError }) }}</p>
+        <p v-if="result" :class="['status-text', result.ok ? 'text-success' : 'text-error']">
+          <span class="status-tag">{{ result.ok ? '[OK]' : '[ERR]' }}</span> {{ result.text }}
+        </p>
+        <StatusBand v-if="isAdmin || storageCap" :is-admin="isAdmin" />
+        <WidgetBoard v-if="loaded" :viewer="viewer" surface="panel" />
       </div>
-
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        <div
-          v-for="w in widgets" :key="w.id"
-          :class="['relative group/card bg-base-200 border border-base-300 rounded-xl p-4 sm:p-5 min-h-[130px] flex flex-col', w.cols === 2 ? 'col-span-1 sm:col-span-2' : 'col-span-1']"
-        >
-          <!-- Widget controls -->
-          <div class="absolute top-3 right-3 flex items-center gap-1 opacity-0 group-hover/card:opacity-100 focus-within:opacity-100 transition-opacity">
-            <Button variant="ghost" size="icon-xs"
-              @click="toggleCols(w)"
-              :tooltip="w.cols === 1 ? 'Expand' : 'Shrink'"
-              :aria-label="w.cols === 1 ? 'Expand widget' : 'Shrink widget'"
-              class="text-base-content/70"
-            >
-              <component :is="w.cols === 1 ? ChevronsLeftRightIcon : ChevronsUpDownIcon" class="size-3.5" aria-hidden="true" />
-            </Button>
-            <Button variant="ghost" size="icon-xs"
-              @click="removeWidget(w.id)"
-              :tooltip="t('ui.home.DashboardPanel.remove')" :aria-label="t('ui.home.DashboardPanel.remove')"
-              class="text-base-content/70 hover:text-primary hover:bg-primary/10"
-            >
-              <XIcon class="w-3 h-3" aria-hidden="true" />
-            </Button>
-          </div>
-
-          <WidgetBody :w="w" v-bind="body" />
-
-        </div>
-      </div>
+      <WallDisplaysDialog v-if="showWalls && boards[active]" :board="boards[active]!" @close="showWalls = false" />
     </div>
   </div>
 </template>
-

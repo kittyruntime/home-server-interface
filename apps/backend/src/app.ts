@@ -13,6 +13,7 @@ import { fileRoutes } from "./routes/files"
 import { shareRoutes } from "./routes/share"
 import { containerRoutes } from "./routes/containers"
 import { backupRoutes } from "./routes/backup"
+import { widgetRoutes } from "./routes/widgets"
 import { tlsRoutes } from "./routes/tls"
 import { appRouter } from "./trpc/routers/index"
 import { createContext } from "./trpc/context"
@@ -120,6 +121,7 @@ export function buildApp(opts: BuildAppOptions = {}) {
     app.register(shareRoutes)
     app.register(containerRoutes)
     app.register(backupRoutes)
+    app.register(widgetRoutes)
     app.register(tlsRoutes)
     app.register(mcpRoutes)
     app.register(assistantRoutes)

@@ -50,10 +50,17 @@ export function createSessionAwareFetch(
   }
 }
 
+// A wall display (/wall) signs its calls with its own token, never the
+// browser's session.
+let wallToken: string | null = null
+export function useWallToken(token: string | null): void {
+  wallToken = token
+}
+
 const linkOptions = {
   url: import.meta.env?.VITE_API_URL ?? '/trpc',
   headers() {
-    const token = localStorage.getItem('token')
+    const token = wallToken ?? localStorage.getItem('token')
     return token ? { Authorization: `Bearer ${token}` } : {}
   },
   fetch: createSessionAwareFetch(fetch, onSessionInvalid),

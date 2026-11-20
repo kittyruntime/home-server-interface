@@ -52,6 +52,7 @@ export function toolContext(req: RequestLike, user: TokenUser, origin: ToolOrigi
     audit: {} as { meta?: Record<string, unknown>; success?: boolean; target?: string },
     via: origin.via,
     apiToken,
+    wall: null,
   }
   const audit = (action: string, target?: string) =>
     prisma.auditLog.create({ data: { userId: user.userId, action, target, ip: req.ip, via: origin.via, tokenId } })

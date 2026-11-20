@@ -2,6 +2,7 @@ import ui from './en/index'
 import uip from './en/params/index'
 import uis from './en/script/index'
 import lib from './en/lib'
+import widgets from './en/widgets'
 // English messages: the source language. Every key here must exist in the
 // other languages (a test checks it); text says what the UI says, nothing more.
 export default {
@@ -458,6 +459,7 @@ export default {
   uip,
   uis,
   lib,
+  widgets,
   agentRequests: {
     prompt: 'An AI assistant asks for a change | An AI assistant asks for {n} changes',
     review: 'Review',

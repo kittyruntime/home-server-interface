@@ -1,0 +1,87 @@
+// A dashboard: a named tab of widgets. An account sees its own boards; when it
+// has none, it sees the boards an admin published (ownerId null) and gets its
+// own copy the first time it changes one.
+model DashboardBoard {
+  id        String   @id @default(uuid())
+  ownerId   String?
+  owner     User?    @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  name      String
+  position  Int      @default(0)
+  // JSON array of widgets: { id, type, size, settings }. Kept as text so a
+  // release that does not know a widget type still reads the board.
+  widgets   String   @default("[]")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([ownerId])
+}
+
+// Space used on each volume, sampled every hour, for the "full in about n
+// months" estimate. Rows older than 180 days are dropped.
+model VolumeUsageSample {
+  id        Int      @id @default(autoincrement())
+  timestamp DateTime @default(now())
+  volumeId  String
+  used      BigInt
+  total     BigInt
+
+  @@index([volumeId, timestamp])
+}
+
+// Where a custom widget reads its data: an address the server calls on an
+// interval (http), what a script sends to HSI (push), or one of the worker's
+// read-only commands (command). Header values marked secret are encrypted
+// with HSI_SECRETS_KEY; the push token is kept as its SHA-256.
+model WidgetSource {
+  id          String    @id @default(uuid())
+  name        String
+  kind        String
+  url         String    @default("")
+  // JSON [{ name, value, secret }].
+  headers     String    @default("[]")
+  command     String    @default("")
+  intervalSec Int       @default(60)
+  // admins | everyone: who may read its data.
+  visibility  String    @default("admins")
+  pushHash    String?
+  // A numeric value kept as a history for charts ("" for none).
+  trackPath   String    @default("")
+  // JSON alert rule, "" for none.
+  alert       String    @default("")
+  lastValue   String?
+  lastAt      DateTime?
+  lastError   String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  // Accept a self-signed certificate on https (off: the certificate is checked).
+  allowSelfSigned Boolean @default(false)
+}
+
+// The tracked value of a source over time, kept 7 days.
+model WidgetSourceSample {
+  id        Int      @id @default(autoincrement())
+  sourceId  String
+  timestamp DateTime @default(now())
+  value     Float
+
+  @@index([sourceId, timestamp])
+}
+
+// A wall display: a screen (a tablet, a TV) that shows a copy of one of its
+// owner's boards without signing in. Its token (kept as its SHA-256) opens
+// only the reads that board's widgets need, with the owner's current rights.
+model DashboardWall {
+  id         String    @id @default(uuid())
+  ownerId    String
+  owner      User      @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  name       String
+  // JSON array of widgets, as on a board.
+  widgets    String    @default("[]")
+  tokenHash  String    @unique
+  // The start of the token, to tell displays apart.
+  prefix     String
+  lastSeenAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([ownerId])
+}

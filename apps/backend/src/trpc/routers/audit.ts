@@ -10,7 +10,9 @@ export const auditRouter = router({
       action: z.string().optional(),
       via:    z.enum(["dashboard", "mcp", "assistant"]).optional(),
     }))
-    .query(async ({ ctx, input }) => {
+    .query(async ({ ctx, input: asked }) => {
+      // A wall display reads what the Journal widget shows: the latest entries.
+      const input = ctx.wall ? { page: 0, limit: Math.min(asked.limit, 40) } as typeof asked : asked
       const where = {
         ...(input.userId ? { userId: input.userId } : {}),
         ...(input.action ? { action: { contains: input.action } } : {}),

@@ -4458,3 +4458,342 @@ async function testProcessRatesFollowEachProcess() {
   assert.equal(app.owner, "jellyfin")
 }
 await testProcessRatesFollowEachProcess()
+
+async function testDashboardBoardsKeepUnknownTypesAndDropJunk() {
+  const b = await import("../services/dashboard-boards")
+  const stored = JSON.stringify([
+    { id: "a", type: "cpu", size: "m" },
+    { id: "b", type: "from.a.newer.release", size: "xl", settings: { x: 1 } },
+    { id: "", type: "cpu" },
+    { id: "c", type: "Bad Type" },
+    "junk",
+  ])
+  assert.deepEqual(b.parseWidgets(stored), [
+    { id: "a", type: "cpu", size: "m" },
+    { id: "b", type: "from.a.newer.release", size: "s", settings: { x: 1 } },
+  ], "an unknown size falls back, malformed widgets are dropped")
+  assert.deepEqual(b.parseWidgets("not json"), [])
+  assert.deepEqual(b.parseWidgets("{}"), [])
+  const big = { boards: [{ name: "x", widgets: [{ id: "a", type: "note", settings: { text: "y".repeat(5000) } }] }] }
+  assert.ok(!b.zBoardsInput.safeParse(big).success, "settings are size-limited")
+  assert.ok(!b.zBoardsInput.safeParse({ boards: [] }).success, "at least one board")
+  assert.ok(!b.zBoardsInput.safeParse({ boards: Array.from({ length: 13 }, () => ({ name: "x", widgets: [] })) }).success)
+
+  const calls: string[] = []
+  const tx = {
+    dashboardBoard: {
+      deleteMany: async (a: { where: { ownerId: string | null } }) => { calls.push(`delete ${a.where.ownerId}`) },
+      create: async (a: { data: { ownerId: string | null; name: string; position: number; widgets: string } }) => {
+        calls.push(`create ${a.data.ownerId} ${a.data.position} ${a.data.name}`)
+        return { id: `id${a.data.position}`, name: a.data.name, widgets: a.data.widgets }
+      },
+    },
+  }
+  const saved = await b.replaceBoards({ $transaction: fn => fn(tx) }, "u1", [
+    { name: "Home", widgets: [{ id: "w", type: "cpu", size: "s" }] }, { name: "Media", widgets: [] },
+  ])
+  assert.deepEqual(calls, ["delete u1", "create u1 0 Home", "create u1 1 Media"], "the owner's set is replaced in order")
+  assert.deepEqual(saved.map(s => s.id), ["id0", "id1"])
+  assert.deepEqual(saved[0]!.widgets, [{ id: "w", type: "cpu", size: "s" }])
+}
+await testDashboardBoardsKeepUnknownTypesAndDropJunk()
+
+async function testHwmonSensors() {
+  const { readSensors } = await import("../services/hw-sensors")
+  const { mkdir, writeFile } = await import("node:fs/promises")
+  const root = await mkdtemp(join(tmpdir(), "hsi-hwmon-"))
+  const put = async (dir: string, files: Record<string, string>) => {
+    await mkdir(join(root, dir), { recursive: true })
+    for (const [f, v] of Object.entries(files)) await writeFile(join(root, dir, f), v + "\n")
+  }
+  await put("hwmon1", { name: "coretemp", temp1_input: "45000", temp1_label: "Package id 0", temp1_max: "80000", temp1_crit: "100000", temp2_input: "43500" })
+  await put("hwmon0", { name: "nct6775", fan1_input: "820", temp9_input: "-273000", temp3_input: "255000" })
+  await put("hwmon10", { name: "nvme", temp1_input: "38850", temp1_label: "Composite" })
+  await put("other", { name: "x", temp1_input: "1000" })
+  try {
+    assert.deepEqual(readSensors(root), [
+      { chip: "nct6775", label: "nct6775 1", kind: "fan", value: 820 },
+      { chip: "coretemp", label: "Package id 0", kind: "temp", value: 45, max: 80, crit: 100 },
+      { chip: "coretemp", label: "coretemp 2", kind: "temp", value: 43.5 },
+      { chip: "nvme", label: "Composite", kind: "temp", value: 38.9 },
+    ], "chips in numeric order, unwired inputs skipped")
+    assert.deepEqual(readSensors(join(root, "missing")), [])
+  } finally {
+    await rm(root, { recursive: true, force: true })
+  }
+}
+await testHwmonSensors()
+
+async function testUpsOverNut() {
+  const ups = await import("../services/ups")
+  const { createServer } = await import("node:net")
+  assert.deepEqual(ups.parseNutLines('BEGIN LIST UPS\nUPS eaton "Eaton \\"5E\\""\n', "UPS"), [["eaton", 'Eaton "5E"']])
+  const vars = new Map(ups.parseNutLines('VAR eaton ups.status "OB DISCHRG"\nVAR eaton battery.charge "87"\nVAR eaton battery.runtime "1260"\nVAR eaton device.mfr "EATON"\nVAR eaton device.model "5E 850i"\n', "VAR"))
+  assert.deepEqual(ups.upsFromVars("eaton", vars), { name: "eaton", model: "EATON 5E 850i", status: ["OB", "DISCHRG"], charge: 87, runtimeS: 1260, loadPct: null })
+
+  const server = createServer(sock => {
+    sock.on("data", d => {
+      for (const cmd of d.toString().split("\n").filter(Boolean)) {
+        if (cmd === "LIST UPS") sock.write('BEGIN LIST UPS\nUPS eaton "Eaton"\nEND LIST UPS\n')
+        else if (cmd === "LIST VAR eaton") sock.write('BEGIN LIST VAR eaton\nVAR eaton ups.status "OL"\nVAR eaton ups.load "23"\nEND LIST VAR eaton\n')
+      }
+    })
+  })
+  await new Promise<void>(r => server.listen(0, "127.0.0.1", r))
+  const port = (server.address() as { port: number }).port
+  try {
+    const read = await ups.readUps("127.0.0.1", port, 1000)
+    assert.deepEqual(read, [{ name: "eaton", model: "eaton", status: ["OL"], charge: null, runtimeS: null, loadPct: 23 }])
+  } finally {
+    server.close()
+  }
+  assert.equal(await ups.readUps("127.0.0.1", port, 500), null, "no upsd answering reads as no UPS")
+}
+await testUpsOverNut()
+
+async function testVolumeForecast() {
+  const { forecast } = await import("../services/volume-usage")
+  const DAY = 86_400_000, GB = 1024 ** 3
+  assert.equal(forecast([{ t: 0, used: 1, total: 2 }]), null)
+  assert.equal(forecast([{ t: 0, used: 1, total: 2 }, { t: DAY / 2, used: 1, total: 2 }]), null, "under a day of history")
+  const growing = Array.from({ length: 11 }, (_, i) => ({ t: i * DAY, used: 100 * GB + i * 2 * GB, total: 200 * GB }))
+  const f = forecast(growing)!
+  assert.equal(f.perDay, 2 * GB)
+  assert.equal(f.daysLeft, 40, "80 GB free at 2 GB a day")
+  assert.equal(f.spanDays, 10)
+  const flat = forecast([{ t: 0, used: 5 * GB, total: 10 * GB }, { t: 3 * DAY, used: 5 * GB + 1000, total: 10 * GB }])!
+  assert.equal(flat.daysLeft, null, "noise is not growth")
+  const shrinking = forecast([{ t: 0, used: 6 * GB, total: 10 * GB }, { t: 2 * DAY, used: 5 * GB, total: 10 * GB }])!
+  assert.equal(shrinking.daysLeft, null)
+}
+await testVolumeForecast()
+
+async function testLinkStatus() {
+  const link = await import("../services/link-status")
+  const { createServer } = await import("node:http")
+  assert.equal(link.checkableUrl("ftp://x"), null)
+  assert.equal(link.checkableUrl("not a url"), null)
+  assert.ok(link.checkableUrl("http://192.168.1.10:8096/"))
+  assert.ok(link.isUp(200) && link.isUp(302) && link.isUp(401) && !link.isUp(502) && !link.isUp(null))
+  assert.ok(link.isCertificateError("DEPTH_ZERO_SELF_SIGNED_CERT") && link.isCertificateError("CERT_HAS_EXPIRED"))
+  assert.ok(!link.isCertificateError("ECONNREFUSED") && !link.isCertificateError(undefined))
+  let method = ""
+  const server = createServer((req, res) => { method = req.method ?? ""; res.statusCode = req.url === "/down" ? 503 : 401; res.end("secret body") })
+  await new Promise<void>(r => server.listen(0, "127.0.0.1", r))
+  const base = `http://127.0.0.1:${(server.address() as { port: number }).port}`
+  try {
+    const up = await link.checkUrl(`${base}/`)
+    assert.equal(up.up, true, "a login wall still means the service answers")
+    assert.equal(up.status, 401)
+    assert.equal(method, "HEAD", "only the status line is asked for")
+    assert.equal((await link.checkUrl(`${base}/down`)).up, false)
+  } finally {
+    server.close()
+  }
+  const gone = await link.checkUrl(base + "/")
+  assert.deepEqual([gone.up, gone.status], [false, null])
+  assert.deepEqual(await link.checkUrl("file:///etc/passwd"), { url: "file:///etc/passwd", up: false, status: null, ms: null })
+}
+await testLinkStatus()
+
+async function testDashboardRouterAccess() {
+  const { dashboardRouter } = await import("../trpc/routers/dashboard")
+  const userCtx = { user: { userId: "u", isAdmin: false }, prisma: { auditLog: { create: async () => ({}) } }, req: { ip: "127.0.0.1", headers: {} } } as any
+  const caller = dashboardRouter.createCaller(userCtx)
+  for (const call of [() => caller.linkStatus({ urls: ["http://x"] }), () => caller.publish({ boards: [{ name: "x", widgets: [] }] }), () => caller.unpublish(), () => caller.published()]) {
+    const err = await call().then(() => null, (e: { code?: string }) => e)
+    assert.equal(err?.code, "FORBIDDEN", "linking, publishing and reading the published set are admin only")
+  }
+}
+await testDashboardRouterAccess()
+
+async function testDigestPromptKeepsToFacts() {
+  const { digestPrompt } = await import("../services/dashboard-digest")
+  const p = digestPrompt({ alerts: [{ severity: "critical", message: "md0 is degraded" }], failedTasks: [{ action: "fs.copy", error: "No space left" }], refusedSignIns: 3 }, "fr")
+  assert.match(p, /in French/)
+  assert.match(p, /\[critical\] md0 is degraded/)
+  assert.match(p, /fs\.copy: No space left/)
+  assert.match(p, /Refused sign-ins in the last 24 hours: 3/)
+  assert.match(p, /never invent/)
+}
+await testDigestPromptKeepsToFacts()
+
+async function testWidgetSourcePathsAndRules() {
+  const w = await import("../services/widget-sources")
+  const v = { data: { sessions: [{ user: "a", play: { title: "X" } }, { user: "b" }], total: "12" }, "odd key": 1 }
+  assert.deepEqual(w.pathSegments("data.sessions[1].user"), ["data", "sessions", 1, "user"])
+  assert.equal(w.readPath(v, "data.sessions[0].play.title"), "X")
+  assert.equal(w.readPath(v, "data.sessions.length"), 2)
+  assert.equal(w.readPath(v, "data.missing.deep"), undefined)
+  assert.equal(w.readPath(v, "data.constructor"), undefined, "only own properties")
+  assert.deepEqual(w.readPath(v, ""), v)
+  assert.equal(w.asNumber("12"), 12)
+  assert.equal(w.asNumber("x"), null)
+  const rule = { path: "data.sessions.length", op: "gt" as const, value: "1", severity: "warning" as const, message: "{value} streams" }
+  assert.ok(w.ruleMatches(rule, v))
+  assert.ok(!w.ruleMatches({ ...rule, value: "2" }, v))
+  assert.ok(w.ruleMatches({ ...rule, path: "data.sessions[0].user", op: "eq", value: "a" }, v), "text compares as text")
+  assert.ok(!w.ruleMatches({ ...rule, path: "nope" }, v), "a missing value raises nothing")
+  assert.equal(w.alertMessage("Jellyfin", rule, 2), "2 streams")
+  assert.equal(w.alertMessage("Jellyfin", { ...rule, message: "" }, 2), "Jellyfin: data.sessions.length is 2")
+  assert.deepEqual(w.parseBody('{"a":1}'), { a: 1 })
+  assert.deepEqual(w.parseBody('{"a":1}\n{"a":2}\n'), [{ a: 1 }, { a: 2 }])
+  assert.deepEqual(w.parseBody("plain"), { text: "plain" })
+
+  const ok = w.zSourceInput.safeParse({ name: "Jellyfin", kind: "http", url: "http://127.0.0.1:8096/Sessions", headers: [{ name: "X-Emby-Token", value: "k", secret: true }] })
+  assert.ok(ok.success)
+  assert.ok(!w.zSourceInput.safeParse({ name: "x", kind: "http", url: "file:///etc/shadow" }).success)
+  assert.ok(!w.zSourceInput.safeParse({ name: "x", kind: "command", command: "rm" }).success)
+  assert.ok(!w.zSourceInput.safeParse({ name: "x", kind: "http", url: "http://h", headers: [{ name: "X", value: "a\r\nInjected: 1", secret: false }] }).success, "no header injection")
+  assert.ok(!w.zSourceInput.safeParse({ name: "x", kind: "http", url: "http://h", intervalSec: 5 }).success, "30 s at least")
+}
+await testWidgetSourcePathsAndRules()
+
+async function testWidgetSourceSecretsStayOnTheServer() {
+  const prevKey = process.env.HSI_SECRETS_KEY
+  process.env.HSI_SECRETS_KEY = "ab".repeat(32)
+  try {
+    const w = await import("../services/widget-sources")
+    const { decryptSecret } = await import("../services/secrets")
+    const stored = w.headersToStore([{ name: "X-Api-Key", value: "s3cret", secret: true }, { name: "Accept-Language", value: "fr", secret: false }], [])
+    assert.notEqual(stored[0]!.value, "s3cret", "secret values are encrypted")
+    assert.equal(decryptSecret(stored[0]!.value), "s3cret")
+    const kept = w.headersToStore([{ name: "x-api-key", value: "", secret: true }], stored)
+    assert.equal(kept[0]!.value, stored[0]!.value, "an empty secret keeps the stored one")
+    assert.ok(w.sameOrigin("http://10.0.0.2:8096/Sessions", "http://10.0.0.2:8096/Other"))
+    assert.ok(!w.sameOrigin("http://10.0.0.2:8096/x", "http://evil.example/x"), "another host needs the secret again")
+    assert.ok(!w.sameOrigin("http://10.0.0.2:8096/x", "https://10.0.0.2:8096/x"))
+    assert.equal(w.headersToStore([{ name: "X-Api-Key", value: "", secret: true }], [])[0]!.value, "", "without the stored headers nothing is kept")
+    const view = w.sourceView({ id: "i", name: "n", kind: "http", url: "http://h", headers: JSON.stringify(stored), command: "", intervalSec: 60, visibility: "admins", pushHash: null, trackPath: "", alert: "", lastValue: null, lastAt: null, lastError: null, allowSelfSigned: false })
+    assert.deepEqual(view.headers, [{ name: "X-Api-Key", value: "", secret: true }, { name: "Accept-Language", value: "fr", secret: false }])
+    const { redactForAudit } = await import("../trpc/index")
+    const logged = JSON.stringify(redactForAudit({ source: { headers: [{ name: "X-Thing", value: "s3cret", secret: true }, { name: "Authorization", value: "Bearer abc", secret: false }, { name: "Accept", value: "json", secret: false }] } }))
+    assert.ok(!logged.includes("s3cret") && !logged.includes("Bearer abc"), "the audit log never keeps a header secret")
+    assert.ok(logged.includes("json"))
+    const token = w.newPushToken()
+    assert.ok(w.tokenMatches(token, w.hashToken(token)))
+    assert.ok(!w.tokenMatches(token + "x", w.hashToken(token)))
+    assert.ok(!w.tokenMatches(token, null))
+  } finally {
+    if (prevKey === undefined) delete process.env.HSI_SECRETS_KEY
+    else process.env.HSI_SECRETS_KEY = prevKey
+  }
+}
+await testWidgetSourceSecretsStayOnTheServer()
+
+async function testWidgetSourceHttpRead() {
+  const w = await import("../services/widget-sources")
+  const { createServer } = await import("node:http")
+  let seen = ""
+  const server = createServer((req, res) => {
+    seen = String(req.headers["x-api-key"] ?? "")
+    if (req.url === "/json") { res.setHeader("content-type", "application/json"); res.end('{"count":3}') }
+    else if (req.url === "/moved") { res.statusCode = 302; res.setHeader("location", "/json"); res.end() }
+    else if (req.url === "/big") { res.end("x".repeat(300 * 1024)) }
+    else { res.statusCode = 500; res.end("no") }
+  })
+  await new Promise<void>(r => server.listen(0, "127.0.0.1", r))
+  const base = `http://127.0.0.1:${(server.address() as { port: number }).port}`
+  try {
+    assert.deepEqual(await w.httpGet(`${base}/json`, { "X-Api-Key": "k1" }), { count: 3 })
+    assert.equal(seen, "k1")
+    await assert.rejects(w.httpGet(`${base}/moved`, {}), /redirects/)
+    await assert.rejects(w.httpGet(`${base}/fail`, {}), /HTTP 500/)
+    await assert.rejects(w.httpGet(`${base}/big`, {}), /256 KB/)
+  } finally {
+    server.close()
+  }
+  await assert.rejects(w.httpGet(base + "/json", {}), /refused/i)
+}
+await testWidgetSourceHttpRead()
+
+async function testWidgetSourceAccess() {
+  const { widgetSourceRouter } = await import("../trpc/routers/widgetSource")
+  const member = widgetSourceRouter.createCaller({ user: { userId: "u", isAdmin: false }, prisma: { auditLog: { create: async () => ({}) } }, req: { ip: "127.0.0.1", headers: {} } } as any)
+  for (const call of [
+    () => member.create({ name: "x", kind: "http", url: "http://h" } as any),
+    () => member.test({ source: { name: "x", kind: "http", url: "http://h" } } as any),
+    () => member.commands(),
+  ]) {
+    const err = await call().then(() => null, (e: { code?: string }) => e)
+    assert.equal(err?.code, "FORBIDDEN", "only admins configure sources")
+  }
+  const rows = [
+    { id: "a", name: "A", kind: "http", visibility: "admins", url: "http://secret-host", headers: "[]", command: "", intervalSec: 60, pushHash: null, trackPath: "", alert: "", lastValue: '{"v":1}', lastAt: null, lastError: null, allowSelfSigned: false },
+    { id: "b", name: "B", kind: "http", visibility: "everyone", url: "http://h", headers: "[]", command: "", intervalSec: 60, pushHash: null, trackPath: "", alert: "", lastValue: '{"v":2}', lastAt: null, lastError: null, allowSelfSigned: false },
+  ]
+  const reader = widgetSourceRouter.createCaller({ user: { userId: "u", isAdmin: false }, prisma: { widgetSource: { findMany: async () => rows } }, req: { ip: "127.0.0.1", headers: {} } } as any)
+  assert.deepEqual(await reader.list(), [{ id: "a", name: "A", kind: "http", editable: false }, { id: "b", name: "B", kind: "http", editable: false }].filter(r => r.id === "b"), "members see shared sources by name only")
+  const data = await reader.data({ ids: ["00000000-0000-4000-8000-000000000001"] })
+  assert.deepEqual(data.map(d => d.value), [{ v: 2 }], "and only their data")
+}
+await testWidgetSourceAccess()
+
+async function testWidgetPushRoute() {
+  const Fastify = (await import("fastify")).default
+  const { widgetRoutes } = await import("../routes/widgets")
+  const app = Fastify()
+  await app.register(widgetRoutes)
+  const noToken = await app.inject({ method: "POST", url: "/api/widgets/push/00000000-0000-4000-8000-000000000001", payload: { a: 1 } })
+  assert.equal(noToken.statusCode, 401)
+  const badId = await app.inject({ method: "POST", url: "/api/widgets/push/x", headers: { authorization: "Bearer t" }, payload: { a: 1 } })
+  assert.equal(badId.statusCode, 401)
+  const big = await app.inject({ method: "POST", url: "/api/widgets/push/00000000-0000-4000-8000-000000000001", headers: { authorization: "Bearer t", "content-type": "application/json" }, payload: JSON.stringify({ x: "y".repeat(70 * 1024) }) })
+  assert.equal(big.statusCode, 413, "bodies over 64 KB are refused")
+  await app.close()
+}
+await testWidgetPushRoute()
+
+async function testWallDisplaysOnlyReadTheirWidgets() {
+  const walls = await import("../services/dashboard-walls")
+  const access = walls.wallAccess([
+    { id: "a", type: "cpu", size: "s" },
+    { id: "b", type: "backups", size: "m" },
+    { id: "c", type: "custom", size: "m", settings: { custom: { sources: ["s1", 3, "s2"] } } },
+    { id: "d", type: "from.newer.release", size: "s" },
+  ])
+  assert.deepEqual([...access.allowed].sort(), ["alert.list", "backup.status", "dashboard.wall", "system.metrics", "update.status", "widgetSource.data"])
+  assert.deepEqual([...access.sourceIds], ["s1", "s2"])
+  const linked = walls.wallAccess([{ id: "l", type: "links", size: "m", settings: { links: [{ label: "J", url: "http://10.0.0.2:8096" }, { url: 3 }] } }])
+  assert.deepEqual([...linked.linkUrls], ["http://10.0.0.2:8096"])
+  assert.ok(walls.wallMayCall(access, "backup.status", "query"))
+  assert.ok(!walls.wallMayCall(access, "backup.runNow", "mutation"), "never a change")
+  assert.ok(!walls.wallMayCall(access, "backup.status", "mutation"))
+  assert.ok(!walls.wallMayCall(access, "fs.list", "query"), "nothing its widgets do not read")
+  const t = walls.newWallToken()
+  assert.ok(t.token.startsWith(walls.WALL_PREFIX) && t.hash === walls.hashWallToken(t.token) && t.token.startsWith(t.prefix))
+
+  const { appRouter } = await import("../trpc/routers/index")
+  const wall = { id: "w1", allowed: new Set([...access.allowed, "dashboard.linkStatus", "audit.list"]), sourceIds: access.sourceIds, linkUrls: new Set(["http://127.0.0.1:1/"]) }
+  const rows = [{ id: "s1", name: "A", visibility: "admins", lastValue: '{"v":1}', lastAt: null, lastError: null, trackPath: "" }]
+  let asked: string[] = []
+  const ctx = {
+    user: { userId: "owner", isAdmin: true, capabilities: [] }, wall, via: "dashboard", apiToken: null,
+    prisma: {
+      auditLog: { create: async () => ({}) },
+      widgetSource: { findMany: async (a: { where: { id: { in: string[] } } }) => { asked = a.where.id.in; return rows } },
+      dashboardWall: { findUnique: async () => ({ id: "w1", name: "Hall", widgets: '[{"id":"a","type":"cpu","size":"s"}]' }) },
+    },
+    req: { ip: "127.0.0.1", headers: {} },
+  } as any
+  const caller = appRouter.createCaller(ctx)
+  for (const call of [() => caller.dashboard.save({ boards: [{ name: "x", widgets: [] }] }), () => caller.dashboard.sensors(), () => caller.user.preferences()]) {
+    const err = await call().then(() => null, (e: { code?: string }) => e)
+    assert.equal(err?.code, "FORBIDDEN", "a display reaches only its widgets' reads")
+  }
+  assert.deepEqual(await caller.dashboard.wall(), { name: "Hall", widgets: [{ id: "a", type: "cpu", size: "s" }], viewer: { isAdmin: true, storage: true } })
+  await caller.widgetSource.data({ ids: ["00000000-0000-4000-8000-000000000009"] })
+  assert.deepEqual(asked, [], "and only its own widgets' sources")
+
+  const checked = await caller.dashboard.linkStatus({ urls: ["http://127.0.0.1:1/", "http://169.254.169.254/latest"] })
+  assert.deepEqual(checked.map(c => c.url), ["http://127.0.0.1:1/"], "a display checks only its own links")
+  let auditArgs: { skip: number; take: number; where: object } | null = null
+  const auditCaller = appRouter.createCaller({ ...ctx, prisma: { ...ctx.prisma, auditLog: { create: async () => ({}), count: async () => 0, findMany: async (a: typeof auditArgs) => { auditArgs = a; return [] } } } })
+  await auditCaller.audit.list({ page: 9, limit: 200, userId: "someone" })
+  assert.deepEqual([auditArgs!.skip, auditArgs!.take, auditArgs!.where], [0, 40, {}], "a display reads only the latest entries, unfiltered")
+
+  const signedIn = appRouter.createCaller({ ...ctx, wall: null })
+  const err = await signedIn.dashboard.wall().then(() => null, (e: { code?: string }) => e)
+  assert.equal(err?.code, "FORBIDDEN", "the display endpoint needs a display token")
+}
+await testWallDisplaysOnlyReadTheirWidgets()

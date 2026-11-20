@@ -4,11 +4,11 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useDesktop } from '../../lib/desktop'
 import { shownWindows } from '../../lib/desktop-order'
 import { useWallpaper } from '../../lib/wallpaper'
-import type { Widget, WidgetType } from '../../lib/dashboard-widgets'
+import { useBoards } from '../../lib/dashboard-boards'
 import DesktopWindow from './DesktopWindow.vue'
 import DesktopWidgets from './DesktopWidgets.vue'
 import WallpaperPicker from './WallpaperPicker.vue'
-import { ImageIcon, Maximize2Icon, Minimize2Icon, Trash2Icon } from '@lucide/vue'
+import { CheckIcon, ImageIcon, LayoutGridIcon } from '@lucide/vue'
 import {
   ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuLabel, ContextMenuSeparator, ContextMenuTrigger,
 } from '@/components/ui/context-menu'
@@ -19,28 +19,12 @@ const { windows, clampToViewport } = useDesktop()
 const { backgroundStyle } = useWallpaper()
 
 const rootRef = ref<HTMLDivElement | null>(null)
-const widgetsRef = ref<InstanceType<typeof DesktopWidgets> | null>(null)
 const bounds = ref({ w: 0, h: 0 })
 const showWallpaperPicker = ref(false)
 
-/* The desktop context menu opens on empty space or on a widget: a widget
-   emits contextmenu-widget on its way up, the capture handler on the root
-   clears it first. Windows stop the event, so they keep the browser's menu. */
-const ctxWidget = ref<Widget | null>(null)
-
-function onContextmenuWidget(widget: Widget) {
-  ctxWidget.value = widget
-}
-
-function addWidgetFromMenu(type: WidgetType) {
-  widgetsRef.value?.addWidget(type)
-}
-function removeWidgetFromMenu(id: string) {
-  widgetsRef.value?.removeWidget(id)
-}
-function toggleColsFromMenu(w: Widget) {
-  widgetsRef.value?.toggleCols(w)
-}
+/* The desktop's context menu: the wallpaper, editing the widgets and the
+   board shown. Windows stop the event, so they keep the browser's menu. */
+const { boards, active, editing, select } = useBoards()
 
 function updateBounds() {
   if (!rootRef.value) return
@@ -77,12 +61,8 @@ function isFocused(id: string): boolean {
         ref="rootRef"
         class="relative isolate w-full h-full overflow-hidden bg-base-100"
         :style="backgroundStyle"
-        @contextmenu.capture="ctxWidget = null"
       >
-        <DesktopWidgets
-          ref="widgetsRef"
-          @contextmenu-widget="onContextmenuWidget"
-        />
+        <DesktopWidgets />
 
         <TransitionGroup name="ui-pop">
           <DesktopWindow
@@ -98,28 +78,20 @@ function isFocused(id: string): boolean {
       </div>
     </ContextMenuTrigger>
     <ContextMenuContent class="min-w-[200px]">
-      <template v-if="ctxWidget">
-        <ContextMenuItem @select="toggleColsFromMenu(ctxWidget)">
-          <component :is="ctxWidget.cols === 1 ? Maximize2Icon : Minimize2Icon" />
-          {{ ctxWidget.cols === 1 ? 'Expand' : 'Shrink' }}
-        </ContextMenuItem>
-        <ContextMenuItem variant="destructive" @select="removeWidgetFromMenu(ctxWidget.id)">
-          <Trash2Icon />
-          {{ t('ui.desktop.DesktopShell.removeWidget') }}
-        </ContextMenuItem>
-      </template>
-      <template v-else>
-        <ContextMenuItem @select="showWallpaperPicker = true">
-          <ImageIcon />
-          {{ t('ui.desktop.DesktopShell.changeWallpaper') }}
-        </ContextMenuItem>
+      <ContextMenuItem @select="showWallpaperPicker = true">
+        <ImageIcon />
+        {{ t('ui.desktop.DesktopShell.changeWallpaper') }}
+      </ContextMenuItem>
+      <ContextMenuItem @select="editing = !editing">
+        <component :is="editing ? CheckIcon : LayoutGridIcon" />
+        {{ editing ? t('widgets.edit.done') : t('widgets.edit.desktop') }}
+      </ContextMenuItem>
+      <template v-if="boards.length > 1">
         <ContextMenuSeparator />
-        <ContextMenuLabel class="text-2xs uppercase tracking-caps text-base-content/60">{{ t('ui.desktop.DesktopShell.addWidget') }}</ContextMenuLabel>
-        <ContextMenuItem
-          v-for="cat in widgetsRef?.addableTypes ?? []" :key="cat.type"
-          @select="addWidgetFromMenu(cat.type)"
-        >
-          {{ cat.label }}
+        <ContextMenuLabel class="text-2xs uppercase tracking-caps text-base-content/60">{{ t('widgets.boards.label') }}</ContextMenuLabel>
+        <ContextMenuItem v-for="(b, i) in boards" :key="b.id" @select="select(i)">
+          <CheckIcon :class="i === active ? '' : 'invisible'" />
+          {{ b.name }}
         </ContextMenuItem>
       </template>
     </ContextMenuContent>

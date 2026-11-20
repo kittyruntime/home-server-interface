@@ -7,6 +7,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **Dashboard**: widgets live on boards, named tabs kept on your account
+  instead of in the browser, shared by the Overview and the desktop. An edit
+  mode moves widgets (mouse, finger or arrow keys), gives them a size (small,
+  wide, large), opens their settings and removes them. An admin can publish
+  boards for every account. A line above the widgets says whether anything
+  needs attention. The widgets of this browser's former dashboard move to the
+  account; System info is folded into the Monitor app. Failing disks and full
+  memory show in the error color again.
+
+### Added
+- **Dashboard**: new widgets: alerts, volumes, disk health, space forecast,
+  backups, trash, apps, updates and HTTPS, activity, sharing, journal, my
+  places, history, temperatures, UPS (through Network UPS Tools), who uses the
+  server, a daily summary by the assistant, notes and links that show whether
+  each service answers.
+- **Dashboard**: custom widgets show any value from a service's API, a script
+  or a server command. Admins create the data sources: an address HSI reads
+  on an interval (secret headers encrypted on the server), JSON a script sends
+  with a token, or a fixed list of read-only server commands. A value can be
+  computed from up to three sources, written in a chosen format and shown as a
+  figure, gauge, curve, state, list or text; its path is picked from the
+  source's data. A source can keep a value's history and raise an alert that
+  notifies like any other. Templates cover Jellyfin, Immich, Nextcloud,
+  AdGuard Home, Home Assistant, Syncthing and the server commands.
+- **Dashboard**: wall displays show a board full screen on a tablet or a TV
+  without signing in. Each has its own link, shown once, that can only read
+  what its widgets show, with its owner's rights, and stops working as soon as
+  the display is removed or its owner changes their password. The screen
+  stays awake and the pointer hides.
+
 ## [1.87.0] - 2026-11-20
 
 ### Changed
