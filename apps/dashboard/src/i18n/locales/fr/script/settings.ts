@@ -14,10 +14,6 @@ export default {
     failed: 'Échec',
   },
   GroupsSection: { failedToCreateGroup: 'Impossible de créer le groupe' },
-  MonitoringSection: {
-    failedToLoadMetrics: 'Impossible de charger les métriques',
-    failedToLoadMetricsHistory: 'Impossible de charger l’historique des métriques',
-  },
   NetworkSection: {
     networkSettingsKept: 'Réglages réseau conservés',
     previousNetworkSettingsRestored: 'Réglages réseau précédents restaurés',
@@ -43,13 +39,6 @@ export default {
     delete: 'Supprimer',
     inAppBell: 'Dans l’interface (cloche)',
     delivered: 'Envoyé',
-  },
-  OverviewSection: {
-    failedToLoadOverview: 'Impossible de charger le résumé',
-    justNow: 'à l’instant',
-    minAgo: 'il y a {p0} min',
-    hAgo: 'il y a {p0} h',
-    dAgo: 'il y a {p0} j',
   },
   PlacesSection: {
     failedToAddPlace: 'Impossible d’ajouter l’emplacement',
@@ -79,7 +68,6 @@ export default {
     exhausted: 'Épuisé',
     active: 'Actif',
   },
-  SystemInfoSection: { failedToLoadSystemInfo: 'Impossible de charger les informations système' },
   TelemetrySection: {
     failedToLoadTelemetrySettings: 'Impossible de charger les réglages de télémétrie',
     failedToChangeTelemetry: 'Impossible de changer la télémétrie',

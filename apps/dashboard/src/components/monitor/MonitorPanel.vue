@@ -1,53 +1,48 @@
 <script setup lang="ts">
-import { useI18n } from 'vue-i18n'
-import SectionNav from '@/components/ui/SectionNav.vue'
-import { ActivityIcon, ClipboardListIcon, LayoutGridIcon, MonitorIcon, TriangleAlertIcon } from '@lucide/vue'
-import { ref, computed } from 'vue'
+import { computed, ref } from 'vue'
 import type { Component } from 'vue'
-import OverviewSection from '../OverviewSection.vue'
-import SystemInfoSection from '../SystemInfoSection.vue'
-import MonitoringSection from '../MonitoringSection.vue'
+import { useI18n } from 'vue-i18n'
+import { ActivityIcon, ClipboardListIcon, HistoryIcon, ListTreeIcon, TriangleAlertIcon } from '@lucide/vue'
+import SectionNav from '@/components/ui/SectionNav.vue'
+import PerformanceSection from './PerformanceSection.vue'
+import ProcessesSection from './ProcessesSection.vue'
+import HistorySection from './HistorySection.vue'
 import AlertsSection from './AlertsSection.vue'
 import AuditLogSection from '../AuditLogSection.vue'
 
 const { t } = useI18n()
 
-type SectionId = 'overview' | 'system-info' | 'monitoring' | 'alerts' | 'audit'
-
-interface NavItem { id: SectionId; label: string }
-
-const nav: NavItem[] = [
-  { id: 'overview',    label: 'overview' },
-  { id: 'system-info', label: 'systemInfo' },
-  { id: 'monitoring',  label: 'monitoring' },
-  { id: 'alerts',      label: 'alerts' },
-  { id: 'audit',       label: 'audit' },
-]
-
-const active = ref<SectionId>('overview')
-
-const ICONS: Record<SectionId, Component> = {
-  overview: LayoutGridIcon, 'system-info': MonitorIcon, monitoring: ActivityIcon,
-  alerts: TriangleAlertIcon, audit: ClipboardListIcon,
+type SectionId = 'performance' | 'processes' | 'history' | 'alerts' | 'audit'
+const icons: Record<SectionId, Component> = {
+  performance: ActivityIcon, processes: ListTreeIcon, history: HistoryIcon, alerts: TriangleAlertIcon, audit: ClipboardListIcon,
 }
-const navItems = computed(() => nav.map(n => ({ ...n, label: t(`monitor.nav.${n.label}`), icon: ICONS[n.id] })))
+const active = ref<SectionId>('performance')
+/** The owner to open when the overview sends to the Processes section. */
+const focus = ref<string | null>(null)
+function openProcesses(key: string | null) {
+  focus.value = key
+  active.value = 'processes'
+}
+const navItems = computed(() => (Object.keys(icons) as SectionId[]).map(id => ({ id, label: t(`monitor.nav.${id}`), icon: icons[id] })))
 </script>
 
 <template>
-  <div class="flex flex-col sm:flex-row h-full">
-
-    <SectionNav v-model="active" :items="navItems" />
-
-    <!-- Content -->
-    <div class="flex-1 overflow-y-auto">
-      <div :class="['p-4 sm:p-8', active === 'audit' ? 'max-w-5xl' : 'max-w-4xl']">
-        <OverviewSection    v-if="active === 'overview'" />
-        <SystemInfoSection  v-else-if="active === 'system-info'" />
-        <MonitoringSection  v-else-if="active === 'monitoring'" />
-        <AlertsSection      v-else-if="active === 'alerts'" />
-        <AuditLogSection    v-else-if="active === 'audit'" />
+  <!-- The layout follows this panel's width (a desktop window or the classic
+       view), not the screen's. -->
+  <div class="@container h-full">
+    <div class="flex h-full flex-col @2xl:flex-row">
+      <SectionNav v-model="active" @update:model-value="focus = null" :items="navItems" container />
+      <div v-if="active === 'processes'" class="flex min-h-0 flex-1 flex-col p-4 @2xl:p-6">
+        <ProcessesSection :focus="focus" />
+      </div>
+      <div v-else class="flex-1 overflow-y-auto">
+        <div class="p-4 @2xl:p-6" :class="active === 'performance' ? 'max-w-6xl' : 'max-w-5xl'">
+          <PerformanceSection v-if="active === 'performance'" @open-processes="openProcesses" />
+          <HistorySection v-else-if="active === 'history'" />
+          <AlertsSection v-else-if="active === 'alerts'" />
+          <AuditLogSection v-else-if="active === 'audit'" />
+        </div>
       </div>
     </div>
-
   </div>
 </template>
