@@ -42,7 +42,7 @@ const initial = (label: string) => label.trim().charAt(0).toUpperCase() || '?'
         </span>
         <span v-if="byUrl.get(l.url)" class="flex shrink-0 items-center gap-1 text-2xs" :class="byUrl.get(l.url)!.up ? 'text-success' : 'text-error'">
           <span :class="['size-2 rounded-full', byUrl.get(l.url)!.up ? 'bg-success' : 'bg-error']" aria-hidden="true" />
-          {{ byUrl.get(l.url)!.up ? (byUrl.get(l.url)!.ms != null ? `${byUrl.get(l.url)!.ms} ms` : t('widgets.links.up')) : t('widgets.links.down') }}
+          {{ !byUrl.get(l.url)!.up ? t('widgets.links.down') : byUrl.get(l.url)!.untrusted ? t('widgets.links.untrusted') : byUrl.get(l.url)!.ms != null ? `${byUrl.get(l.url)!.ms} ms` : t('widgets.links.up') }}
         </span>
       </a>
     </li>

@@ -148,7 +148,7 @@ export default {
   journal: { refused: '{n} refused sign-in today | {n} refused sign-ins today', failed: 'failed' },
   places: { none: 'No place available to you yet.' },
   note: { empty: 'Write a note in this widget\'s settings.' },
-  links: { empty: 'Add links in this widget\'s settings.', up: 'Up', down: 'Down' },
+  links: { empty: 'Add links in this widget\'s settings.', untrusted: 'Certificate not trusted', up: 'Up', down: 'Down' },
   band: {
     ok: 'All is well on the server',
     critical: '{n} critical alert | {n} critical alerts',

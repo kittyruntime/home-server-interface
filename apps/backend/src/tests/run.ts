@@ -4575,6 +4575,8 @@ async function testLinkStatus() {
   assert.equal(link.checkableUrl("not a url"), null)
   assert.ok(link.checkableUrl("http://192.168.1.10:8096/"))
   assert.ok(link.isUp(200) && link.isUp(302) && link.isUp(401) && !link.isUp(502) && !link.isUp(null))
+  assert.ok(link.isCertificateError("DEPTH_ZERO_SELF_SIGNED_CERT") && link.isCertificateError("CERT_HAS_EXPIRED"))
+  assert.ok(!link.isCertificateError("ECONNREFUSED") && !link.isCertificateError(undefined))
   let method = ""
   const server = createServer((req, res) => { method = req.method ?? ""; res.statusCode = req.url === "/down" ? 503 : 401; res.end("secret body") })
   await new Promise<void>(r => server.listen(0, "127.0.0.1", r))

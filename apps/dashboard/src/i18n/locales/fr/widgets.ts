@@ -148,7 +148,7 @@ export default {
   journal: { refused: '{n} connexion refusée aujourd\'hui | {n} connexions refusées aujourd\'hui', failed: 'échec' },
   places: { none: 'Aucun emplacement disponible pour vous pour l\'instant.' },
   note: { empty: 'Écrivez une note dans les réglages de ce widget.' },
-  links: { empty: 'Ajoutez des liens dans les réglages de ce widget.', up: 'En ligne', down: 'Injoignable' },
+  links: { empty: 'Ajoutez des liens dans les réglages de ce widget.', untrusted: 'Certificat non reconnu', up: 'En ligne', down: 'Injoignable' },
   band: {
     ok: 'Tout va bien sur le serveur',
     critical: '{n} alerte critique | {n} alertes critiques',
