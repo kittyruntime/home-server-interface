@@ -136,6 +136,7 @@ export default {
     storage_createPartition: 'Créer une partition',
     storage_deletePartition: 'Supprimer une partition',
     alert_clear: 'Effacer une alerte',
+    system_processEnd: 'Arrêter un processus',
     alert_clearAll: 'Effacer toutes les alertes',
     storage_createRaid: 'Créer une grappe RAID',
     storage_stopRaid: 'Arrêter un RAID',

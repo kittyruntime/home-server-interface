@@ -1,8 +1,10 @@
 import * as os from "os"
 import * as fs from "fs"
 import { z } from "zod"
+import { TRPCError } from "@trpc/server"
 import { router, publicProcedure, protectedProcedure, adminProcedure } from "../index"
 import { currentMaintenance } from "../../services/maintenance"
+import { endProcess, perfSnapshot, processSnapshot } from "../../services/system-perf.service"
 
 // System router: live metrics, metrics history, and static system info. Disk/RAID/
 // LVM/mount management moved to the `storage` router.
@@ -164,4 +166,26 @@ export const systemRouter = router({
   }),
 
   sysinfo: adminProcedure.query(() => sysinfoSnapshot()),
+
+  // Monitor app: every core, disk and network port, read every couple of seconds.
+  perf: adminProcedure.query(() => perfSnapshot()),
+
+  processes: adminProcedure.query(() => processSnapshot()),
+
+  // `start` ties the request to the process the admin saw, not a later one
+  // that got the same id.
+  processEnd: adminProcedure
+    .input(z.object({ pid: z.number().int().positive(), start: z.string().regex(/^[0-9]+$/), name: z.string().max(64), force: z.boolean() }))
+    .mutation(async ({ ctx, input }) => {
+      ctx.audit.target = `${input.name} (pid ${input.pid})${input.force ? " forced" : ""}`
+      try {
+        await endProcess(input.pid, input.start, input.force)
+      } catch (e) {
+        const code = (e as { code?: string }).code
+        if (code === "NOT_FOUND") throw new TRPCError({ code: "NOT_FOUND", message: (e as Error).message })
+        if (code === "PROTECTED") throw new TRPCError({ code: "FORBIDDEN", message: (e as Error).message })
+        throw e
+      }
+      return { ok: true }
+    }),
 })

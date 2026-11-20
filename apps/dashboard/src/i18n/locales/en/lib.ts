@@ -141,6 +141,7 @@ export default {
     storage_createPartition: 'Create partition',
     storage_deletePartition: 'Delete partition',
     alert_clear: 'Clear alert',
+    system_processEnd: 'End process',
     alert_clearAll: 'Clear all alerts',
     storage_createRaid: 'Create RAID array',
     storage_stopRaid: 'Stop RAID',

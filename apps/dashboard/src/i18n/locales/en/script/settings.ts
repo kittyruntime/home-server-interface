@@ -19,10 +19,6 @@ export default {
   GroupsSection: {
     failedToCreateGroup: 'Failed to create group',
   },
-  MonitoringSection: {
-    failedToLoadMetrics: 'Failed to load metrics',
-    failedToLoadMetricsHistory: 'Failed to load metrics history',
-  },
   NetworkSection: {
     networkSettingsKept: 'Network settings kept',
     previousNetworkSettingsRestored: 'Previous network settings restored',
@@ -48,13 +44,6 @@ export default {
     delete: 'Delete',
     inAppBell: 'In-app (bell)',
     delivered: 'Delivered',
-  },
-  OverviewSection: {
-    failedToLoadOverview: 'Failed to load overview',
-    justNow: 'just now',
-    minAgo: '{p0} min ago',
-    hAgo: '{p0}h ago',
-    dAgo: '{p0}d ago',
   },
   PlacesSection: {
     failedToAddPlace: 'Failed to add place',
@@ -83,9 +72,6 @@ export default {
     expired: 'Expired',
     exhausted: 'Exhausted',
     active: 'Active',
-  },
-  SystemInfoSection: {
-    failedToLoadSystemInfo: 'Failed to load system info',
   },
   TelemetrySection: {
     failedToLoadTelemetrySettings: 'Failed to load telemetry settings',

@@ -1273,6 +1273,8 @@ func main() {
 		"root.sharing.discovery":         handleSharingDiscovery,
 		"root.sharing.nfs":               handleSharingNfs,
 		"root.sharing.sftp":              handleSharingSftp,
+		"root.process.list":              handleProcessList,
+		"root.process.kill":              handleProcessKill,
 	} {
 		h, s := handler, subj // capture
 		if _, err := nc.Subscribe(subj, func(msg *nats.Msg) { serveSync(nc, s, h, msg) }); err != nil {

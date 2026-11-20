@@ -34,6 +34,7 @@ export function actionLabel(action: string): string {
     'storage.deletePartition':      'Delete partition',
     'alert.clear':                  'Clear alert',
     'alert.clearAll':               'Clear all alerts',
+    'system.processEnd':            'End process',
     'storage.createRaid':           'Create RAID array',
     'storage.stopRaid':             'Stop RAID',
     'storage.createPv':             'Create PV',
