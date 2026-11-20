@@ -4,6 +4,7 @@ import { startMetricsSampler } from "./services/metrics-sampler"
 import { startAuditRetention } from "./services/audit-retention"
 import { startAlertSampler } from "./services/alert-sampler"
 import { startVolumeUsageSampler } from "./services/volume-usage"
+import { startWidgetSources } from "./services/widget-sources"
 import { startTrashPurge } from "./services/trash"
 import { startCatalogRefresh } from "./services/catalog-source"
 import { startVolumeGuard } from "./services/volume-guard"
@@ -71,6 +72,7 @@ const start = async () => {
     startAuditRetention()
     startAlertSampler()
     startVolumeUsageSampler()
+    startWidgetSources()
     startTrashPurge()
     startCatalogRefresh(readCurrentVersion)
     startVolumeGuard()

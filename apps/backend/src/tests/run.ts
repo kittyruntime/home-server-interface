@@ -4615,3 +4615,125 @@ async function testDigestPromptKeepsToFacts() {
   assert.match(p, /never invent/)
 }
 await testDigestPromptKeepsToFacts()
+
+async function testWidgetSourcePathsAndRules() {
+  const w = await import("../services/widget-sources")
+  const v = { data: { sessions: [{ user: "a", play: { title: "X" } }, { user: "b" }], total: "12" }, "odd key": 1 }
+  assert.deepEqual(w.pathSegments("data.sessions[1].user"), ["data", "sessions", 1, "user"])
+  assert.equal(w.readPath(v, "data.sessions[0].play.title"), "X")
+  assert.equal(w.readPath(v, "data.sessions.length"), 2)
+  assert.equal(w.readPath(v, "data.missing.deep"), undefined)
+  assert.equal(w.readPath(v, "data.constructor"), undefined, "only own properties")
+  assert.deepEqual(w.readPath(v, ""), v)
+  assert.equal(w.asNumber("12"), 12)
+  assert.equal(w.asNumber("x"), null)
+  const rule = { path: "data.sessions.length", op: "gt" as const, value: "1", severity: "warning" as const, message: "{value} streams" }
+  assert.ok(w.ruleMatches(rule, v))
+  assert.ok(!w.ruleMatches({ ...rule, value: "2" }, v))
+  assert.ok(w.ruleMatches({ ...rule, path: "data.sessions[0].user", op: "eq", value: "a" }, v), "text compares as text")
+  assert.ok(!w.ruleMatches({ ...rule, path: "nope" }, v), "a missing value raises nothing")
+  assert.equal(w.alertMessage("Jellyfin", rule, 2), "2 streams")
+  assert.equal(w.alertMessage("Jellyfin", { ...rule, message: "" }, 2), "Jellyfin: data.sessions.length is 2")
+  assert.deepEqual(w.parseBody('{"a":1}'), { a: 1 })
+  assert.deepEqual(w.parseBody('{"a":1}\n{"a":2}\n'), [{ a: 1 }, { a: 2 }])
+  assert.deepEqual(w.parseBody("plain"), { text: "plain" })
+
+  const ok = w.zSourceInput.safeParse({ name: "Jellyfin", kind: "http", url: "http://127.0.0.1:8096/Sessions", headers: [{ name: "X-Emby-Token", value: "k", secret: true }] })
+  assert.ok(ok.success)
+  assert.ok(!w.zSourceInput.safeParse({ name: "x", kind: "http", url: "file:///etc/shadow" }).success)
+  assert.ok(!w.zSourceInput.safeParse({ name: "x", kind: "command", command: "rm" }).success)
+  assert.ok(!w.zSourceInput.safeParse({ name: "x", kind: "http", url: "http://h", headers: [{ name: "X", value: "a\r\nInjected: 1", secret: false }] }).success, "no header injection")
+  assert.ok(!w.zSourceInput.safeParse({ name: "x", kind: "http", url: "http://h", intervalSec: 5 }).success, "30 s at least")
+}
+await testWidgetSourcePathsAndRules()
+
+async function testWidgetSourceSecretsStayOnTheServer() {
+  const prevKey = process.env.HSI_SECRETS_KEY
+  process.env.HSI_SECRETS_KEY = "ab".repeat(32)
+  try {
+    const w = await import("../services/widget-sources")
+    const { decryptSecret } = await import("../services/secrets")
+    const stored = w.headersToStore([{ name: "X-Api-Key", value: "s3cret", secret: true }, { name: "Accept-Language", value: "fr", secret: false }], [])
+    assert.notEqual(stored[0]!.value, "s3cret", "secret values are encrypted")
+    assert.equal(decryptSecret(stored[0]!.value), "s3cret")
+    const kept = w.headersToStore([{ name: "x-api-key", value: "", secret: true }], stored)
+    assert.equal(kept[0]!.value, stored[0]!.value, "an empty secret keeps the stored one")
+    const view = w.sourceView({ id: "i", name: "n", kind: "http", url: "http://h", headers: JSON.stringify(stored), command: "", intervalSec: 60, visibility: "admins", pushHash: null, trackPath: "", alert: "", lastValue: null, lastAt: null, lastError: null })
+    assert.deepEqual(view.headers, [{ name: "X-Api-Key", value: "", secret: true }, { name: "Accept-Language", value: "fr", secret: false }])
+    const { redactForAudit } = await import("../trpc/index")
+    const logged = JSON.stringify(redactForAudit({ source: { headers: [{ name: "X-Thing", value: "s3cret", secret: true }, { name: "Authorization", value: "Bearer abc", secret: false }, { name: "Accept", value: "json", secret: false }] } }))
+    assert.ok(!logged.includes("s3cret") && !logged.includes("Bearer abc"), "the audit log never keeps a header secret")
+    assert.ok(logged.includes("json"))
+    const token = w.newPushToken()
+    assert.ok(w.tokenMatches(token, w.hashToken(token)))
+    assert.ok(!w.tokenMatches(token + "x", w.hashToken(token)))
+    assert.ok(!w.tokenMatches(token, null))
+  } finally {
+    if (prevKey === undefined) delete process.env.HSI_SECRETS_KEY
+    else process.env.HSI_SECRETS_KEY = prevKey
+  }
+}
+await testWidgetSourceSecretsStayOnTheServer()
+
+async function testWidgetSourceHttpRead() {
+  const w = await import("../services/widget-sources")
+  const { createServer } = await import("node:http")
+  let seen = ""
+  const server = createServer((req, res) => {
+    seen = String(req.headers["x-api-key"] ?? "")
+    if (req.url === "/json") { res.setHeader("content-type", "application/json"); res.end('{"count":3}') }
+    else if (req.url === "/moved") { res.statusCode = 302; res.setHeader("location", "/json"); res.end() }
+    else if (req.url === "/big") { res.end("x".repeat(300 * 1024)) }
+    else { res.statusCode = 500; res.end("no") }
+  })
+  await new Promise<void>(r => server.listen(0, "127.0.0.1", r))
+  const base = `http://127.0.0.1:${(server.address() as { port: number }).port}`
+  try {
+    assert.deepEqual(await w.httpGet(`${base}/json`, { "X-Api-Key": "k1" }), { count: 3 })
+    assert.equal(seen, "k1")
+    await assert.rejects(w.httpGet(`${base}/moved`, {}), /redirects/)
+    await assert.rejects(w.httpGet(`${base}/fail`, {}), /HTTP 500/)
+    await assert.rejects(w.httpGet(`${base}/big`, {}), /256 KB/)
+  } finally {
+    server.close()
+  }
+  await assert.rejects(w.httpGet(base + "/json", {}), /refused/i)
+}
+await testWidgetSourceHttpRead()
+
+async function testWidgetSourceAccess() {
+  const { widgetSourceRouter } = await import("../trpc/routers/widgetSource")
+  const member = widgetSourceRouter.createCaller({ user: { userId: "u", isAdmin: false }, prisma: { auditLog: { create: async () => ({}) } }, req: { ip: "127.0.0.1", headers: {} } } as any)
+  for (const call of [
+    () => member.create({ name: "x", kind: "http", url: "http://h" } as any),
+    () => member.test({ source: { name: "x", kind: "http", url: "http://h" } } as any),
+    () => member.commands(),
+  ]) {
+    const err = await call().then(() => null, (e: { code?: string }) => e)
+    assert.equal(err?.code, "FORBIDDEN", "only admins configure sources")
+  }
+  const rows = [
+    { id: "a", name: "A", kind: "http", visibility: "admins", url: "http://secret-host", headers: "[]", command: "", intervalSec: 60, pushHash: null, trackPath: "", alert: "", lastValue: '{"v":1}', lastAt: null, lastError: null },
+    { id: "b", name: "B", kind: "http", visibility: "everyone", url: "http://h", headers: "[]", command: "", intervalSec: 60, pushHash: null, trackPath: "", alert: "", lastValue: '{"v":2}', lastAt: null, lastError: null },
+  ]
+  const reader = widgetSourceRouter.createCaller({ user: { userId: "u", isAdmin: false }, prisma: { widgetSource: { findMany: async () => rows } }, req: { ip: "127.0.0.1", headers: {} } } as any)
+  assert.deepEqual(await reader.list(), [{ id: "a", name: "A", kind: "http", editable: false }, { id: "b", name: "B", kind: "http", editable: false }].filter(r => r.id === "b"), "members see shared sources by name only")
+  const data = await reader.data({ ids: ["00000000-0000-4000-8000-000000000001"] })
+  assert.deepEqual(data.map(d => d.value), [{ v: 2 }], "and only their data")
+}
+await testWidgetSourceAccess()
+
+async function testWidgetPushRoute() {
+  const Fastify = (await import("fastify")).default
+  const { widgetRoutes } = await import("../routes/widgets")
+  const app = Fastify()
+  await app.register(widgetRoutes)
+  const noToken = await app.inject({ method: "POST", url: "/api/widgets/push/00000000-0000-4000-8000-000000000001", payload: { a: 1 } })
+  assert.equal(noToken.statusCode, 401)
+  const badId = await app.inject({ method: "POST", url: "/api/widgets/push/x", headers: { authorization: "Bearer t" }, payload: { a: 1 } })
+  assert.equal(badId.statusCode, 401)
+  const big = await app.inject({ method: "POST", url: "/api/widgets/push/00000000-0000-4000-8000-000000000001", headers: { authorization: "Bearer t", "content-type": "application/json" }, payload: JSON.stringify({ x: "y".repeat(70 * 1024) }) })
+  assert.equal(big.statusCode, 413, "bodies over 64 KB are refused")
+  await app.close()
+}
+await testWidgetPushRoute()

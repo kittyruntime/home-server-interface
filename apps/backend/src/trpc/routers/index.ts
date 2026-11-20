@@ -28,6 +28,7 @@ import { apiTokenRouter } from "./apiToken"
 import { agentActionRouter } from "./agentAction"
 import { assistantRouter } from "./assistant"
 import { dashboardRouter } from "./dashboard"
+import { widgetSourceRouter } from "./widgetSource"
 
 export const appRouter = router({
   auth: authRouter,
@@ -59,6 +60,7 @@ export const appRouter = router({
   agentAction: agentActionRouter,
   assistant: assistantRouter,
   dashboard: dashboardRouter,
+  widgetSource: widgetSourceRouter,
 })
 
 export type AppRouter = typeof appRouter

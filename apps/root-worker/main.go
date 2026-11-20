@@ -1197,6 +1197,7 @@ func main() {
 		"root.health":                    handleRootHealth,
 		"root.update.status":             handleUpdateStatus,
 		"root.tls.status":                handleTLSStatus,
+		"root.widget.command":            handleWidgetCommand,
 		"root.tls.issue":                 handleTLSIssue,
 		"root.backup.status":             handleBackupStatus,
 		"root.backup.runs":               handleBackupRuns,

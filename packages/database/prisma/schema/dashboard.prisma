@@ -27,3 +27,40 @@ model VolumeUsageSample {
 
   @@index([volumeId, timestamp])
 }
+
+// Where a custom widget reads its data: an address the server calls on an
+// interval (http), what a script sends to HSI (push), or one of the worker's
+// read-only commands (command). Header values marked secret are encrypted
+// with HSI_SECRETS_KEY; the push token is kept as its SHA-256.
+model WidgetSource {
+  id          String    @id @default(uuid())
+  name        String
+  kind        String
+  url         String    @default("")
+  // JSON [{ name, value, secret }].
+  headers     String    @default("[]")
+  command     String    @default("")
+  intervalSec Int       @default(60)
+  // admins | everyone: who may read its data.
+  visibility  String    @default("admins")
+  pushHash    String?
+  // A numeric value kept as a history for charts ("" for none).
+  trackPath   String    @default("")
+  // JSON alert rule, "" for none.
+  alert       String    @default("")
+  lastValue   String?
+  lastAt      DateTime?
+  lastError   String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+// The tracked value of a source over time, kept 7 days.
+model WidgetSourceSample {
+  id        Int      @id @default(autoincrement())
+  sourceId  String
+  timestamp DateTime @default(now())
+  value     Float
+
+  @@index([sourceId, timestamp])
+}

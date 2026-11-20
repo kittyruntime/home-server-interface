@@ -129,6 +129,11 @@ function redact(v: unknown): unknown {
     if (typeof rec.key === "string" && "value" in rec) {
       return { ...rec, value: SENSITIVE_KEY.test(rec.key) ? "[REDACTED]" : redact(rec.value) }
     }
+    // {name, value} headers (dashboard widget sources): marked secret, or named
+    // like a credential (Authorization, X-Api-Key).
+    if (typeof rec.name === "string" && "value" in rec && (rec.secret === true || SENSITIVE_KEY.test(rec.name))) {
+      return { ...rec, value: "[REDACTED]" }
+    }
     const out: Record<string, unknown> = {}
     for (const [k, val] of Object.entries(rec)) {
       out[k] = SENSITIVE_KEY.test(k) ? "[REDACTED]" : redact(val)
