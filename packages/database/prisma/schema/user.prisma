@@ -26,6 +26,7 @@ model User {
   agentActions     AgentAction[]
   assistantConversations AssistantConversation[]
   assistantUsage AssistantUsage[]
+  dashboardBoards DashboardBoard[]
 }
 
 model UserCapability {

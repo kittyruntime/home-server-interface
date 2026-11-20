@@ -4458,3 +4458,160 @@ async function testProcessRatesFollowEachProcess() {
   assert.equal(app.owner, "jellyfin")
 }
 await testProcessRatesFollowEachProcess()
+
+async function testDashboardBoardsKeepUnknownTypesAndDropJunk() {
+  const b = await import("../services/dashboard-boards")
+  const stored = JSON.stringify([
+    { id: "a", type: "cpu", size: "m" },
+    { id: "b", type: "from.a.newer.release", size: "xl", settings: { x: 1 } },
+    { id: "", type: "cpu" },
+    { id: "c", type: "Bad Type" },
+    "junk",
+  ])
+  assert.deepEqual(b.parseWidgets(stored), [
+    { id: "a", type: "cpu", size: "m" },
+    { id: "b", type: "from.a.newer.release", size: "s", settings: { x: 1 } },
+  ], "an unknown size falls back, malformed widgets are dropped")
+  assert.deepEqual(b.parseWidgets("not json"), [])
+  assert.deepEqual(b.parseWidgets("{}"), [])
+  const big = { boards: [{ name: "x", widgets: [{ id: "a", type: "note", settings: { text: "y".repeat(5000) } }] }] }
+  assert.ok(!b.zBoardsInput.safeParse(big).success, "settings are size-limited")
+  assert.ok(!b.zBoardsInput.safeParse({ boards: [] }).success, "at least one board")
+  assert.ok(!b.zBoardsInput.safeParse({ boards: Array.from({ length: 13 }, () => ({ name: "x", widgets: [] })) }).success)
+
+  const calls: string[] = []
+  const tx = {
+    dashboardBoard: {
+      deleteMany: async (a: { where: { ownerId: string | null } }) => { calls.push(`delete ${a.where.ownerId}`) },
+      create: async (a: { data: { ownerId: string | null; name: string; position: number; widgets: string } }) => {
+        calls.push(`create ${a.data.ownerId} ${a.data.position} ${a.data.name}`)
+        return { id: `id${a.data.position}`, name: a.data.name, widgets: a.data.widgets }
+      },
+    },
+  }
+  const saved = await b.replaceBoards({ $transaction: fn => fn(tx) }, "u1", [
+    { name: "Home", widgets: [{ id: "w", type: "cpu", size: "s" }] }, { name: "Media", widgets: [] },
+  ])
+  assert.deepEqual(calls, ["delete u1", "create u1 0 Home", "create u1 1 Media"], "the owner's set is replaced in order")
+  assert.deepEqual(saved.map(s => s.id), ["id0", "id1"])
+  assert.deepEqual(saved[0]!.widgets, [{ id: "w", type: "cpu", size: "s" }])
+}
+await testDashboardBoardsKeepUnknownTypesAndDropJunk()
+
+async function testHwmonSensors() {
+  const { readSensors } = await import("../services/hw-sensors")
+  const { mkdir, writeFile } = await import("node:fs/promises")
+  const root = await mkdtemp(join(tmpdir(), "hsi-hwmon-"))
+  const put = async (dir: string, files: Record<string, string>) => {
+    await mkdir(join(root, dir), { recursive: true })
+    for (const [f, v] of Object.entries(files)) await writeFile(join(root, dir, f), v + "\n")
+  }
+  await put("hwmon1", { name: "coretemp", temp1_input: "45000", temp1_label: "Package id 0", temp1_max: "80000", temp1_crit: "100000", temp2_input: "43500" })
+  await put("hwmon0", { name: "nct6775", fan1_input: "820", temp9_input: "-273000", temp3_input: "255000" })
+  await put("hwmon10", { name: "nvme", temp1_input: "38850", temp1_label: "Composite" })
+  await put("other", { name: "x", temp1_input: "1000" })
+  try {
+    assert.deepEqual(readSensors(root), [
+      { chip: "nct6775", label: "nct6775 1", kind: "fan", value: 820 },
+      { chip: "coretemp", label: "Package id 0", kind: "temp", value: 45, max: 80, crit: 100 },
+      { chip: "coretemp", label: "coretemp 2", kind: "temp", value: 43.5 },
+      { chip: "nvme", label: "Composite", kind: "temp", value: 38.9 },
+    ], "chips in numeric order, unwired inputs skipped")
+    assert.deepEqual(readSensors(join(root, "missing")), [])
+  } finally {
+    await rm(root, { recursive: true, force: true })
+  }
+}
+await testHwmonSensors()
+
+async function testUpsOverNut() {
+  const ups = await import("../services/ups")
+  const { createServer } = await import("node:net")
+  assert.deepEqual(ups.parseNutLines('BEGIN LIST UPS\nUPS eaton "Eaton \\"5E\\""\n', "UPS"), [["eaton", 'Eaton "5E"']])
+  const vars = new Map(ups.parseNutLines('VAR eaton ups.status "OB DISCHRG"\nVAR eaton battery.charge "87"\nVAR eaton battery.runtime "1260"\nVAR eaton device.mfr "EATON"\nVAR eaton device.model "5E 850i"\n', "VAR"))
+  assert.deepEqual(ups.upsFromVars("eaton", vars), { name: "eaton", model: "EATON 5E 850i", status: ["OB", "DISCHRG"], charge: 87, runtimeS: 1260, loadPct: null })
+
+  const server = createServer(sock => {
+    sock.on("data", d => {
+      for (const cmd of d.toString().split("\n").filter(Boolean)) {
+        if (cmd === "LIST UPS") sock.write('BEGIN LIST UPS\nUPS eaton "Eaton"\nEND LIST UPS\n')
+        else if (cmd === "LIST VAR eaton") sock.write('BEGIN LIST VAR eaton\nVAR eaton ups.status "OL"\nVAR eaton ups.load "23"\nEND LIST VAR eaton\n')
+      }
+    })
+  })
+  await new Promise<void>(r => server.listen(0, "127.0.0.1", r))
+  const port = (server.address() as { port: number }).port
+  try {
+    const read = await ups.readUps("127.0.0.1", port, 1000)
+    assert.deepEqual(read, [{ name: "eaton", model: "eaton", status: ["OL"], charge: null, runtimeS: null, loadPct: 23 }])
+  } finally {
+    server.close()
+  }
+  assert.equal(await ups.readUps("127.0.0.1", port, 500), null, "no upsd answering reads as no UPS")
+}
+await testUpsOverNut()
+
+async function testVolumeForecast() {
+  const { forecast } = await import("../services/volume-usage")
+  const DAY = 86_400_000, GB = 1024 ** 3
+  assert.equal(forecast([{ t: 0, used: 1, total: 2 }]), null)
+  assert.equal(forecast([{ t: 0, used: 1, total: 2 }, { t: DAY / 2, used: 1, total: 2 }]), null, "under a day of history")
+  const growing = Array.from({ length: 11 }, (_, i) => ({ t: i * DAY, used: 100 * GB + i * 2 * GB, total: 200 * GB }))
+  const f = forecast(growing)!
+  assert.equal(f.perDay, 2 * GB)
+  assert.equal(f.daysLeft, 40, "80 GB free at 2 GB a day")
+  assert.equal(f.spanDays, 10)
+  const flat = forecast([{ t: 0, used: 5 * GB, total: 10 * GB }, { t: 3 * DAY, used: 5 * GB + 1000, total: 10 * GB }])!
+  assert.equal(flat.daysLeft, null, "noise is not growth")
+  const shrinking = forecast([{ t: 0, used: 6 * GB, total: 10 * GB }, { t: 2 * DAY, used: 5 * GB, total: 10 * GB }])!
+  assert.equal(shrinking.daysLeft, null)
+}
+await testVolumeForecast()
+
+async function testLinkStatus() {
+  const link = await import("../services/link-status")
+  const { createServer } = await import("node:http")
+  assert.equal(link.checkableUrl("ftp://x"), null)
+  assert.equal(link.checkableUrl("not a url"), null)
+  assert.ok(link.checkableUrl("http://192.168.1.10:8096/"))
+  assert.ok(link.isUp(200) && link.isUp(302) && link.isUp(401) && !link.isUp(502) && !link.isUp(null))
+  let method = ""
+  const server = createServer((req, res) => { method = req.method ?? ""; res.statusCode = req.url === "/down" ? 503 : 401; res.end("secret body") })
+  await new Promise<void>(r => server.listen(0, "127.0.0.1", r))
+  const base = `http://127.0.0.1:${(server.address() as { port: number }).port}`
+  try {
+    const up = await link.checkUrl(`${base}/`)
+    assert.equal(up.up, true, "a login wall still means the service answers")
+    assert.equal(up.status, 401)
+    assert.equal(method, "HEAD", "only the status line is asked for")
+    assert.equal((await link.checkUrl(`${base}/down`)).up, false)
+  } finally {
+    server.close()
+  }
+  const gone = await link.checkUrl(base + "/")
+  assert.deepEqual([gone.up, gone.status], [false, null])
+  assert.deepEqual(await link.checkUrl("file:///etc/passwd"), { url: "file:///etc/passwd", up: false, status: null, ms: null })
+}
+await testLinkStatus()
+
+async function testDashboardRouterAccess() {
+  const { dashboardRouter } = await import("../trpc/routers/dashboard")
+  const userCtx = { user: { userId: "u", isAdmin: false }, prisma: { auditLog: { create: async () => ({}) } }, req: { ip: "127.0.0.1", headers: {} } } as any
+  const caller = dashboardRouter.createCaller(userCtx)
+  for (const call of [() => caller.linkStatus({ urls: ["http://x"] }), () => caller.publish({ boards: [{ name: "x", widgets: [] }] }), () => caller.unpublish(), () => caller.published()]) {
+    const err = await call().then(() => null, (e: { code?: string }) => e)
+    assert.equal(err?.code, "FORBIDDEN", "linking, publishing and reading the published set are admin only")
+  }
+}
+await testDashboardRouterAccess()
+
+async function testDigestPromptKeepsToFacts() {
+  const { digestPrompt } = await import("../services/dashboard-digest")
+  const p = digestPrompt({ alerts: [{ severity: "critical", message: "md0 is degraded" }], failedTasks: [{ action: "fs.copy", error: "No space left" }], refusedSignIns: 3 }, "fr")
+  assert.match(p, /in French/)
+  assert.match(p, /\[critical\] md0 is degraded/)
+  assert.match(p, /fs\.copy: No space left/)
+  assert.match(p, /Refused sign-ins in the last 24 hours: 3/)
+  assert.match(p, /never invent/)
+}
+await testDigestPromptKeepsToFacts()

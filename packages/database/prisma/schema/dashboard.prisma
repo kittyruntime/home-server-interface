@@ -1,0 +1,29 @@
+// A dashboard: a named tab of widgets. An account sees its own boards; when it
+// has none, it sees the boards an admin published (ownerId null) and gets its
+// own copy the first time it changes one.
+model DashboardBoard {
+  id        String   @id @default(uuid())
+  ownerId   String?
+  owner     User?    @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  name      String
+  position  Int      @default(0)
+  // JSON array of widgets: { id, type, size, settings }. Kept as text so a
+  // release that does not know a widget type still reads the board.
+  widgets   String   @default("[]")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([ownerId])
+}
+
+// Space used on each volume, sampled every hour, for the "full in about n
+// months" estimate. Rows older than 180 days are dropped.
+model VolumeUsageSample {
+  id        Int      @id @default(autoincrement())
+  timestamp DateTime @default(now())
+  volumeId  String
+  used      BigInt
+  total     BigInt
+
+  @@index([volumeId, timestamp])
+}
