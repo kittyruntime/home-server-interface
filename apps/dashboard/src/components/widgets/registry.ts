@@ -3,7 +3,7 @@ import {
   ActivityIcon, AppWindowIcon, ArchiveRestoreIcon, BatteryChargingIcon, BellIcon, CpuIcon, FolderIcon,
   HardDriveIcon, HistoryIcon, LinkIcon, MemoryStickIcon, NetworkIcon, NotebookPenIcon, RefreshCwIcon,
   ScrollTextIcon, Share2Icon, SparklesIcon, ThermometerIcon, Trash2Icon, TrendingUpIcon, UsersIcon,
-  DatabaseIcon,
+  DatabaseIcon, BracesIcon,
 } from '@lucide/vue'
 import type { WidgetSize } from '../../lib/dashboard-boards'
 
@@ -73,6 +73,7 @@ export const WIDGETS: WidgetDef[] = [
 
   // Tools
   { type: 'note', icon: NotebookPenIcon, group: 'tools', access: 'all', sizes: ['s', 'm', 'l'], size: 'm', settings: [{ key: 'text', kind: 'textarea' }], component: lazy(() => import('./types/NoteWidget.vue')) },
+  { type: 'custom', icon: BracesIcon, group: 'tools', access: 'all', sizes: ['s', 'm', 'l'], size: 'm', component: lazy(() => import('./types/CustomWidget.vue')) },
   { type: 'links', icon: LinkIcon, group: 'tools', access: 'all', sizes: ['s', 'm', 'l'], size: 'm', settings: [{ key: 'links', kind: 'links' }], component: lazy(() => import('./types/LinksWidget.vue')) },
 ]
 

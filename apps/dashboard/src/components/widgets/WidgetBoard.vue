@@ -5,6 +5,7 @@ import { PlusIcon } from '@lucide/vue'
 import WidgetCard from './WidgetCard.vue'
 import AddWidgetDialog from './AddWidgetDialog.vue'
 import WidgetSettingsDialog from './WidgetSettingsDialog.vue'
+import CustomWidgetEditor from './CustomWidgetEditor.vue'
 import { canUse, widgetDef, type WidgetDef } from './registry'
 import { useBoards, type BoardWidget, type WidgetSize } from '../../lib/dashboard-boards'
 import { requestApp } from '../../lib/app-focus'
@@ -32,6 +33,9 @@ const configuring = ref<{ widget: BoardWidget; def: WidgetDef } | null>(null)
 function add(def: WidgetDef) {
   store.addWidget(def.type, def.size)
   adding.value = false
+  // A custom widget shows nothing until it has a source: open its settings.
+  const added = current.value?.widgets.at(-1)
+  if (def.type === 'custom' && added?.type === 'custom') configuring.value = { widget: added, def }
 }
 
 // ── Moving ────────────────────────────────────────────────────────────────────
@@ -107,8 +111,13 @@ function open(def: WidgetDef) {
     </div>
 
     <AddWidgetDialog v-if="adding" :viewer="viewer" :present="items.map(i => i.w.type)" @add="add" @close="adding = false" />
+    <CustomWidgetEditor
+      v-if="configuring?.def.type === 'custom'" :widget="configuring.widget"
+      @save="s => { store.configureWidget(configuring!.widget.id, s); configuring = null }"
+      @close="configuring = null"
+    />
     <WidgetSettingsDialog
-      v-if="configuring" :widget="configuring.widget" :def="configuring.def"
+      v-else-if="configuring" :widget="configuring.widget" :def="configuring.def"
       @save="s => { store.configureWidget(configuring!.widget.id, s); configuring = null }"
       @close="configuring = null"
     />

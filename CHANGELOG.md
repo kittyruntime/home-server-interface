@@ -23,6 +23,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   places, history, temperatures, UPS (through Network UPS Tools), who uses the
   server, a daily summary by the assistant, notes and links that show whether
   each service answers.
+- **Dashboard**: custom widgets show any value from a service's API, a script
+  or a server command. Admins create the data sources: an address HSI reads
+  on an interval (secret headers encrypted on the server), JSON a script sends
+  with a token, or a fixed list of read-only server commands. A value can be
+  computed from up to three sources, written in a chosen format and shown as a
+  figure, gauge, curve, state, list or text; its path is picked from the
+  source's data. A source can keep a value's history and raise an alert that
+  notifies like any other. Templates cover Jellyfin, Immich, Nextcloud,
+  AdGuard Home, Home Assistant, Syncthing and the server commands.
 
 ## [1.87.0] - 2026-11-20
 

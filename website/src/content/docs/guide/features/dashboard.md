@@ -62,3 +62,78 @@ storage permission.
 
 A widget whose data cannot be read says so in its last line; one whose data
 is old says that too.
+
+## Custom widgets
+
+A **Custom** widget shows any value you can reach: a service's API, a script, or
+a server command. It reads one to three **sources** (`$1`, `$2`, `$3`).
+
+### Sources
+
+Admins create sources from the widget's settings, from a template or from
+scratch. HSI reads them, not your browser, so a plain `http://` service on your
+network works whatever address you use for HSI, and API keys never reach the
+browser.
+
+| Kind | How it gets its data |
+|---|---|
+| Address read by HSI | HSI calls a `GET` address every interval (30 seconds at least) with the headers you set. `127.0.0.1` is the server itself. JSON answers are kept as they are, text as `{ "text": ... }`. Answers over 256 KB are refused. |
+| Sent by a script | A script sends JSON to HSI (see below). |
+| Server command | One of a fixed list of read-only commands, run by HSI without a shell: disks (`lsblk`), network addresses (`ip addr`), failed services (`systemctl`), sensors (`sensors`), ZFS pools (`zpool list`), RAID arrays (`/proc/mdstat`), container usage (`docker stats`), system errors of the last day (`journalctl`), space per file system (`df`). |
+
+- **Secret headers** (an API key, a token) are encrypted on the server and never
+  shown again. If you change the address to another host, port or scheme, enter
+  them again.
+- **https**: the certificate is checked. For a service with a self-signed
+  certificate on your own network, tick **Accept a self-signed certificate**.
+- **Who sees its data**: admins only, or every account.
+- **Keep as history**: a path to a number HSI keeps for 7 days, for the
+  **Figure and curve** display.
+- **Raise an alert**: when the value at a path is above, below, equal to or
+  different from a value, HSI raises an alert. It shows in Monitor, notifies
+  through your notification rules and goes away once the condition is over.
+  `{value}` in the message is replaced by the value.
+
+Templates fill in the address and header of Jellyfin, Immich, Nextcloud,
+AdGuard Home, Home Assistant and Syncthing (with the app's port when it is
+installed from the App Store), and of the server commands, with a widget to
+show them. You only paste the API key.
+
+### Sending data from a script
+
+When a "Sent by a script" source is saved, HSI shows its address and token once:
+
+```sh
+curl -X POST \
+  -H "Authorization: Bearer hsiw_..." \
+  -H "Content-Type: application/json" \
+  -d '{"temperature": 21.5, "door": "closed"}' \
+  https://your-server/api/widgets/push/<source id>
+```
+
+The body is any JSON up to 64 KB. Each call replaces the previous value.
+
+### What the widget shows
+
+The **Value** is a path into a source, or a calculation:
+
+| Example | Gives |
+|---|---|
+| `$1.photos` | The `photos` field of the first source |
+| `$1.data.items[0].name` | A field inside a list |
+| `$1["odd key"]` | A field whose name has spaces or dashes |
+| `$1.used / $1.size * 100` | A calculation: `+ - * /` and parentheses |
+| `count($1.sessions, "NowPlayingItem")` | The items where that field is set |
+| `sum($1.items, "size")` | Also `avg`, `min`, `max` |
+
+Only arithmetic is evaluated: nothing in a source or an expression is run as code.
+In the settings, the right column shows each source's data as a tree: click a
+key to write its path in the field you are editing.
+
+- **Formats**: number, percentage, size, rate, duration, relative date, text,
+  yes or no; with a prefix, a unit and decimals.
+- **Displays**: figure, gauge (with its minimum and maximum), figure and curve,
+  state (a word for yes and for no), list (a list path, then each item's name
+  and value, where `@` is the item), or text.
+- **Thresholds**: a warning and a critical level color the value; tick
+  **Lower is worse** for a battery or free space.

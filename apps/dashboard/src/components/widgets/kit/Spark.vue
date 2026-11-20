@@ -2,7 +2,7 @@
 import { computed } from 'vue'
 
 // A small line of recent values, scaled to `max` (or to the highest value).
-const props = withDefaults(defineProps<{ values: number[]; max?: number; color?: string; fill?: boolean; label?: string }>(), {
+const props = withDefaults(defineProps<{ values: number[]; max?: number; min?: number; color?: string; fill?: boolean; label?: string }>(), {
   color: 'var(--color-primary)', fill: true,
 })
 
@@ -10,8 +10,10 @@ const W = 100, H = 40
 const path = computed(() => {
   const v = props.values
   if (v.length < 2) return null
-  const top = props.max ?? Math.max(...v, 1)
-  const pts = v.map((n, i) => [(i / (v.length - 1)) * W, H - Math.max(0, Math.min(1, n / (top || 1))) * (H - 2) - 1] as const)
+  const lo = props.min ?? 0
+  const top = props.max ?? Math.max(...v, lo + 1)
+  const span = top - lo || 1
+  const pts = v.map((n, i) => [(i / (v.length - 1)) * W, H - Math.max(0, Math.min(1, (n - lo) / span)) * (H - 2) - 1] as const)
   const line = `M${pts.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join('L')}`
   return { line, area: `${line}L${W},${H}L0,${H}Z` }
 })

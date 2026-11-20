@@ -83,3 +83,16 @@ test('every widget has a title and a description in each language', () => {
   }
   assert.deepEqual(Object.keys(fr.types).sort(), Object.keys(en.types).sort())
 })
+
+test('every widget message compiles in each language', async () => {
+  const { createI18n } = await import('vue-i18n')
+  const leaves = (o: unknown, prefix = ''): string[] => typeof o === 'object' && o
+    ? Object.entries(o).flatMap(([k, v]) => leaves(v, prefix ? `${prefix}.${k}` : k))
+    : [prefix]
+  for (const [lang, messages] of [['en', en], ['fr', fr]] as const) {
+    const i18n = createI18n({ legacy: false, locale: lang, messages: { [lang]: { widgets: messages } }, missingWarn: false, fallbackWarn: false })
+    for (const key of leaves(messages)) {
+      assert.doesNotThrow(() => i18n.global.t(`widgets.${key}`, { n: 2, name: 'x', v: '1', at: 'x', d: 1, h: 1, m: 1 }), `${lang}: widgets.${key}`)
+    }
+  }
+})

@@ -83,7 +83,7 @@ function save() {
       </template>
     </form>
     <template #footer>
-      <div class="flex justify-end gap-2 px-5 py-4">
+      <div class="flex w-full justify-end gap-2 px-5 py-4">
         <Button variant="ghost" @click="emit('close')">{{ t('widgets.settings.cancel') }}</Button>
         <Button type="submit" form="widget-settings">{{ t('common.save') }}</Button>
       </div>
