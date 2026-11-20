@@ -10,9 +10,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - **Appearance**: the default look (Auto, and the Light and Dark themes) is
   now HSI's own: warm graphite surfaces with copper as the main color,
-  instead of daisyUI's stock light and dark. Saved choices keep working, and
-  the other themes are unchanged. Text selection, the caret, scrollbars and
-  native checkboxes follow the theme too.
+  instead of daisyUI's stock light and dark. Text selection, the caret,
+  scrollbars and native checkboxes follow the theme too.
+- **Appearance**: the 35 stock daisyUI themes give way to a family of nine
+  HSI themes built on the same structure: Paper, Fog, Sage and Chalk (light),
+  Graphite, Ink, Moss, Plum and Onyx (dark, Onyx in true black for OLED
+  screens). Settings shows each one as a miniature of the interface. A saved
+  stock theme moves to the closest one, light or dark as before.
 - **First-run setup**: the assistant is rebuilt in two panes. A rail lists the
   steps and, under each one, the commands and files it uses on the server
   (`useradd`, `smbpasswd`, `hostnamectl`, `/etc/hosts`, `timedatectl`,

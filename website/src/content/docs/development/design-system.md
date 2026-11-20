@@ -24,10 +24,17 @@ the custom `text-2xs` and `text-control` sizes are not mistaken for colors.
 
 ## Themes and appearance
 
-- The daisyUI plugin in `style.css` enables 35 themes. The owner picks one in
-  Settings, or **Auto**, which follows `prefers-color-scheme` (`light` or
-  `dark`). The choice is stored on the account and applied as `data-theme` on
-  `:root`.
+- `style.css` defines HSI's own theme family with `@plugin "daisyui/theme"`:
+  four light themes (`light` Paper, `fog`, `sage`, `chalk`) and five dark ones
+  (`dark` Graphite, `ink`, `moss`, `plum`, `onyx`). They share one structure
+  (shape, flat depth, status colors tuned for light or dark) and differ by
+  their neutrals and their signal color. The owner picks one in Settings, or
+  **Auto**, which follows `prefers-color-scheme` (`light` or `dark`). The
+  choice is stored on the account and applied as `data-theme` on `:root`.
+- A new theme goes in `style.css`, in `THEMES` (`src/lib/appearance.ts`), in
+  the pre-paint list of `index.html` and in the `appearance.themes` labels;
+  `tests/appearance.test.ts` checks they agree. The stock daisyUI names that
+  earlier releases offered map to the closest theme (`RETIRED_THEMES`).
 - Appearance settings also cover an **accent** (theme default, red, orange,
   blue, green or purple), the **roundness** of corners (five steps) and the
   **density** of controls (compact, default, roomy). Roundness and density are

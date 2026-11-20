@@ -1,15 +1,25 @@
-export const THEMES = [
-  'light', 'dark', 'cupcake', 'bumblebee', 'emerald', 'corporate', 'synthwave',
-  'retro', 'cyberpunk', 'valentine', 'halloween', 'garden', 'forest', 'aqua',
-  'lofi', 'pastel', 'fantasy', 'wireframe', 'black', 'luxury', 'dracula', 'cmyk',
-  'autumn', 'business', 'acid', 'lemonade', 'night', 'coffee', 'winter', 'dim',
-  'nord', 'sunset', 'caramellatte', 'abyss', 'silk',
-] as const
+// HSI's own theme family (style.css): light ones first, then dark ones. They
+// share one structure and differ by their neutrals and their signal color.
+export const LIGHT_THEMES = ['light', 'fog', 'sage', 'chalk'] as const
+export const DARK_THEMES = ['dark', 'ink', 'moss', 'plum', 'onyx'] as const
+export const THEMES = [...LIGHT_THEMES, ...DARK_THEMES] as const
 
-export const DARK_THEMES = [
-  'dark', 'synthwave', 'halloween', 'forest', 'aqua', 'black', 'luxury', 'dracula',
-  'business', 'night', 'coffee', 'dim', 'sunset', 'abyss',
-] as const
+/**
+ * The stock daisyUI themes earlier releases offered, mapped to the closest HSI
+ * theme so a saved choice keeps its spirit (light or dark, cool or warm).
+ */
+export const RETIRED_THEMES: Readonly<Record<string, typeof THEMES[number]>> = {
+  corporate: 'fog', winter: 'fog', nord: 'fog',
+  emerald: 'sage', garden: 'sage', lemonade: 'sage',
+  lofi: 'chalk', wireframe: 'chalk', cmyk: 'chalk',
+  cupcake: 'light', bumblebee: 'light', retro: 'light', cyberpunk: 'light', valentine: 'light',
+  pastel: 'light', fantasy: 'light', autumn: 'light', acid: 'light', caramellatte: 'light', silk: 'light',
+  night: 'ink', business: 'ink', aqua: 'ink', abyss: 'ink',
+  forest: 'moss',
+  dracula: 'plum', synthwave: 'plum',
+  black: 'onyx', luxury: 'onyx',
+  halloween: 'dark', coffee: 'dark', sunset: 'dark', dim: 'dark',
+}
 
 export type AccentChoice = 'theme' | 'red' | 'orange' | 'blue' | 'green' | 'purple'
 export type Density = 'compact' | 'default' | 'roomy'
@@ -54,6 +64,12 @@ function isTheme(value: unknown): value is Appearance['theme'] {
   return value === 'auto' || isOneOf(THEMES, value)
 }
 
+function toTheme(value: unknown): Appearance['theme'] {
+  if (isTheme(value)) return value
+  if (typeof value === 'string' && Object.hasOwn(RETIRED_THEMES, value)) return RETIRED_THEMES[value]!
+  return DEFAULT_APPEARANCE.theme
+}
+
 function isAccent(value: unknown): value is AccentChoice {
   return value === 'theme' || isOneOf(ACCENT_NAMES, value)
 }
@@ -69,7 +85,7 @@ function isDensity(value: unknown): value is Density {
 export function normalizeAppearance(raw: unknown): Appearance {
   const value = raw !== null && typeof raw === 'object' ? raw as Record<string, unknown> : {}
   return {
-    theme: isTheme(value.theme) ? value.theme : DEFAULT_APPEARANCE.theme,
+    theme: toTheme(value.theme),
     accent: isAccent(value.accent) ? value.accent : DEFAULT_APPEARANCE.accent,
     radius: isRadius(value.radius) ? value.radius : DEFAULT_APPEARANCE.radius,
     density: isDensity(value.density) ? value.density : DEFAULT_APPEARANCE.density,

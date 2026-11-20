@@ -2,7 +2,9 @@
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Card } from '@/components/ui/card'
+import { CheckIcon } from '@lucide/vue'
 import { ACCENT_COLORS, ACCENT_NAMES, THEMES, type AccentChoice, type Appearance, type Density } from '../lib/appearance'
+import ThemePreview from './ThemePreview.vue'
 import { useAppearance } from '../lib/theme'
 
 const { t } = useI18n()
@@ -36,30 +38,21 @@ const RADII: { value: Appearance['radius']; key: string }[] = [
     <div class="space-y-2">
       <h4 class="text-xs font-semibold uppercase tracking-caps text-base-content/70">{{ t('appearance.theme') }}</h4>
       <Card class="gap-0 py-0 shadow-none p-3">
-        <div role="radiogroup" :aria-label="t('appearance.theme')" class="grid max-h-72 grid-cols-2 gap-2 overflow-y-auto p-1 sm:grid-cols-3">
-          <label
-            class="relative flex cursor-pointer items-center gap-2 rounded-box border border-base-300 bg-base-100 px-3 py-2 text-sm text-base-content has-[:checked]:outline-2 has-[:checked]:outline-primary has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-primary"
-          >
-            <input
-              type="radio" name="appearance-theme" value="auto" class="sr-only"
-              v-model="theme"
-            />
-            <span class="truncate">{{ t('appearance.auto') }}</span>
-          </label>
-          <label
-            v-for="name in THEMES" :key="name" :data-theme="name"
-            class="relative flex cursor-pointer items-center gap-2 rounded-box border border-base-300 bg-base-100 px-3 py-2 text-sm text-base-content has-[:checked]:outline-2 has-[:checked]:outline-primary has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-primary"
-          >
-            <input
-              type="radio" name="appearance-theme" :value="name" class="sr-only"
-              v-model="theme"
-            />
-            <span class="flex shrink-0 gap-1" aria-hidden="true">
-              <span class="size-3 rounded-full bg-primary" />
-              <span class="size-3 rounded-full bg-secondary" />
-              <span class="size-3 rounded-full bg-accent" />
+        <div role="radiogroup" :aria-label="t('appearance.theme')" class="grid grid-cols-2 gap-3 p-1 sm:grid-cols-3 lg:grid-cols-5">
+          <label v-for="name in ['auto', ...THEMES] as const" :key="name"
+            class="group cursor-pointer rounded-box outline-offset-2 has-[:checked]:outline-2 has-[:checked]:outline-primary has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-primary">
+            <input type="radio" name="appearance-theme" :value="name" class="sr-only" v-model="theme" />
+            <span class="relative block overflow-hidden rounded-box border border-base-300 transition-colors duration-(--dur-fast) group-hover:border-base-content/30">
+              <span v-if="name === 'auto'" class="grid grid-cols-2" aria-hidden="true">
+                <ThemePreview theme="light" />
+                <ThemePreview theme="dark" />
+              </span>
+              <ThemePreview v-else :theme="name" aria-hidden="true" />
             </span>
-            <span class="truncate">{{ name }}</span>
+            <span class="mt-1.5 flex items-center gap-1.5 px-0.5 text-sm text-base-content">
+              <span class="truncate">{{ name === 'auto' ? t('appearance.auto') : t(`appearance.themes.${name}`) }}</span>
+              <CheckIcon v-if="theme === name" class="size-3.5 shrink-0 text-primary" aria-hidden="true" />
+            </span>
           </label>
         </div>
       </Card>
