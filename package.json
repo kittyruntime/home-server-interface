@@ -52,7 +52,10 @@
       "postcss-nested@<7": "^7.0.2",
       "postcss-selector-parser": "^7.1.6",
       "glob": "^14.0.2",
-      "minimatch": "^11.0.1"
+      "minimatch": "^11.0.1",
+      "effect": "^3.22.1",
+      "hono": "^4.13.16",
+      "@hono/node-server": "^2.1.6"
     }
   },
   "devDependencies": {

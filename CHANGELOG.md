@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+- Updated `effect` (used by Prisma) to 3.22.5, `hono` to 4.13.19 and
+  `@hono/node-server` to 2.1.11 (used by the MCP server) to close a ReDoS
+  and several request handling advisories.
+
 ## [1.89.0] - 2026-11-21
 
 ### Changed
