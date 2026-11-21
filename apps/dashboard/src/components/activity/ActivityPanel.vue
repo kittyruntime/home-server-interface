@@ -52,7 +52,7 @@ function select(value: unknown) {
 }
 
 function historyLabel(h: HistoryItem): string {
-  return activityLabel({ ...h, status: 'running', percent: null, remainingSec: null, cancellable: false, pausable: false, interrupted: false } as ActivityItem, t)
+  return activityLabel({ ...h, status: 'running', percent: null, remainingSec: null, bytesPerSec: null, cancellable: false, pausable: false, interrupted: false } as ActivityItem, t)
 }
 
 function duration(h: HistoryItem): string {
