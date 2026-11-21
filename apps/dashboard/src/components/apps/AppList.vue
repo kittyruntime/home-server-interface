@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import { useNarrow } from '@/lib/viewport'
 import { useI18n } from 'vue-i18n'
 import Tip from '../ui/Tip.vue'
-import { BookmarkIcon, EllipsisIcon, SquareIcon, ExternalLinkIcon, PackageIcon, PlayIcon, PlusIcon, RefreshCwIcon, ScrollTextIcon, SquarePenIcon, Trash2Icon, SearchIcon, TriangleAlertIcon } from '@lucide/vue'
-import { ButtonGroup } from '@/components/ui/button-group'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { BookmarkIcon, EllipsisIcon, SquareIcon, ExternalLinkIcon, PackageIcon, PlayIcon, PlusIcon, RefreshCwIcon, ScrollTextIcon, SquarePenIcon, Trash2Icon, TriangleAlertIcon, CheckIcon } from '@lucide/vue'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
+import AppTile from '../store/AppTile.vue'
+import SearchInput from '../ui/SearchInput.vue'
 import LoadingState from '../ui/LoadingState.vue'
 import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
 import { trpc } from '../../lib/trpc'
@@ -21,7 +21,6 @@ import { useToast } from '../../lib/toast'
 import { applyPlannedJob } from '../../lib/plan'
 import { pendingAppFocus, appToFocus } from '../../lib/app-focus'
 import { updateText } from '../../lib/app-update'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { safePinnedUrl } from '../../lib/pinned-url'
@@ -30,7 +29,6 @@ import LoadingSpinner from '../ui/LoadingSpinner.vue'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { clearAppJob, knownAppJobs, registerAppJob, type PendingAppJob } from '../../lib/app-jobs'
 
-const narrow = useNarrow()
 
 const { t } = useI18n()
 
@@ -88,8 +86,28 @@ async function silentRefresh() {
 
 const { holdForApp, refreshHolds } = useVolumeHolds()
 
+// Catalog logos and names, for the apps installed from the App Store (their
+// stack carries the hsi.catalog.id label). Others show their initial.
+const catalog = ref<Record<string, { icon: string; name: string }>>({})
+async function loadCatalog() {
+  try {
+    const list = await trpc.catalog.list.query()
+    catalog.value = Object.fromEntries(list.map(a => [a.id, { icon: a.icon, name: a.name }]))
+  } catch { /* initials only */ }
+}
+function catalogOf(app: App) {
+  const id = app.app?.labels?.find(l => l.key === 'hsi.catalog.id')?.value
+  return id ? catalog.value[id] ?? null : null
+}
+const busyFor = (app: App) => !!actionLoading.value[app.id] || appHasPendingJob(app.name)
+function openPinned(app: App) {
+  const url = safePinnedUrl(app.app?.pinnedUrl)
+  if (url) window.open(url, '_blank', 'noopener')
+}
+
 onMounted(async () => {
   void refreshHolds()
+  void loadCatalog()
   await load()
   refreshTimer = setInterval(silentRefresh, 10_000)
 })
@@ -111,11 +129,11 @@ function statusDot(status: string) {
 
 function statusText(status: string) {
   switch (status) {
-    case 'running':       return { label: t('uis.apps.AppList.running'),  cls: 'border-success/40 bg-success/10 text-success' }
-    case 'stopped':       return { label: t('uis.apps.AppList.stopped'),  cls: 'border-base-300 bg-base-200 text-base-content/70' }
-    case 'error':         return { label: t('uis.apps.AppList.error'),    cls: 'border-error/40 bg-error/10 text-error' }
-    case 'transitioning': return { label: t('uis.apps.AppList.updating'),cls: 'border-warning/40 bg-warning/10 text-warning' }
-    default:              return { label: t('uis.apps.AppList.unknown'),  cls: 'border-base-300 bg-base-200 text-base-content/70' }
+    case 'running':       return { label: t('uis.apps.AppList.running'),  cls: 'text-success' }
+    case 'stopped':       return { label: t('uis.apps.AppList.stopped'),  cls: 'text-base-content/70' }
+    case 'error':         return { label: t('uis.apps.AppList.error'),    cls: 'text-error' }
+    case 'transitioning': return { label: t('uis.apps.AppList.updating'), cls: 'text-warning' }
+    default:              return { label: t('uis.apps.AppList.unknown'),  cls: 'text-base-content/70' }
   }
 }
 
@@ -350,8 +368,7 @@ async function unpin(app: App) {
 <template>
   <div class="flex flex-col h-full w-full">
 
-    <!-- Content -->
-    <!-- Inline form (create / edit): replaces the list when active -->
+  <!-- Inline form (create / edit): replaces the list when active -->
   <AppFormModal
     v-if="showModal"
     :edit-name="editName"
@@ -360,270 +377,163 @@ async function unpin(app: App) {
     @deployed="onDeployed"
   />
 
-  <div v-else class="flex-1 overflow-y-auto flex flex-col min-w-0">
+  <div v-else class="flex-1 overflow-y-auto min-w-0">
+    <div class="mx-auto w-full max-w-4xl px-4 py-5 sm:px-8 sm:py-8">
 
-      <!-- Loading -->
       <LoadingState v-if="loading && !apps.length" variant="block" />
 
       <!-- Empty state -->
-      <div v-else-if="apps.length === 0 && !loadError" class="flex-1 flex items-center justify-center px-8">
-        <div class="w-full max-w-3xl">
-        <div class="mb-5 grid grid-cols-1 gap-2 sm:grid-cols-3">
-          <div class="rounded-lg border border-base-300 bg-base-100 px-4 py-3"><strong class="block text-xl tabular-nums text-success">0</strong><span class="text-xs text-base-content/70">{{ t('ui.apps.AppList.runningCount') }}</span></div>
-          <div class="rounded-lg border border-base-300 bg-base-100 px-4 py-3"><strong class="block text-xl tabular-nums">0</strong><span class="text-xs text-base-content/70">{{ t('ui.apps.AppList.stoppedCount') }}</span></div>
-          <div class="rounded-lg border border-base-300 bg-base-100 px-4 py-3"><strong class="block text-xl tabular-nums text-warning">0</strong><span class="text-xs text-base-content/70">{{ t('ui.apps.AppList.pendingCount') }}</span></div>
-        </div>
+      <div v-else-if="apps.length === 0 && !loadError" class="flex min-h-[60vh] items-center justify-center">
         <EmptyState
           :message="t('ui.apps.AppList.noContainersYet')"
           :description="t('ui.apps.AppList.deployYourFirstContainerTo')"
         >
           <template #icon>
-            <div class="w-16 h-16 rounded-xl bg-base-200 border border-base-300 flex items-center justify-center">
-              <PackageIcon class="w-8 h-8 text-base-content/70" aria-hidden="true" />
-            </div>
+            <span class="grid size-16 place-items-center rounded-[23%] bg-base-200 text-base-content/60">
+              <PackageIcon class="size-8" aria-hidden="true" />
+            </span>
           </template>
           <template #action>
-            <Button
-              @click="openNew"
-            >
-              <PlusIcon class="w-4 h-4" aria-hidden="true" />
-              {{ t('ui.apps.AppList.newApp') }}
-            </Button>
+            <Button @click="openNew"><PlusIcon class="size-4" aria-hidden="true" />{{ t('ui.apps.AppList.newApp') }}</Button>
           </template>
         </EmptyState>
-        </div>
       </div>
 
-      <div v-else class="flex flex-col flex-1">
-
-        <!-- Overview and search -->
-        <div class="px-4 pt-5 sm:px-6">
-          <div class="flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <h1 class="text-xl font-semibold text-base-content">{{ t('ui.apps.AppList.containers') }}</h1>
-              <p class="mt-1 text-sm text-base-content/70">{{ t('ui.apps.AppList.containersDescription') }}</p>
-            </div>
-            <Button size="sm" @click="openNew">
-              <PlusIcon class="size-4" aria-hidden="true" />
-              {{ t('ui.apps.AppList.newApp') }}
-            </Button>
+      <template v-else>
+        <header class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+          <div class="min-w-0">
+            <h1 class="text-2xl font-semibold tracking-tight text-base-content">{{ t('ui.apps.AppList.containers') }}</h1>
+            <p class="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-base-content/70 tabular-nums">
+              <span class="inline-flex items-center gap-1.5"><span class="size-1.5 rounded-full bg-success" />{{ t('ui.apps.AppList.runningSummary', { p0: counts.running }) }}</span>
+              <span class="inline-flex items-center gap-1.5"><span class="size-1.5 rounded-full bg-base-content/50" />{{ t('ui.apps.AppList.stoppedSummary', { p0: counts.stopped }) }}</span>
+              <span v-if="counts.pending" class="inline-flex items-center gap-1.5 text-warning"><span class="size-1.5 rounded-full bg-warning" />{{ t('ui.apps.AppList.pendingSummary', { p0: counts.pending }) }}</span>
+            </p>
           </div>
+          <SearchInput v-model="search" :placeholder="t('ui.apps.AppList.searchApps')" :aria-label="t('ui.apps.AppList.searchApps')" class="sm:w-72" />
+        </header>
 
-          <div class="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-3">
-            <div class="rounded-lg border border-base-300 bg-base-100 px-4 py-3">
-              <strong class="block text-xl tabular-nums text-success">{{ counts.running }}</strong>
-              <span class="text-xs text-base-content/70">{{ t('ui.apps.AppList.runningCount') }}</span>
-            </div>
-            <div class="rounded-lg border border-base-300 bg-base-100 px-4 py-3">
-              <strong class="block text-xl tabular-nums">{{ counts.stopped }}</strong>
-              <span class="text-xs text-base-content/70">{{ t('ui.apps.AppList.stoppedCount') }}</span>
-            </div>
-            <div class="rounded-lg border border-base-300 bg-base-100 px-4 py-3">
-              <strong class="block text-xl tabular-nums text-warning">{{ counts.pending }}</strong>
-              <span class="text-xs text-base-content/70">{{ t('ui.apps.AppList.pendingCount') }}</span>
-            </div>
-          </div>
+        <Alert v-if="loadError" variant="destructive" class="mt-5 flex flex-wrap items-center justify-between gap-3 px-3 py-2.5 text-sm">
+          <div class="flex min-w-0 items-start gap-2"><TriangleAlertIcon class="mt-0.5 size-4 shrink-0" aria-hidden="true" /><AlertDescription>{{ t('ui.apps.AppList.loadFailed') }} {{ loadError }}</AlertDescription></div>
+          <Button variant="outline" size="xs" class="shrink-0 border-error/40 text-error hover:bg-error/10" :disabled="loading" @click="load">
+            <RefreshCwIcon :class="['size-3.5', loading && 'animate-spin']" aria-hidden="true" />
+            {{ t('ui.apps.AppList.retry') }}
+          </Button>
+        </Alert>
 
-          <Alert v-if="loadError" variant="destructive" class="mt-3 flex flex-wrap items-center justify-between gap-3 px-3 py-2.5 text-sm">
-            <div class="flex min-w-0 items-start gap-2"><TriangleAlertIcon class="mt-0.5 size-4 shrink-0" aria-hidden="true" /><AlertDescription>{{ t('ui.apps.AppList.loadFailed') }} {{ loadError }}</AlertDescription></div>
-            <Button variant="outline" size="xs" class="shrink-0 border-error/40 text-error hover:bg-error/10" :disabled="loading" @click="load">
-              <RefreshCwIcon :class="['size-3.5', loading && 'animate-spin']" aria-hidden="true" />
-              {{ t('ui.apps.AppList.retry') }}
-            </Button>
-          </Alert>
-
-          <div class="relative mt-3 max-w-md">
-            <SearchIcon class="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-base-content/60" aria-hidden="true" />
-            <Input v-model="search" class="pl-9" :placeholder="t('ui.apps.AppList.searchApps')" :aria-label="t('ui.apps.AppList.searchApps')" />
-          </div>
-        </div>
-
-        <!-- Quick access -->
-        <div v-if="pinnedApps.length && !search.trim()" class="px-6 pt-5 pb-5 border-b border-base-300">
-          <p class="text-2xs font-semibold text-base-content/70 uppercase tracking-caps mb-3">{{ t('ui.apps.AppList.quickAccess') }}</p>
-          <TransitionGroup tag="div" name="ui-pop" class="pinned-grid relative flex flex-wrap gap-2.5">
+        <!-- Quick access: the pinned addresses, as a shelf of icons -->
+        <section v-if="pinnedApps.length && !search.trim()" class="mt-7" :aria-label="t('ui.apps.AppList.quickAccess')">
+          <h2 class="text-lg font-semibold tracking-tight text-base-content">{{ t('ui.apps.AppList.quickAccess') }}</h2>
+          <TransitionGroup tag="div" name="ui-pop" class="pinned-grid relative mt-3 flex flex-wrap gap-2">
             <a
               v-for="app in pinnedApps" :key="app.id"
               :href="safePinnedUrl(app.app?.pinnedUrl) ?? undefined" target="_blank" rel="noopener"
-              class="group flex items-center gap-3 px-3.5 py-2.5 bg-base-200 border border-base-300 rounded-xl hover:bg-base-200 transition-all no-underline"
+              :title="safePinnedUrl(app.app?.pinnedUrl) ?? undefined"
+              class="group flex w-24 flex-col items-center gap-2 rounded-box px-2 py-3 text-center no-underline transition-colors hover:bg-base-200 focus-visible:bg-base-200 focus-visible:outline-none"
             >
-              <span :class="['w-2 h-2 rounded-full flex-shrink-0', statusDot(app.status)]" />
-              <div class="min-w-0">
-                <p class="text-sm font-semibold text-base-content font-mono leading-none">{{ app.name }}</p>
-                <p class="text-2xs text-base-content/70 mt-0.5 truncate max-w-[180px]">{{ safePinnedUrl(app.app?.pinnedUrl) }}</p>
-              </div>
-              <ExternalLinkIcon class="w-3.5 h-3.5 text-base-content/70 group-hover:text-base-content/80 transition-colors flex-shrink-0" aria-hidden="true" />
+              <span class="relative">
+                <AppTile :svg="catalogOf(app)?.icon" :name="catalogOf(app)?.name ?? app.name" size="lg" />
+                <span :class="['absolute -right-0.5 -bottom-0.5 size-3 rounded-full ring-2 ring-base-100', statusDot(app.status)]" />
+              </span>
+              <span class="w-full truncate text-xs text-base-content/80 group-hover:text-base-content">{{ catalogOf(app)?.name ?? app.name }}</span>
             </a>
           </TransitionGroup>
-        </div>
+        </section>
 
-        <!-- Mobile cards -->
-        <div v-if="visibleApps.length === 0 && apps.length > 0" class="flex flex-1 items-center justify-center px-6 py-12 text-center text-sm text-base-content/70">
+        <div v-if="visibleApps.length === 0 && apps.length > 0" class="py-16 text-center text-sm text-base-content/70">
           {{ t('ui.apps.AppList.noSearchResults', { p0: search }) }}
         </div>
 
-        <div v-else-if="visibleApps.length === 0 && loadError" class="px-6 py-8 text-center text-sm text-base-content/70">
+        <div v-else-if="visibleApps.length === 0 && loadError" class="py-10 text-center text-sm text-base-content/70">
           {{ t('ui.apps.AppList.containersUnavailable') }}
         </div>
 
-        <!-- Mobile cards -->
-        <div v-else-if="narrow" class="space-y-2 px-3 pb-3">
-          <article v-for="app in visibleApps" :key="app.id" :data-app-name="app.name" :class="['rounded-xl border border-base-300 p-3 transition-colors', focusedName === app.name ? 'bg-primary/10' : 'bg-base-100']">
-            <div class="flex min-w-0 items-start justify-between gap-3"><div class="min-w-0"><div class="flex items-center gap-2 flex-wrap"><strong class="block truncate font-mono text-sm text-base-content">{{app.name}}</strong><Badge variant="outline" v-if="holdForApp(app.name)" class="border-error/40 bg-error/10 text-error">{{ t('ui.apps.AppList.blocked') }}</Badge><Badge variant="outline" v-if="app.catalogUpdate" class="border-warning/40 bg-warning/10 text-warning" :title="`${updateText(app.catalogUpdate)}. Update it from the App Store.`">{{ t('ui.apps.AppList.update') }}</Badge><Badge v-if="app.pendingApply" variant="outline" class="border-warning/40 bg-warning/10 text-warning">{{ t('ui.apps.AppList.changesPending') }}</Badge><Badge v-else-if="app.drifted" variant="outline" class="border-warning/40 bg-warning/10 text-warning">{{ t('ui.apps.AppList.modifiedOutsideHsi') }}</Badge><Badge variant="outline" :class="statusText(app.status).cls">{{ statusText(app.status).label }}</Badge><Badge v-if="pendingJobAction(app.name)" variant="outline" class="border-warning/40 bg-warning/10 text-warning"><LoadingSpinner />{{ actionText(pendingJobAction(app.name)!) }}</Badge></div><p class="mt-1 truncate font-mono text-2xs text-base-content/70" :title="app.app?.image">{{app.app?.image ?? '-'}}</p><p class="mt-1 text-xs text-base-content/70">{{portsSummary(app)}}</p><div v-if="app.services && app.services.length > 1" class="mt-1.5 flex flex-col gap-0.5"><div v-for="svc in app.observed" :key="svc.name" class="flex items-center gap-1.5"><span :class="['w-1 h-1 rounded-full',statusDot(svc.status)]"/><span class="font-mono text-2xs text-base-content/70">{{svc.name}}</span></div></div></div><Button variant="ghost" size="icon" class="touch-target shrink-0 text-base-content/70" :aria-label="t('ui.apps.AppList.editContainer')" :disabled="appHasPendingJob(app.name)" @click="openEdit(app)"><EllipsisIcon /></Button></div>
-            <div v-if="appHasPendingJob(app.name)" class="mt-2 flex flex-wrap items-center justify-between gap-2 border-t border-base-300 pt-2 text-xs" role="status">
-              <span class="inline-flex items-center gap-1.5 text-warning"><LoadingSpinner />{{ actionText(pendingJobAction(app.name)!) }} · {{ t('ui.apps.AppList.jobPending') }}</span>
-              <Button variant="outline" size="xs" :disabled="!!actionLoading[app.id]" @click="checkPendingJob(app)">
-                <LoadingSpinner v-if="actionLoading[app.id] === 'check'" />{{ actionLoading[app.id] === 'check' ? t('ui.apps.AppList.checkingStatus') : t('ui.apps.AppList.checkStatus') }}
-              </Button>
-            </div>
-            <div v-if="actionLoading[app.id] && actionLoading[app.id] !== 'check'" class="mt-2 flex items-center gap-2 text-xs text-info" role="status"><LoadingSpinner />{{ actionText(actionLoading[app.id]!) }}</div>
-            <div class="mt-3 flex flex-wrap gap-1 border-t border-base-300 pt-2">
-              <Button v-if="app.pendingApply || app.drifted" variant="outline" size="sm" class="touch-target text-warning" :disabled="!!actionLoading[app.id] || appHasPendingJob(app.name)" @click="applyApp(app.id)">{{ actionLoading[app.id] === 'apply' ? t('ui.apps.AppList.applying') : t('ui.apps.AppList.apply') }}</Button>
-              <Button variant="ghost" size="sm" class="touch-target text-success" :disabled="!!actionLoading[app.id] || appHasPendingJob(app.name)" @click="runAction(app.id,'start')">{{ t('ui.apps.AppList.start') }}</Button>
-              <Button variant="ghost" size="sm" class="touch-target text-warning" :disabled="!!actionLoading[app.id] || appHasPendingJob(app.name)" @click="runAction(app.id,'stop')">{{ t('ui.apps.AppList.stop') }}</Button>
-              <Button variant="ghost" size="sm" class="touch-target text-base-content/80" :disabled="!!actionLoading[app.id] || appHasPendingJob(app.name)" @click="runAction(app.id,'restart')">{{ t('ui.apps.AppList.restart') }}</Button>
-              <Button variant="ghost" size="sm" class="touch-target text-base-content/80" @click="openLogs(app)">{{ t('ui.apps.AppList.logs') }}</Button>
-            </div>
-          </article>
-        </div>
-
-        <!-- Desktop table -->
-        <div v-else class="overflow-x-auto">
-        <Table class="w-full text-sm">
-          <TableHeader>
-            <TableRow class="border-b border-base-300">
-              <TableHead class="text-left px-6 py-2.5 text-2xs font-semibold text-base-content/70 uppercase tracking-caps">{{ t('ui.apps.AppList.container') }}</TableHead>
-              <TableHead class="text-left px-3 py-2.5 text-2xs font-semibold text-base-content/70 uppercase tracking-caps hidden md:table-cell">{{ t('ui.apps.AppList.ports') }}</TableHead>
-              <TableHead class="text-left px-3 py-2.5 text-2xs font-semibold text-base-content/70 uppercase tracking-caps">{{ t('ui.apps.AppList.status') }}</TableHead>
-              <TableHead class="px-6 py-2.5 text-right"></TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody class="divide-y divide-base-300">
-            <TableRow
+        <section v-else class="mt-7" :aria-label="t('ui.apps.AppList.containers')">
+          <h2 v-if="pinnedApps.length && !search.trim()" class="mb-3 text-lg font-semibold tracking-tight text-base-content">{{ t('ui.apps.AppList.allApps') }}</h2>
+          <ul class="overflow-hidden rounded-box border border-base-300 bg-base-100">
+            <li
               v-for="app in visibleApps" :key="app.id"
               :data-app-name="app.name"
-              :class="['group transition-colors', focusedName === app.name ? 'bg-primary/10' : 'hover:bg-base-200']"
+              :class="['row relative flex items-center gap-3.5 px-4 py-3 transition-colors', focusedName === app.name ? 'bg-primary/10' : '']"
             >
-              <!-- Name -->
-              <TableCell class="px-6 py-3.5">
-                <div class="flex items-center gap-2">
-                  <span class="font-mono text-base-content/80 text-sm font-medium">{{ app.name }}</span>
-                  <Tip v-if="holdForApp(app.name)" :text="`Stopped by HSI: ${holdLabel(holdForApp(app.name)!)}`"><Badge variant="outline" class="bg-error/10 text-error">{{ t('ui.apps.AppList.blocked') }}</Badge></Tip>
-                  <span v-if="app.catalogUpdate" class="text-2xs leading-none px-1.5 py-0.5 rounded-full border text-warning border-warning/40" :title="`${updateText(app.catalogUpdate)}. Update it from the App Store.`">{{ t('ui.apps.AppList.update') }}</span>
-                  <BookmarkIcon v-if="app.app?.pinnedUrl" class="w-3 h-3 text-primary flex-shrink-0" aria-hidden="true" />
-                  <Badge v-if="app.pendingApply" variant="outline" class="border-warning/40 bg-warning/10 text-warning">{{ t('ui.apps.AppList.changesPending') }}</Badge>
-                  <Badge v-else-if="app.drifted" variant="outline" class="border-warning/40 bg-warning/10 text-warning">{{ t('ui.apps.AppList.modifiedOutsideHsi') }}</Badge>
-                </div>
-                <p v-if="app.app?.image" class="mt-1 truncate font-mono text-2xs text-base-content/60" :title="app.app.image">{{ app.app.image }}</p>
-                <div v-if="app.services && app.services.length > 1" class="mt-1.5 flex flex-col gap-0.5">
-                  <div v-for="svc in app.observed" :key="svc.name" class="flex items-center gap-1.5">
-                    <span :class="['w-1 h-1 rounded-full', statusDot(svc.status)]" />
-                    <span class="font-mono text-2xs text-base-content/70">{{ svc.name }}</span>
-                  </div>
-                </div>
-              </TableCell>
+              <AppTile :svg="catalogOf(app)?.icon" :name="catalogOf(app)?.name ?? app.name" />
 
-              <!-- Ports -->
-              <TableCell class="px-3 py-3.5 hidden md:table-cell">
-                <span class="font-mono text-base-content/70 text-xs">{{ portsSummary(app) }}</span>
-              </TableCell>
-
-              <!-- Status -->
-              <TableCell class="px-3 py-3.5">
-                <Badge variant="outline" :class="statusText(app.status).cls">{{ statusText(app.status).label }}</Badge>
-              </TableCell>
-
-              <!-- Actions -->
-              <TableCell class="px-6 py-3.5">
-                <div class="flex items-center justify-end gap-1">
-
-                  <span v-if="actionLoading[app.id]" role="status" class="mr-1 inline-flex items-center gap-1.5 text-2xs text-info">
-                    <LoadingSpinner />{{ actionText(actionLoading[app.id]!) }}
-                  </span>
-
-                  <!-- Apply -->
-                  <Button v-if="appHasPendingJob(app.name)" variant="outline" size="xs"
-                    :disabled="!!actionLoading[app.id]"
-                    @click="checkPendingJob(app)"
-                  >
-                    <LoadingSpinner v-if="actionLoading[app.id] === 'check'" />
-                    {{ actionLoading[app.id] === 'check' ? t('ui.apps.AppList.checkingStatus') : t('ui.apps.AppList.checkStatus') }}
-                  </Button>
-
-                  <Button variant="outline" size="xs"
-                    v-if="app.pendingApply || app.drifted"
-                    @click="applyApp(app.id)"
-                    :disabled="!!actionLoading[app.id] || appHasPendingJob(app.name)"
-                    :tooltip="t('ui.apps.AppList.applyChanges')"
-                    class="mr-1.5 text-2xs text-primary border-primary/40"
-                  >
-                    {{ t('ui.apps.AppList.apply') }}
-                  </Button>
-
-                  <!-- Start / Stop / Restart -->
-                  <ButtonGroup class="mr-1.5" :aria-label="t('ui.apps.AppList.containerActions')">
-                    <Button variant="outline" size="icon-sm" :disabled="!!actionLoading[app.id] || appHasPendingJob(app.name)" :tooltip="t('ui.apps.AppList.start')" :aria-label="t('ui.apps.AppList.start')" class="text-base-content/70 hover:text-success" @click="runAction(app.id, 'start')">
-                      <PlayIcon class="size-3.5" aria-hidden="true" />
-                    </Button>
-                    <Button variant="outline" size="icon-sm" :disabled="!!actionLoading[app.id] || appHasPendingJob(app.name)" :tooltip="t('ui.apps.AppList.stop')" :aria-label="t('ui.apps.AppList.stop')" class="text-base-content/70 hover:text-warning" @click="runAction(app.id, 'stop')">
-                      <SquareIcon class="size-3.5" aria-hidden="true" />
-                    </Button>
-                    <Button variant="outline" size="icon-sm" :disabled="!!actionLoading[app.id] || appHasPendingJob(app.name)" :tooltip="t('ui.apps.AppList.restart')" :aria-label="t('ui.apps.AppList.restart')" class="text-base-content/70 hover:text-primary" @click="runAction(app.id, 'restart')">
-                      <RefreshCwIcon class="size-3.5" aria-hidden="true" />
-                    </Button>
-                  </ButtonGroup>
-
-                  <!-- Logs -->
-                  <Button variant="ghost" size="icon-sm"
-                    @click="openLogs(app)"
-                    :tooltip="t('ui.apps.AppList.logs')" :aria-label="t('ui.apps.AppList.logs')"
-                    class="text-base-content/70 hover:text-base-content"
-                  >
-                    <ScrollTextIcon class="w-3.5 h-3.5" aria-hidden="true" />
-                  </Button>
-
-                  <!-- Pin -->
-                  <Button variant="ghost" size="icon-sm"
-                    @click="app.app?.pinnedUrl ? unpin(app) : openPinDialog(app)"
-                    :tooltip="app.app?.pinnedUrl ? 'Unpin from quick access' : 'Pin to quick access'" :aria-label="app.app?.pinnedUrl ? 'Unpin from quick access' : 'Pin to quick access'"
-                    :aria-pressed="!!app.app?.pinnedUrl"
-                    :class="app.app?.pinnedUrl ? 'text-primary' : 'text-base-content/70'"
-                  >
-                    <BookmarkIcon class="size-3.5" :fill="app.app?.pinnedUrl ? 'currentColor' : 'none'" aria-hidden="true" />
-                  </Button>
-
-                  <!-- Edit -->
-                  <Button variant="ghost" size="icon-sm"
-                    @click="openEdit(app)"
+              <div class="min-w-0 flex-1">
+                <div class="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+                  <button type="button"
+                    class="truncate text-left text-sm font-semibold text-base-content outline-none hover:underline focus-visible:underline disabled:no-underline"
+                    :class="!catalogOf(app) && 'font-mono font-medium'"
                     :disabled="appHasPendingJob(app.name)"
-                    :tooltip="t('ui.apps.AppList.edit')" :aria-label="t('ui.apps.AppList.edit')"
-                    class="text-base-content/70 hover:text-base-content"
-                  >
-                    <SquarePenIcon class="w-3.5 h-3.5" aria-hidden="true" />
-                  </Button>
-
-                  <!-- Delete -->
-                  <Button variant="ghost" size="icon-sm"
-                    @click="runAction(app.id, 'delete')"
-                    :disabled="!!actionLoading[app.id] || appHasPendingJob(app.name)"
-                    :tooltip="t('ui.apps.AppList.delete')" :aria-label="t('ui.apps.AppList.delete')"
-                    class="text-base-content/70 hover:text-primary"
-                  >
-                    <Trash2Icon class="w-3.5 h-3.5" aria-hidden="true" />
-                  </Button>
+                    :aria-label="`${t('ui.apps.AppList.edit')} ${app.name}`"
+                    @click="openEdit(app)">{{ catalogOf(app)?.name ?? app.name }}</button>
+                  <Tip v-if="holdForApp(app.name)" :text="`Stopped by HSI: ${holdLabel(holdForApp(app.name)!)}`"><span class="badge badge-sm badge-soft badge-error whitespace-nowrap">{{ t('ui.apps.AppList.blocked') }}</span></Tip>
+                  <span v-if="app.catalogUpdate" class="badge badge-sm badge-soft badge-warning whitespace-nowrap" :title="`${updateText(app.catalogUpdate)}. Update it from the App Store.`">{{ t('ui.apps.AppList.update') }}</span>
+                  <span v-if="app.pendingApply" class="badge badge-sm badge-soft badge-warning whitespace-nowrap">{{ t('ui.apps.AppList.changesPending') }}</span>
+                  <span v-else-if="app.drifted" class="badge badge-sm badge-soft badge-warning whitespace-nowrap">{{ t('ui.apps.AppList.modifiedOutsideHsi') }}</span>
                 </div>
-              </TableCell>
-            </TableRow>
-          </TableBody>
-        </Table>
-        </div>
+                <p class="mt-0.5 truncate font-mono text-2xs text-base-content/60" :title="app.app?.image ?? undefined">
+                  <template v-if="catalogOf(app)">{{ app.name }} · </template>{{ app.app?.image ?? '-' }}<template v-if="app.app?.ports?.length"> · {{ portsSummary(app) }}</template>
+                </p>
+                <p v-if="app.services && app.services.length > 1" class="mt-1 flex flex-wrap gap-x-3 gap-y-0.5">
+                  <span v-for="svc in app.observed" :key="svc.name" class="inline-flex items-center gap-1.5 font-mono text-2xs text-base-content/70">
+                    <span :class="['size-1.5 rounded-full', statusDot(svc.status)]" />{{ svc.name }}
+                  </span>
+                </p>
+                <p v-if="appHasPendingJob(app.name)" role="status" class="mt-1 inline-flex items-center gap-1.5 text-xs text-warning">
+                  <LoadingSpinner />{{ actionText(pendingJobAction(app.name)!) }} · {{ t('ui.apps.AppList.jobPending') }}
+                </p>
+                <p v-else-if="actionLoading[app.id] && actionLoading[app.id] !== 'check'" role="status" class="mt-1 inline-flex items-center gap-1.5 text-xs text-info">
+                  <LoadingSpinner />{{ actionText(actionLoading[app.id]!) }}
+                </p>
+              </div>
 
-      </div>
+              <span class="hidden w-24 shrink-0 items-center gap-1.5 text-xs sm:inline-flex" :class="statusText(app.status).cls">
+                <span :class="['size-1.5 shrink-0 rounded-full', statusDot(app.status)]" />{{ statusText(app.status).label }}
+              </span>
 
-      <!-- Unmanaged containers: inside the scrollable column so it doesn't
-           appear as a fragment sibling in the parent flex row -->
-      <UnmanagedContainers v-if="!loading" @imported="load" />
+              <!-- One action for the state the app is in; the rest in the menu. -->
+              <div class="flex shrink-0 items-center gap-1">
+                <div class="flex justify-end sm:min-w-28">
+                <Button v-if="appHasPendingJob(app.name)" variant="secondary" size="sm" :disabled="!!actionLoading[app.id]" @click="checkPendingJob(app)">
+                  <LoadingSpinner v-if="actionLoading[app.id] === 'check'" />{{ actionLoading[app.id] === 'check' ? t('ui.apps.AppList.checkingStatus') : t('ui.apps.AppList.checkStatus') }}
+                </Button>
+                <Button v-else-if="app.pendingApply || app.drifted" size="sm" class="btn-soft min-w-20" :disabled="busyFor(app)" :tooltip="t('ui.apps.AppList.applyChanges')" @click="applyApp(app.id)">{{ t('ui.apps.AppList.apply') }}</Button>
+                <Button v-else-if="app.status === 'stopped' || app.status === 'error'" variant="secondary" size="sm" class="min-w-20" :disabled="busyFor(app)" @click="runAction(app.id, 'start')">{{ t('ui.apps.AppList.start') }}</Button>
+                <Button v-else-if="safePinnedUrl(app.app?.pinnedUrl)" variant="secondary" size="sm" class="min-w-20" @click="openPinned(app)">
+                  {{ t('ui.apps.AppList.open') }}<ExternalLinkIcon class="size-3.5 opacity-60" aria-hidden="true" />
+                </Button>
+                </div>
+
+                <DropdownMenu>
+                  <DropdownMenuTrigger as-child>
+                    <Button variant="ghost" size="icon-sm" class="touch-target text-base-content/70" :aria-label="`${t('ui.apps.AppList.containerActions')}: ${app.name}`">
+                      <EllipsisIcon />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" class="min-w-[200px]">
+                    <DropdownMenuItem :disabled="busyFor(app)" @select="runAction(app.id, 'start')"><PlayIcon />{{ t('ui.apps.AppList.start') }}</DropdownMenuItem>
+                    <DropdownMenuItem :disabled="busyFor(app)" @select="runAction(app.id, 'stop')"><SquareIcon />{{ t('ui.apps.AppList.stop') }}</DropdownMenuItem>
+                    <DropdownMenuItem :disabled="busyFor(app)" @select="runAction(app.id, 'restart')"><RefreshCwIcon />{{ t('ui.apps.AppList.restart') }}</DropdownMenuItem>
+                    <DropdownMenuItem v-if="app.pendingApply || app.drifted" :disabled="busyFor(app)" @select="applyApp(app.id)"><CheckIcon />{{ t('ui.apps.AppList.applyChanges') }}</DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem @select="openLogs(app)"><ScrollTextIcon />{{ t('ui.apps.AppList.logs') }}</DropdownMenuItem>
+                    <DropdownMenuItem @select="app.app?.pinnedUrl ? unpin(app) : openPinDialog(app)">
+                      <BookmarkIcon />{{ app.app?.pinnedUrl ? t('ui.apps.AppList.unpinQuickAccess') : t('ui.apps.AppList.pinQuickAccess') }}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem :disabled="appHasPendingJob(app.name)" @select="openEdit(app)"><SquarePenIcon />{{ t('ui.apps.AppList.edit') }}</DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem variant="destructive" :disabled="busyFor(app)" @select="runAction(app.id, 'delete')"><Trash2Icon />{{ t('ui.apps.AppList.delete') }}</DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            </li>
+          </ul>
+        </section>
+      </template>
+
+      <!-- Containers HSI does not manage yet -->
+      <UnmanagedContainers v-if="!loading" class="mt-8" @imported="load" />
     </div>
+  </div>
   </div>
 
   <!-- Container logs -->
@@ -666,6 +576,16 @@ async function unpin(app: App) {
 </template>
 
 <style scoped>
+/* Hairlines between rows, from the text edge as in a grouped list. */
+.row + .row::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 4.625rem;
+  border-top: 1px solid color-mix(in oklab, var(--color-base-content) 10%, transparent);
+}
+
 /* Take leaving cards out of the flow so the remaining ones reflow (ui-pop-move)
    immediately instead of waiting for the leave animation to finish. */
 .pinned-grid > .ui-pop-leave-active {

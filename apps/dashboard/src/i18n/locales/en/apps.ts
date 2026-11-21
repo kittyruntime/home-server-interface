@@ -1,6 +1,13 @@
 // Generated from the templates, then kept by hand.
 export default {
   AppList: {
+    allApps: 'All apps',
+    open: 'Open',
+    pinQuickAccess: 'Pin to quick access',
+    unpinQuickAccess: 'Unpin from quick access',
+    runningSummary: '{p0} running',
+    stoppedSummary: '{p0} stopped',
+    pendingSummary: '{p0} with changes to apply',
     noContainersYet: 'No containers yet',
     deployYourFirstContainerTo: 'Deploy your first container to get started. You can configure ports, volumes, environment variables and more.',
     containers: 'Containers',
@@ -97,7 +104,7 @@ export default {
     noLabels: 'No labels.',
   },
   UnmanagedContainers: {
-    unmanaged: 'Unmanaged',
+    unmanaged: 'Unmanaged containers',
     refresh: 'Refresh',
     refreshUnmanagedContainers: 'Refresh unmanaged containers',
     importComposeFile: 'Import compose file',
