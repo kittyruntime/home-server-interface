@@ -12,8 +12,8 @@ A full file manager in the browser.
 
 - **Uploads** are chunked and resumable: each chunk retries after a network blip,
   uploads can be paused and resumed, and the server checks the whole file's
-  SHA-256 against the one the browser computed. Progress shows in the Transfers
-  tray.
+  SHA-256 against the one the browser computed. Each upload shows in the
+  Activity panel with its percent, speed and time left.
 - **Editor**: text and code files open in a built-in editor, with a Format action
   for JSON, YAML, CSS, HTML, Markdown, JavaScript and TypeScript.
 - **Share links**: share a file or folder through a public link that expires.
