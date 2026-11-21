@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **Files**: an upload shows its speed again in the Activity panel, next to
+  its percent and time left.
+
 ## [1.88.0] - 2026-11-20
 
 ### Changed

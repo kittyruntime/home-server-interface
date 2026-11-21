@@ -18,6 +18,8 @@ export interface ActivityItem {
   startedAt: string | null
   percent: number | null
   remainingSec: number | null
+  /** Upload throughput, in bytes per second, while it is sending. */
+  bytesPerSec: number | null
   /** Server task the viewer may cancel (their own copy, move, zip or unzip). */
   cancellable: boolean
   pausable: boolean
@@ -67,6 +69,7 @@ function fromUpload(t: Transfer): ActivityItem | null {
     startedAt: null,
     percent,
     remainingSec,
+    bytesPerSec: t.status === 'uploading' && t.bytesPerSec ? t.bytesPerSec : null,
     cancellable: false,
     pausable: !t.interrupted && (t.status === 'uploading' || t.status === 'queued'),
     interrupted: !!t.interrupted,
@@ -84,6 +87,7 @@ function fromServer(v: ServerTask): ActivityItem {
     startedAt: v.startedAt,
     percent: v.percent,
     remainingSec: v.remainingSec ?? null,
+    bytesPerSec: null,
     cancellable: v.cancellable,
     pausable: false,
     interrupted: false,

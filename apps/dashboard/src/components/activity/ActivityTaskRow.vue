@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button'
 import SegmentedBar from '../ui/SegmentedBar.vue'
 import { formatElapsed, type ActivityItem } from '../../lib/activity'
 import { activityLabel } from '../../lib/activity-label'
+import { formatBytes } from '../../lib/file-details'
 
 /* One background task in the Activity panel and page. `now` ticks from the
    parent so every row's elapsed time moves together. */
@@ -40,6 +41,7 @@ const detail = computed(() => {
   if (i.status === 'queued') return t('activity.queued')
   const parts: string[] = []
   if (i.percent !== null) parts.push(`${i.percent} %`)
+  if (i.bytesPerSec) parts.push(`${formatBytes(i.bytesPerSec)}/s`)
   if (i.remainingSec !== null) parts.push(t('activity.remaining', { time: formatElapsed(i.remainingSec * 1000) }))
   if (i.startedAt && i.percent === null) {
     parts.push(t('activity.since', { time: formatElapsed(props.now - new Date(i.startedAt).getTime()) }))

@@ -28,8 +28,14 @@ test('an upload shows its percent and remaining time', () => {
   const [item] = mergeActivity([], [upload({ totalBytes: 1000, sentBytes: 640, bytesPerSec: 120 })])
   assert.equal(item!.percent, 64)
   assert.equal(item!.remainingSec, 3)
+  assert.equal(item!.bytesPerSec, 120)
   assert.equal(item!.owner, 'browser')
   assert.equal(item!.pausable, true)
+})
+
+test('a paused upload shows no speed', () => {
+  const [item] = mergeActivity([], [upload({ status: 'paused', totalBytes: 1000, sentBytes: 640, bytesPerSec: 120 })])
+  assert.equal(item!.bytesPerSec, null)
 })
 
 test('a queued server task stays queued', () => {
