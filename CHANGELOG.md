@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **App Store**: redesigned as a store. One new app to discover at the top,
+  then shelves for updates, installed apps and the rest, as lists with the
+  app's logo, its tagline and one action. Categories sit in a segmented
+  control. An app's page opens on its logo, a strip of facts (category,
+  version, license, web port), what's new, the first steps, its permissions
+  and links.
+- **Apps**: the containers read as a grouped list with each app's logo, its
+  state and the one action that fits it (open, start or apply); start, stop,
+  restart, logs, pinning, edit and delete move to a menu. Quick access shows
+  the pinned apps as icons.
+
 ## [1.88.1] - 2026-11-21
 
 ### Fixed

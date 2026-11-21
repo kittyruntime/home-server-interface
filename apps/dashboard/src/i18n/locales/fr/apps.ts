@@ -1,5 +1,12 @@
 export default {
   AppList: {
+    allApps: 'Toutes les apps',
+    open: 'Ouvrir',
+    pinQuickAccess: 'Épingler dans l\'accès rapide',
+    unpinQuickAccess: 'Retirer de l\'accès rapide',
+    runningSummary: 'En marche : {p0}',
+    stoppedSummary: 'Arrêtées : {p0}',
+    pendingSummary: 'Modifications à appliquer : {p0}',
     noContainersYet: 'Aucun conteneur pour l’instant',
     deployYourFirstContainerTo: 'Déployez votre premier conteneur pour commencer. Vous pouvez régler les ports, les volumes, les variables d’environnement et plus encore.',
     containers: 'Conteneurs',
@@ -96,7 +103,7 @@ export default {
     noLabels: 'Aucune étiquette.',
   },
   UnmanagedContainers: {
-    unmanaged: 'Non gérés',
+    unmanaged: 'Conteneurs non gérés',
     refresh: 'Actualiser',
     refreshUnmanagedContainers: 'Actualiser les conteneurs non gérés',
     importComposeFile: 'Importer un fichier Compose',

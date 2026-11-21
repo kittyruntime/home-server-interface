@@ -149,18 +149,18 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="border-t border-base-300">
+  <div>
 
     <!-- Header row -->
-    <div class="flex items-center pl-5 pr-4">
+    <div class="flex items-center">
       <Button
         variant="ghost"
-        class="group h-auto flex-1 justify-start gap-2 px-1 py-2.5 text-left rounded-sm hover:bg-transparent"
+        class="group -ml-1 h-auto flex-1 justify-start gap-2 px-1 py-1.5 text-left hover:bg-transparent"
         :aria-expanded="expanded"
         @click="toggle"
       >
-        <ChevronRightIcon :class="['size-3 shrink-0 text-base-content/70 transition-transform', expanded && 'rotate-90']" aria-hidden="true" />
-        <span class="select-none text-2xs font-bold uppercase tracking-caps text-base-content/70 transition-colors group-hover:text-base-content">{{ t('ui.apps.UnmanagedContainers.unmanaged') }}</span>
+        <ChevronRightIcon :class="['size-4 shrink-0 text-base-content/60 transition-transform', expanded && 'rotate-90']" aria-hidden="true" />
+        <span class="select-none text-lg font-semibold tracking-tight text-base-content">{{ t('ui.apps.UnmanagedContainers.unmanaged') }}</span>
         <Badge v-if="!loading && containers.length" variant="secondary" class="h-4 min-w-[18px] rounded-full px-1.5 text-2xs tabular-nums">
           {{ containers.length }}
         </Badge>
@@ -174,9 +174,9 @@ onUnmounted(() => {
 
     <!-- Expanded content -->
     <Transition name="ui-fade">
-      <div v-if="expanded" class="px-3 pb-3">
+      <div v-if="expanded" class="pt-2 pb-3">
 
-        <div class="mx-2 mb-3 rounded-lg border border-base-300 p-3">
+        <div class="mb-3 rounded-box border border-base-300 bg-base-100 p-4">
           <div class="flex items-center justify-between gap-3">
             <span class="text-xs text-base-content/70">{{ t('ui.apps.UnmanagedContainers.importComposeFile') }}</span>
             <Button variant="outline" size="xs" @click="composeOpen = !composeOpen">{{ composeOpen ? 'Close' : 'Paste or upload' }}</Button>

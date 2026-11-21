@@ -1,5 +1,7 @@
 <script setup lang="ts">
-import AppIcon from './AppIcon.vue'
+import AppTile from './AppTile.vue'
+import SearchInput from '../ui/SearchInput.vue'
+import { ExternalLinkIcon } from '@lucide/vue'
 import CatalogSource from './CatalogSource.vue'
 import { useI18n } from 'vue-i18n'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
@@ -13,10 +15,9 @@ import { useDockerStatus } from '../../lib/docker'
 import { applyPlanned } from '../../lib/plan'
 import { pollJobResult } from '../../lib/jobs'
 import { rollbackPlan, updatePlan, updateText } from '../../lib/app-update'
-import { catalogVersion, filterChips, isNew, keptFilter, visibleApps, categoryLabel, type StoreOrder } from '../../lib/store'
+import { filterChips, isNew, keptFilter, visibleApps, categoryLabel, type StoreOrder } from '../../lib/store'
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 
 const { t } = useI18n()
 
@@ -42,6 +43,29 @@ watch(chips, c => { category.value = keptFilter(c, category.value) })
 const filtered = computed(() => visibleApps(apps.value, category.value, search.value, order.value))
 
 const installedCount = computed(() => apps.value.filter(a => a.installed).length)
+
+// The browsing view (everything, no search, default order) is arranged in
+// shelves: one app to discover, then updates, installed apps and the rest.
+// A filter, a search or another order shows one plain list.
+const browsing = computed(() => category.value === 'All' && !search.value.trim() && order.value === 'default')
+const featured = computed(() => {
+  if (!browsing.value) return null
+  const fresh = apps.value.filter(a => !a.installed && isNew(a))
+  const pool = fresh.length ? fresh : apps.value.filter(a => !a.installed)
+  return [...pool].sort((a, b) => (b.added ?? '').localeCompare(a.added ?? ''))[0] ?? null
+})
+const sections = computed(() => {
+  if (!browsing.value) return [{ key: 'list', title: null as string | null, apps: filtered.value }]
+  const updates = filtered.value.filter(a => a.installedApp?.update)
+  const installed = filtered.value.filter(a => a.installed && !a.installedApp?.update)
+  const available = filtered.value.filter(a => !a.installed)
+  return [
+    { key: 'updates', title: t('ui.store.AppStorePanel.sectionUpdates'), apps: updates },
+    { key: 'installed', title: t('ui.store.AppStorePanel.sectionInstalled'), apps: installed },
+    { key: 'available', title: t('ui.store.AppStorePanel.sectionAvailable'), apps: available },
+  ].filter(g => g.apps.length)
+})
+const canOpen = (a: Entry) => !!a.installedApp && (a.installedApp.webUrl != null || a.installedApp.webPort != null)
 
 // An install lands on the app's page, with its first steps (#26).
 function installed(id: string) {
@@ -149,111 +173,155 @@ onUnmounted(() => { if (poll !== null) clearInterval(poll) })
 
 <template>
   <DockerUnavailable v-if="!dockerReady()" />
-  <div v-else ref="scroller" class="h-full overflow-y-auto p-4 sm:p-6">
-    <div v-if="selected">
-      <Button variant="ghost" size="sm" class="mb-3" @click="selected = null">{{ t('ui.store.AppStorePanel.back') }}</Button>
-      <AppInstallWizard :app-id="selected.id" @installed="installed(selected.id)" @close="selected = null" />
-    </div>
+  <div v-else ref="scroller" class="h-full overflow-y-auto">
+    <div class="mx-auto w-full max-w-5xl px-4 py-5 sm:px-8 sm:py-8">
+      <div v-if="selected">
+        <Button variant="ghost" size="sm" class="mb-3 -ml-2" @click="selected = null">{{ t('ui.store.AppStorePanel.back') }}</Button>
+        <AppInstallWizard :app-id="selected.id" @installed="installed(selected.id)" @close="selected = null" />
+      </div>
 
-    <AppStoreDetail
-      v-else-if="detail"
-      :app="detail"
-      :state="STATE_META[cardState(detail)]"
-      :busy="busy === detail.id"
-      :error="actionError?.id === detail.id ? actionError.message : null"
-      @back="closeDetail"
-      @install="openWizard(detail)"
-      @open="openApp(detail)"
-      @update="runPlan(detail, 'app.update')"
-      @rollback="runPlan(detail, 'app.rollback')"
-    />
+      <AppStoreDetail
+        v-else-if="detail"
+        :app="detail"
+        :state="STATE_META[cardState(detail)]"
+        :busy="busy === detail.id"
+        :error="actionError?.id === detail.id ? actionError.message : null"
+        @back="closeDetail"
+        @install="openWizard(detail)"
+        @open="openApp(detail)"
+        @update="runPlan(detail, 'app.update')"
+        @rollback="runPlan(detail, 'app.rollback')"
+      />
 
-    <template v-else>
-      <!-- Header -->
-      <div class="flex flex-col items-stretch gap-3 mb-1 sm:flex-row sm:items-center sm:justify-between">
-        <h2 class="text-lg font-semibold text-base-content">{{ t('ui.store.AppStorePanel.appStore') }}</h2>
-        <div class="flex items-center gap-2 sm:max-w-md sm:flex-1 sm:justify-end">
-          <Input v-model="search" :placeholder="t('ui.store.AppStorePanel.searchApps')" :aria-label="t('ui.store.AppStorePanel.searchApps2')" class="min-w-0 flex-1 sm:max-w-xs" />
-          <NativeSelect
-            :model-value="order"
-            wrapper-class="w-auto shrink-0"
-            class="select-sm h-9 w-auto text-xs"
-            :aria-label="t('ui.store.AppStorePanel.sortApps')"
-            @update:model-value="order = $event as StoreOrder"
-          >
-            <NativeSelectOption value="default">{{ t('ui.store.AppStorePanel.installedFirst') }}</NativeSelectOption>
-            <NativeSelectOption value="name">{{ t('ui.store.AppStorePanel.byName') }}</NativeSelectOption>
-            <NativeSelectOption value="added">{{ t('ui.store.AppStorePanel.recentlyAdded') }}</NativeSelectOption>
-          </NativeSelect>
+      <template v-else>
+        <header class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+          <div class="min-w-0">
+            <h2 class="text-2xl font-semibold tracking-tight text-base-content">{{ t('ui.store.AppStorePanel.appStore') }}</h2>
+            <!-- Counts only once the catalog is read: "0 apps" would be wrong. -->
+            <p v-if="!loading" class="mt-1 text-sm text-base-content/70 tabular-nums">
+              {{ t('uip.store.AppStorePanel.appsInstalled', { p0: apps.length, p1: installedCount }) }}
+            </p>
+          </div>
+          <div class="flex items-center gap-2 sm:w-96">
+            <SearchInput v-model="search" :placeholder="t('ui.store.AppStorePanel.searchApps')" :aria-label="t('ui.store.AppStorePanel.searchApps2')" class="min-w-0 flex-1" />
+            <NativeSelect
+              :model-value="order"
+              wrapper-class="w-auto shrink-0"
+              class="w-auto"
+              :aria-label="t('ui.store.AppStorePanel.sortApps')"
+              @update:model-value="order = $event as StoreOrder"
+            >
+              <NativeSelectOption value="default">{{ t('ui.store.AppStorePanel.installedFirst') }}</NativeSelectOption>
+              <NativeSelectOption value="name">{{ t('ui.store.AppStorePanel.byName') }}</NativeSelectOption>
+              <NativeSelectOption value="added">{{ t('ui.store.AppStorePanel.recentlyAdded') }}</NativeSelectOption>
+            </NativeSelect>
+          </div>
+        </header>
+
+        <div v-if="!loading" class="mt-5 -mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
+          <ToggleGroup type="single" variant="tabs" size="sm" :aria-label="t('ui.store.AppStorePanel.category')"
+            :model-value="category" @update:model-value="v => { if (v) category = v as typeof category }"
+            class="flex-nowrap">
+            <ToggleGroupItem v-for="c in chips" :key="c.key" :value="c.key" class="shrink-0 gap-1.5 whitespace-nowrap">
+              {{ c.label }}<span class="tabular-nums" :class="c.key === 'Updates' ? 'text-warning' : 'opacity-60'">{{ c.count }}</span>
+            </ToggleGroupItem>
+          </ToggleGroup>
         </div>
-      </div>
-      <!-- Counts and filters only once the catalog is read: "0 apps" would be wrong. -->
-      <p v-if="!loading" class="text-xs text-base-content/70 mb-1">
-        {{ t('uip.store.AppStorePanel.appsInstalled', { p0: apps.length, p1: installedCount }) }}
-      </p>
-      <CatalogSource v-if="!loading" @updated="refresh" />
 
-      <!-- Filters -->
-      <ToggleGroup v-if="!loading" type="single" variant="outline" size="sm" :spacing="2" :aria-label="t('ui.store.AppStorePanel.category')"
-        :model-value="category" @update:model-value="v => { if (v) category = v as typeof category }"
-        class="mb-4 flex-wrap">
-        <ToggleGroupItem v-for="c in chips" :key="c.key" :value="c.key"
-          :class="['h-7 px-2.5 text-xs', c.key === 'Updates' && category !== c.key && 'text-warning']">
-          {{ c.label }} <span class="opacity-80 tabular-nums">{{ c.count }}</span>
-        </ToggleGroupItem>
-      </ToggleGroup>
+        <LoadingState v-if="loading" class="mt-10" />
 
-      <LoadingState v-if="loading" />
+        <div v-else-if="filtered.length === 0" class="py-20 text-center">
+          <p class="text-sm text-base-content/70">{{ t('uip.store.AppStorePanel.noAppsMatch', { p0: search }) }}</p>
+          <Button variant="ghost" size="sm" class="mt-2" @click="search = ''; category = 'All'">{{ t('ui.store.AppStorePanel.clearFilters') }}</Button>
+        </div>
 
-      <!-- No results -->
-      <div v-else-if="filtered.length === 0" class="text-center py-16 text-base-content/70">
-        <p class="text-sm">{{ t('uip.store.AppStorePanel.noAppsMatch', { p0: search }) }}</p>
-        <Button variant="ghost" size="sm" class="mt-2" @click="search = ''; category = 'All'">{{ t('ui.store.AppStorePanel.clearFilters') }}</Button>
-      </div>
-
-      <!-- Grid -->
-      <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-        <!-- The whole card opens the app's page through its name button, stretched
-             over the card; the action button sits above it. -->
-        <div
-          v-for="a in filtered" :key="a.id"
-          class="rounded-xl border bg-base-100 text-base-content shadow-sm overflow-hidden relative p-4 flex flex-col gap-3 transition-colors hover:border-base-300 has-[[data-card]:focus-visible]:outline has-[[data-card]:focus-visible]:outline-2 has-[[data-card]:focus-visible]:outline-primary"
-        >
-          <!-- Identity -->
-          <div class="flex gap-3 items-start min-w-0">
-            <span class="w-10 h-10 shrink-0 grid place-items-center"><AppIcon :svg="a.icon" /></span>
+        <template v-else>
+          <!-- One app to discover: the newest the server does not run yet. -->
+          <section v-if="featured" class="feature relative mt-6 flex flex-col gap-5 overflow-hidden rounded-box bg-base-200 p-6 sm:flex-row sm:items-center sm:gap-7 sm:p-8"
+            :aria-label="featured.name">
+            <AppTile :svg="featured.icon" :name="featured.name" size="xl" />
             <div class="min-w-0 flex-1">
-              <div class="flex flex-wrap items-center gap-x-2 gap-y-0.5">
-                <Button
-                  type="button" :data-card="a.id" variant="link"
-                  class="h-auto justify-start p-0 text-sm font-medium text-base-content truncate text-left hover:no-underline after:absolute after:inset-0 after:content-['']"
-                  @click="openDetail(a)"
-                >{{ a.name }}</Button>
-                <span class="text-2xs uppercase tracking-caps text-base-content/70 shrink-0">{{ categoryLabel(a.category) }}</span>
-                <span v-if="isNew(a)" class="text-2xs uppercase tracking-caps text-primary shrink-0">{{ t('ui.store.AppStorePanel.new') }}</span>
+              <div class="flex flex-wrap items-center gap-2">
+                <h3 class="text-xl font-semibold tracking-tight text-base-content">{{ featured.name }}</h3>
+                <span v-if="isNew(featured)" class="badge badge-sm badge-primary badge-soft">{{ t('ui.store.AppStorePanel.new') }}</span>
               </div>
-              <p class="text-xs text-base-content/70 mt-0.5 leading-relaxed line-clamp-2">{{ a.tagline }}</p>
+              <p class="mt-1 text-sm text-base-content/80">{{ featured.tagline }}</p>
+              <p class="mt-2 max-w-prose text-sm leading-relaxed text-base-content/70 line-clamp-2">{{ featured.description }}</p>
+              <div class="mt-4 flex items-center gap-2">
+                <Button size="sm" class="min-w-24" :aria-label="`${t('ui.store.AppStorePanel.install')} ${featured.name}`" @click="openWizard(featured)">{{ t('ui.store.AppStorePanel.install') }}</Button>
+                <Button variant="ghost" size="sm" @click="openDetail(featured)">{{ t('ui.store.AppStorePanel.learnMore') }}</Button>
+              </div>
             </div>
-          </div>
+          </section>
 
-          <!-- Update available (#26) -->
-          <p v-if="a.installedApp?.update" class="text-xs text-warning">{{ updateText(a.installedApp.update) }}</p>
-          <p v-if="actionError?.id === a.id" role="alert" class="status-text text-error break-words"><span class="status-tag">[ERR]</span> {{ actionError.message }}</p>
+          <section v-for="g in sections" :key="g.key" class="mt-8" :aria-label="g.title ?? undefined">
+            <h3 v-if="g.title" class="mb-1 text-lg font-semibold tracking-tight text-base-content">
+              {{ g.title }}
+              <span class="ml-1 text-sm font-normal text-base-content/60 tabular-nums">{{ g.apps.length }}</span>
+            </h3>
+            <ul class="grid grid-cols-1 gap-x-10 lg:grid-cols-2">
+              <!-- The row opens the app's page through its name, stretched over
+                   the row; the action button sits above it. -->
+              <li
+                v-for="a in g.apps" :key="a.id"
+                class="row relative flex items-center gap-4 py-3.5"
+              >
+                <AppTile :svg="a.icon" :name="a.name" />
+                <div class="min-w-0 flex-1">
+                  <button type="button" :data-card="a.id"
+                    class="block max-w-full truncate text-left text-sm font-semibold text-base-content outline-none after:absolute after:inset-0 after:rounded-field after:content-[''] focus-visible:after:outline-2 focus-visible:after:outline-primary"
+                    @click="openDetail(a)">{{ a.name }}</button>
+                  <p class="truncate text-xs text-base-content/70">{{ a.tagline }}</p>
+                  <p class="mt-0.5 flex min-w-0 items-center gap-1.5 text-xs">
+                    <template v-if="a.installedApp?.update">
+                      <span class="truncate text-warning">{{ updateText(a.installedApp.update) }}</span>
+                    </template>
+                    <template v-else-if="cardState(a) !== 'none'">
+                      <span class="size-1.5 shrink-0 rounded-full" :class="STATE_META[cardState(a)].dot" />
+                      <span :class="STATE_META[cardState(a)].text">{{ STATE_META[cardState(a)].label }}</span>
+                    </template>
+                    <template v-else>
+                      <span class="text-base-content/60">{{ categoryLabel(a.category) }}</span>
+                      <span v-if="isNew(a)" class="text-primary">· {{ t('ui.store.AppStorePanel.new') }}</span>
+                    </template>
+                  </p>
+                  <p v-if="actionError?.id === a.id" role="alert" class="status-text mt-1 text-error break-words"><span class="status-tag">[ERR]</span> {{ actionError.message }}</p>
+                </div>
+                <div class="relative z-10 shrink-0">
+                  <Button v-if="cardState(a) === 'none'" size="sm" class="btn-soft min-w-20" :aria-label="`${t('ui.store.AppStorePanel.install')} ${a.name}`" @click="openWizard(a)">{{ t('ui.store.AppStorePanel.install') }}</Button>
+                  <Button v-else-if="a.installedApp?.update" size="sm" class="btn-soft min-w-20" :aria-label="`${t('ui.store.AppStorePanel.updateShort')} ${a.name}`" :disabled="busy === a.id" @click="runPlan(a, 'app.update')">{{ t('ui.store.AppStorePanel.updateShort') }}</Button>
+                  <Button v-else-if="canOpen(a)" variant="secondary" size="sm" class="min-w-20" :aria-label="`${t('ui.store.AppStorePanel.openShort')} ${a.name}`" @click="openApp(a)">
+                    {{ t('ui.store.AppStorePanel.openShort') }}<ExternalLinkIcon class="size-3.5 opacity-60" aria-hidden="true" />
+                  </Button>
+                </div>
+              </li>
+            </ul>
+          </section>
 
-          <!-- State + one action -->
-          <div class="flex items-center justify-between gap-2 mt-auto pt-1">
-            <span class="inline-flex items-center gap-1.5 text-xs min-w-0" :class="STATE_META[cardState(a)].text">
-              <span v-if="STATE_META[cardState(a)].dot" class="w-1.5 h-1.5 rounded-full shrink-0" :class="STATE_META[cardState(a)].dot" />
-              {{ STATE_META[cardState(a)].label }}
-              <span v-if="cardState(a) === 'none' && catalogVersion(a.image)" class="text-base-content/70 font-mono truncate">· {{ catalogVersion(a.image) }}</span>
-            </span>
-
-            <Button size="xs" v-if="cardState(a) === 'none'" class="relative z-10" :aria-label="`Install ${a.name}`" @click="openWizard(a)">{{ t('ui.store.AppStorePanel.install') }}</Button>
-            <Button size="xs" v-else-if="a.installedApp?.update" class="relative z-10" :aria-label="`Update ${a.name}`" :disabled="busy === a.id" @click="runPlan(a, 'app.update')">{{ t('ui.store.AppStorePanel.update') }}</Button>
-            <Button variant="outline" size="xs" v-else-if="a.installedApp?.webUrl || a.installedApp?.webPort != null" class="relative z-10" :aria-label="`Open ${a.name}`" @click="openApp(a)">{{ t('ui.store.AppStorePanel.open') }}</Button>
-          </div>
-        </div>
-      </div>
-    </template>
+          <CatalogSource class="mt-10 border-t border-base-300 pt-4" @updated="refresh" />
+        </template>
+      </template>
+    </div>
   </div>
 </template>
+
+<style scoped>
+/* Hairlines between rows, from the text edge as in a grouped list; none above
+   the first row of each column. */
+.row + .row::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 3.75rem;
+  border-top: 1px solid color-mix(in oklab, var(--color-base-content) 10%, transparent);
+}
+@media (min-width: 64rem) {
+  .row:nth-child(2)::before { display: none; }
+}
+.feature {
+  background:
+    radial-gradient(120% 140% at 0% 0%, color-mix(in oklab, var(--color-primary) 10%, transparent), transparent 60%),
+    var(--color-base-200);
+}
+</style>

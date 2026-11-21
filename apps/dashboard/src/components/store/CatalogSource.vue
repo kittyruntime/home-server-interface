@@ -42,7 +42,7 @@ onMounted(load)
 </script>
 
 <template>
-  <div v-if="info" class="mb-4 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-base-content/70">
+  <div v-if="info" class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-base-content/70">
     <span>
       {{ info.source === 'online' ? t('store.catalog.online', { date: info.generatedAt ? formatDateTime(info.generatedAt) : '' }) : t('store.catalog.bundled') }}
     </span>

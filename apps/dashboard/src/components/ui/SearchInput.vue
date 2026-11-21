@@ -12,7 +12,7 @@ defineEmits<{ 'update:modelValue': [v: string] }>()
 
 <template>
   <div class="relative">
-    <SearchIcon class="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-base-content/70 pointer-events-none" />
+    <SearchIcon class="absolute left-2.5 top-1/2 z-10 -translate-y-1/2 size-3.5 text-base-content/70 pointer-events-none" aria-hidden="true" />
     <Input
       :model-value="modelValue"
       :placeholder="placeholder ?? t('uis.shared.SearchInput.search')"
