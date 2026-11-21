@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.89.1] - 2026-11-21
+
 ### Security
 - Updated `effect` (used by Prisma) to 3.22.5, `hono` to 4.13.19 and
   `@hono/node-server` to 2.1.11 (used by the MCP server) to close a ReDoS
@@ -2342,7 +2344,8 @@ First stable release.
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.89.0...HEAD
+[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.89.1...HEAD
+[1.89.1]: https://github.com/kittyruntime/home-server-interface/compare/v1.89.0...v1.89.1
 [1.89.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.88.1...v1.89.0
 [1.88.1]: https://github.com/kittyruntime/home-server-interface/compare/v1.88.0...v1.88.1
 [1.88.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.87.0...v1.88.0
