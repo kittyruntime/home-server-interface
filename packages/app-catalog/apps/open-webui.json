@@ -1,0 +1,58 @@
+{
+  "id": "open-webui",
+  "name": "Open WebUI",
+  "category": "Productivity",
+  "added": "2026-11-23",
+  "tagline": "Chat with AI models that run on your own server.",
+  "description": "Open WebUI is a chat interface for local language models. It comes with Ollama, which downloads and runs the models on this server, so your conversations never leave it.",
+  "website": "https://openwebui.com",
+  "image": "ghcr.io/open-webui/open-webui:v0.13.4",
+  "changelog": "https://github.com/open-webui/open-webui/releases",
+  "license": "BSD-3-Clause",
+  "source": "https://github.com/open-webui/open-webui",
+  "docs": "https://docs.openwebui.com/",
+  "postInstall": [
+    "Open it and create the administrator account: the first account is the administrator.",
+    "Download a model from the model picker (a small one such as llama3.2 or gemma3 suits a server without a graphics card).",
+    "Models run on the processor: expect slower answers than on a graphics card."
+  ],
+  "webUiPort": 8080,
+  "ports": [
+    {
+      "container": 8080,
+      "protocol": "tcp",
+      "label": "Web UI",
+      "hostDefault": 3010
+    }
+  ],
+  "env": [
+    {
+      "key": "OLLAMA_BASE_URL",
+      "default": "http://ollama:11434"
+    },
+    {
+      "key": "WEBUI_SECRET_KEY",
+      "secret": true
+    }
+  ],
+  "volumes": [
+    {
+      "target": "/app/backend/data",
+      "label": "Data",
+      "suggest": "named"
+    }
+  ],
+  "services": [
+    {
+      "name": "ollama",
+      "label": "Ollama (runs the models)",
+      "image": "ollama/ollama:0.40.17",
+      "volumes": [
+        {
+          "name": "ollama",
+          "target": "/root/.ollama"
+        }
+      ]
+    }
+  ]
+}

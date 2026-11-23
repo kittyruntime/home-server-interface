@@ -1,0 +1,42 @@
+{
+  "id": "code-server",
+  "name": "code-server",
+  "category": "Developer",
+  "added": "2026-11-23",
+  "tagline": "VS Code in the browser, running on your server.",
+  "description": "code-server runs Visual Studio Code on the server and opens it in any browser, so you can code from a laptop or a tablet with your projects and tools in one place.",
+  "website": "https://coder.com/docs/code-server",
+  "image": "codercom/code-server:4.146.0",
+  "changelog": "https://github.com/coder/code-server/releases",
+  "license": "MIT",
+  "source": "https://github.com/coder/code-server",
+  "docs": "https://coder.com/docs/code-server",
+  "postInstall": [
+    "Open it and sign in with the password chosen at install.",
+    "Your projects and settings live in its Home volume."
+  ],
+  "webUiPort": 8080,
+  "ports": [
+    {
+      "container": 8080,
+      "protocol": "tcp",
+      "label": "Web UI",
+      "hostDefault": 8443
+    }
+  ],
+  "env": [
+    {
+      "key": "PASSWORD",
+      "prompt": "Password",
+      "secret": true,
+      "required": true
+    }
+  ],
+  "volumes": [
+    {
+      "target": "/home/coder",
+      "label": "Home",
+      "suggest": "named"
+    }
+  ]
+}

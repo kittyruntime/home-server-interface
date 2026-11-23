@@ -13,7 +13,7 @@ import { downloadUrl } from '../../lib/file-url'
 import type AppsPanelT from '../apps/AppsPanel.vue'
 import type SettingsPanelT from '../SettingsPanel.vue'
 import { Badge } from '@/components/ui/badge'
-import { ActivityPanel, AppsPanel, AppStorePanel, AssistantPanel, FileBrowserPanel, MonitorPanel, SettingsPanel, SharingPanel, StoragePanel } from '../../lib/panels'
+import { ActivityPanel, AppsPanel, AssistantPanel, FileBrowserPanel, MonitorPanel, SettingsPanel, SharingPanel, StoragePanel } from '../../lib/panels'
 
 // A preview window opens from the file browser, which has loaded it already.
 const FilePreviewBody = defineAsyncComponent(() => import('../file-browser/preview/FilePreviewBody.vue'))
@@ -214,7 +214,6 @@ function onMaximizeClick() {
       <AppsPanel v-else-if="win.appId === 'apps'" ref="appsPanelRef" class="h-full" />
       <SettingsPanel v-else-if="win.appId === 'settings'" ref="settingsPanelRef" class="h-full" :focusSection="win.focusSection ?? null" />
       <StoragePanel v-else-if="win.appId === 'storage'" class="h-full" @dirty="setDirty(win.id, $event)" />
-      <AppStorePanel v-else-if="win.appId === 'store'" class="h-full" />
       <MonitorPanel v-else-if="win.appId === 'monitor'" class="h-full" />
       <SharingPanel v-else-if="win.appId === 'sharing'" class="h-full" />
       <AssistantPanel v-else-if="win.appId === 'assistant'" class="h-full" />

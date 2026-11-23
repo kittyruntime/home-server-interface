@@ -5,7 +5,7 @@ export default {
     account: 'Account',
     youMustChangeYourPassword: 'You must change your password before doing anything else.',
     changeItNow: 'Change it now',
-    newApp: 'New App',
+    newApp: 'Add an app',
     selectAnAppFromThe: 'Select an app from the sidebar',
     moreApps: 'More apps',
   },

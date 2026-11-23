@@ -1,4 +1,4 @@
-import { onBeforeUnmount, onMounted } from 'vue'
+import { onActivated, onBeforeUnmount, onDeactivated, onMounted } from 'vue'
 
 export interface PollOptions {
   /** Run once on mount (default true). */
@@ -12,11 +12,14 @@ export interface PollOptions {
 // - nothing runs while the tab is hidden, and coming back to it refreshes at
 //   once if a beat was missed, so a returning user never reads stale data;
 // - a slow server never stacks requests: a beat is skipped while the previous
-//   call is still in flight.
+//   call is still in flight;
+// - inside a <KeepAlive>, a view put aside stops polling and catches up when
+//   it is shown again.
 export function usePoll(fn: () => unknown, everyMs: number, opts: PollOptions = {}) {
   let timer: ReturnType<typeof setInterval> | null = null
   let running = false
   let lastAt = 0
+  let parked = false
 
   async function run() {
     if (running) return
@@ -24,15 +27,21 @@ export function usePoll(fn: () => unknown, everyMs: number, opts: PollOptions = 
     lastAt = Date.now()
     try { await fn() } catch { /* the caller shows its own errors */ } finally { running = false }
   }
-  const beat = () => { if (!document.hidden) void run() }
-  const onVisible = () => { if (!document.hidden && Date.now() - lastAt >= everyMs) void run() }
-  const onFocus = () => { if (!document.hidden) void run() }
+  const beat = () => { if (!document.hidden && !parked) void run() }
+  const onVisible = () => { if (!document.hidden && !parked && Date.now() - lastAt >= everyMs) void run() }
+  const onFocus = () => { if (!document.hidden && !parked) void run() }
 
   onMounted(() => {
     if (opts.immediate !== false) void run()
     timer = setInterval(beat, everyMs)
     document.addEventListener('visibilitychange', onVisible)
     if (opts.onFocus) window.addEventListener('focus', onFocus)
+  })
+  onDeactivated(() => { parked = true })
+  onActivated(() => {
+    if (!parked) return // the first activation is the mount
+    parked = false
+    onVisible()
   })
   onBeforeUnmount(() => {
     if (timer) clearInterval(timer)

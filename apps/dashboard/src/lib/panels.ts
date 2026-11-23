@@ -1,4 +1,5 @@
-import { defineAsyncComponent } from 'vue'
+import { defineAsyncComponent, type Component } from 'vue'
+import PanelSkeleton from '../components/ui/skeleton/PanelSkeleton.vue'
 
 // One place for the app panels, shared by the single-panel layout and the
 // desktop windows. Each panel is its own chunk so the first paint only pays for
@@ -10,7 +11,6 @@ const loaders = {
   apps: () => import('../components/apps/AppsPanel.vue'),
   settings: () => import('../components/SettingsPanel.vue'),
   storage: () => import('../components/storage/StoragePanel.vue'),
-  store: () => import('../components/store/AppStorePanel.vue'),
   monitor: () => import('../components/monitor/MonitorPanel.vue'),
   sharing: () => import('../components/sharing/SharingPanel.vue'),
   assistant: () => import('../components/assistant/AssistantPanel.vue'),
@@ -19,15 +19,19 @@ const loaders = {
 
 export type PanelId = keyof typeof loaders
 
-export const FileBrowserPanel = defineAsyncComponent(loaders.files)
-export const AppsPanel = defineAsyncComponent(loaders.apps)
-export const SettingsPanel = defineAsyncComponent(loaders.settings)
-export const StoragePanel = defineAsyncComponent(loaders.storage)
-export const AppStorePanel = defineAsyncComponent(loaders.store)
-export const MonitorPanel = defineAsyncComponent(loaders.monitor)
-export const SharingPanel = defineAsyncComponent(loaders.sharing)
-export const AssistantPanel = defineAsyncComponent(loaders.assistant)
-export const ActivityPanel = defineAsyncComponent(loaders.activity)
+// Until its code is in, a panel shows the page skeleton rather than nothing
+// (it fades in only if the wait lasts, see .skeleton-in).
+const panel = <T extends Component>(loader: () => Promise<{ default: T }>) =>
+  defineAsyncComponent<T>({ loader, loadingComponent: PanelSkeleton, delay: 0 })
+
+export const FileBrowserPanel = panel(loaders.files)
+export const AppsPanel = panel(loaders.apps)
+export const SettingsPanel = panel(loaders.settings)
+export const StoragePanel = panel(loaders.storage)
+export const MonitorPanel = panel(loaders.monitor)
+export const SharingPanel = panel(loaders.sharing)
+export const AssistantPanel = panel(loaders.assistant)
+export const ActivityPanel = panel(loaders.activity)
 
 const warmed = new Set<string>()
 

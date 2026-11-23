@@ -1,4 +1,5 @@
 import { ref } from 'vue'
+import { showAppsView } from './apps-view'
 
 // After an App Store install, HSI shows the new app in its Apps section
 // instead of opening it (#36): the shell switches to Apps, and the app list
@@ -8,6 +9,7 @@ import { ref } from 'vue'
 export const pendingAppFocus = ref<string | null>(null)
 
 export function focusNewApp(name: string): void {
+  showAppsView('installed')
   pendingAppFocus.value = name
 }
 

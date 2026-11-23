@@ -15,10 +15,11 @@ import SidebarNavIcon from '../components/desktop/SidebarNavIcon.vue'
 import { useSidebarNav, orderedIds, reorder, persistOrder, setOrder, resetOrder } from '../lib/sidebar-nav'
 import { syncPreferences } from '../lib/preferences'
 import { appFromQuery, appQuery, allowedAppIds } from '../lib/app-route'
+import { showAppsView } from '../lib/apps-view'
 // Dashboard + Files stay eager (default view / most-used); the rest split into
 // their own chunks and load when their app is first opened.
 import type AppsPanelT from '../components/apps/AppsPanel.vue'
-import { ActivityPanel, AppsPanel, AppStorePanel, AssistantPanel, FileBrowserPanel, MonitorPanel, SettingsPanel, SharingPanel, StoragePanel, prefetchPanel, prefetchPanels } from '../lib/panels'
+import { ActivityPanel, AppsPanel, AssistantPanel, FileBrowserPanel, MonitorPanel, SettingsPanel, SharingPanel, StoragePanel, prefetchPanel, prefetchPanels } from '../lib/panels'
 import AccountMenu from '../components/AccountMenu.vue'
 import ActivityPopover from '../components/ActivityPopover.vue'
 import BellIndicator from '../components/activity/BellIndicator.vue'
@@ -131,7 +132,6 @@ const activeAppLabel = computed(() => {
   if (activeApp.value === 'settings') return t('uis.views.DashboardLayout.settings')
   if (activeApp.value === 'apps') return t('uis.views.DashboardLayout.apps')
   if (activeApp.value === 'storage') return t('uis.views.DashboardLayout.storage')
-  if (activeApp.value === 'store') return t('uis.views.DashboardLayout.appStore')
   if (activeApp.value === 'monitor') return t('uis.views.DashboardLayout.monitor')
   if (activeApp.value === 'sharing') return t('uis.views.DashboardLayout.sharing')
   if (activeApp.value === 'assistant') return t('apps.assistant')
@@ -149,11 +149,15 @@ const { items: navItems } = useSidebarNav(() => isAdmin.value, navCapability)
 // The open app is in the URL (?app=storage, #90): a reload or a link opens it
 // again, and the browser's back button returns to the previous app.
 const allowedApps = () => allowedAppIds(navItems.value.map(item => item.id))
+// A link to the former App Store app opens the store view of Apps.
+const fromLegacyStore = (app: unknown) => { if (app === 'store') showAppsView('store') }
+fromLegacyStore(route.query.app)
 activeApp.value = appFromQuery(route.query.app, allowedApps())
 watch(activeApp, id => {
   if ((route.query.app ?? 'dashboard') !== id) void router.push({ query: appQuery(route.query, id) as Record<string, string> })
 })
 watch(() => route.query.app, app => {
+  fromLegacyStore(app)
   const id = appFromQuery(app, allowedApps())
   if (id !== activeApp.value) activeApp.value = id
 })
@@ -224,7 +228,8 @@ function isActive(id: string) {
 
 function onDashboardNavigate(target: 'places' | 'store' | 'backups' | 'secure') {
   if (target === 'store') {
-    activeApp.value = 'store'
+    showAppsView('store')
+    activeApp.value = 'apps'
     return
   }
   activeApp.value = 'settings'
@@ -418,7 +423,6 @@ onUnmounted(() => {
           <AppsPanel v-else-if="activeApp === 'apps'" ref="appsPanelRef" class="h-full" />
           <SettingsPanel v-else-if="activeApp === 'settings'" class="h-full" :focusSection="settingsSection" />
           <StoragePanel v-else-if="activeApp === 'storage'" class="h-full" />
-          <AppStorePanel v-else-if="activeApp === 'store'" class="h-full" />
           <MonitorPanel v-else-if="activeApp === 'monitor'" class="h-full" />
           <SharingPanel v-else-if="activeApp === 'sharing'" class="h-full" />
           <AssistantPanel v-else-if="activeApp === 'assistant'" class="h-full" />

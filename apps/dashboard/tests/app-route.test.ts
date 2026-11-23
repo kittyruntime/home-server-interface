@@ -21,3 +21,8 @@ test('the Activity app opens from the URL although it is not in the sidebar', ()
   assert.equal(appFromQuery('activity', allowedAppIds(['dashboard', 'files'])), 'activity')
   assert.deepEqual(allowedAppIds(['files']), ['files', 'activity'])
 })
+
+test('a link to the former App Store app opens Apps', () => {
+  assert.equal(appFromQuery('store', ['dashboard', 'apps']), 'apps')
+  assert.equal(appFromQuery('store', ['dashboard']), 'dashboard')
+})

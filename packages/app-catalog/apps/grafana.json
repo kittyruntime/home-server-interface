@@ -1,0 +1,48 @@
+{
+  "id": "grafana",
+  "name": "Grafana",
+  "category": "Utilities",
+  "added": "2026-11-23",
+  "tagline": "Dashboards and alerts for your metrics, logs and sensors.",
+  "description": "Grafana turns metrics from Prometheus, InfluxDB, databases and many other sources into dashboards, and alerts you when a value goes wrong.",
+  "website": "https://grafana.com/oss/grafana/",
+  "image": "grafana/grafana:13.3.1",
+  "changelog": "https://github.com/grafana/grafana/releases",
+  "license": "AGPL-3.0",
+  "source": "https://github.com/grafana/grafana",
+  "docs": "https://grafana.com/docs/grafana/latest/",
+  "postInstall": [
+    "Sign in with the administrator name and password chosen at install.",
+    "Add a data source (Connections > Data sources), then build a dashboard or import one."
+  ],
+  "webUiPort": 3000,
+  "ports": [
+    {
+      "container": 3000,
+      "protocol": "tcp",
+      "label": "Web UI",
+      "hostDefault": 3002
+    }
+  ],
+  "env": [
+    {
+      "key": "GF_SECURITY_ADMIN_USER",
+      "default": "admin",
+      "prompt": "Administrator name",
+      "required": true
+    },
+    {
+      "key": "GF_SECURITY_ADMIN_PASSWORD",
+      "prompt": "Administrator password",
+      "secret": true,
+      "required": true
+    }
+  ],
+  "volumes": [
+    {
+      "target": "/var/lib/grafana",
+      "label": "Data",
+      "suggest": "named"
+    }
+  ]
+}

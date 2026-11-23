@@ -32,12 +32,13 @@ export interface FilterChip { key: string; label: string; count: number }
 const isInstalled = (a: StoreApp) => a.installedApp !== null
 const hasUpdate = (a: StoreApp) => !!a.installedApp?.update
 
-/** All, then Installed and Updates when there are any, then each category with its count. */
+/**
+ * All, then Updates when there are any, then each category with its count.
+ * The installed apps have their own view beside the store (Apps > Installed).
+ */
 export function filterChips(apps: StoreApp[]): FilterChip[] {
   const chips: FilterChip[] = [{ key: 'All', label: tr('lib.store.all', 'All'), count: apps.length }]
-  const installed = apps.filter(isInstalled).length
   const updates = apps.filter(hasUpdate).length
-  if (installed) chips.push({ key: 'Installed', label: tr('lib.store.installed', 'Installed'), count: installed })
   if (updates) chips.push({ key: 'Updates', label: tr('lib.store.updates', 'Updates'), count: updates })
   for (const c of new Set(apps.map(a => a.category))) {
     chips.push({ key: c, label: categoryLabel(c), count: apps.filter(a => a.category === c).length })

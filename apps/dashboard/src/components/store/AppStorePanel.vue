@@ -5,7 +5,7 @@ import { ExternalLinkIcon } from '@lucide/vue'
 import CatalogSource from './CatalogSource.vue'
 import { useI18n } from 'vue-i18n'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
-import LoadingState from '../ui/LoadingState.vue'
+import AppStoreSkeleton from './AppStoreSkeleton.vue'
 import { ref, computed, nextTick, onMounted, watch } from 'vue'
 import { trpc } from '../../lib/trpc'
 import AppInstallWizard from './AppInstallWizard.vue'
@@ -57,12 +57,12 @@ const featured = computed(() => {
 })
 const sections = computed(() => {
   if (!browsing.value) return [{ key: 'list', title: null as string | null, apps: filtered.value }]
+  // Browsing shows what there is to get; the installed apps have their own
+  // view next to the store, and come back here through a category or a search.
   const updates = filtered.value.filter(a => a.installedApp?.update)
-  const installed = filtered.value.filter(a => a.installed && !a.installedApp?.update)
   const available = filtered.value.filter(a => !a.installed)
   return [
     { key: 'updates', title: t('ui.store.AppStorePanel.sectionUpdates'), apps: updates },
-    { key: 'installed', title: t('ui.store.AppStorePanel.sectionInstalled'), apps: installed },
     { key: 'available', title: t('ui.store.AppStorePanel.sectionAvailable'), apps: available },
   ].filter(g => g.apps.length)
 })
@@ -217,7 +217,7 @@ usePoll(() => !selected.value && refresh(), 6000, { immediate: false })
           </div>
         </header>
 
-        <div v-if="!loading" class="mt-5 -mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
+        <div v-if="!loading" class="content-in mt-5 -mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
           <ToggleGroup type="single" variant="tabs" size="sm" :aria-label="t('ui.store.AppStorePanel.category')"
             :model-value="category" @update:model-value="v => { if (v) category = v as typeof category }"
             class="flex-nowrap">
@@ -227,14 +227,14 @@ usePoll(() => !selected.value && refresh(), 6000, { immediate: false })
           </ToggleGroup>
         </div>
 
-        <LoadingState v-if="loading" class="mt-10" />
+        <AppStoreSkeleton v-if="loading && !apps.length" />
 
         <div v-else-if="filtered.length === 0" class="py-20 text-center">
           <p class="text-sm text-base-content/70">{{ t('uip.store.AppStorePanel.noAppsMatch', { p0: search }) }}</p>
           <Button variant="ghost" size="sm" class="mt-2" @click="search = ''; category = 'All'">{{ t('ui.store.AppStorePanel.clearFilters') }}</Button>
         </div>
 
-        <template v-else>
+        <div v-else class="content-in">
           <!-- One app to discover: the newest the server does not run yet. -->
           <section v-if="featured" class="feature relative mt-6 flex flex-col gap-5 overflow-hidden rounded-box bg-base-200 p-6 sm:flex-row sm:items-center sm:gap-7 sm:p-8"
             :aria-label="featured.name">
@@ -298,7 +298,7 @@ usePoll(() => !selected.value && refresh(), 6000, { immediate: false })
           </section>
 
           <CatalogSource class="mt-10 border-t border-base-300 pt-4" @updated="refresh" />
-        </template>
+        </div>
       </template>
     </div>
   </div>

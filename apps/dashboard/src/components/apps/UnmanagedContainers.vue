@@ -3,8 +3,6 @@ import { useI18n } from 'vue-i18n'
 import { ChevronRightIcon, CircleAlertIcon, RefreshCwIcon, TriangleIcon } from '@lucide/vue'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Textarea } from '@/components/ui/textarea'
 import LoadingSpinner from '../ui/LoadingSpinner.vue'
 import { ref } from 'vue'
 import { trpc } from '../../lib/trpc'
@@ -35,12 +33,6 @@ const loading    = ref(false)
 const containers = ref<UnmanagedContainer[]>([])
 const importing  = ref<Set<string>>(new Set())
 const error      = ref<string | null>(null)
-const composeOpen = ref(false)
-const composeName = ref('')
-const composeContent = ref('')
-const composeError = ref<string | null>(null)
-const composeImporting = ref(false)
-const composeFile = ref<HTMLInputElement | null>(null)
 
 async function load() {
   loading.value = true
@@ -94,35 +86,6 @@ async function importContainer(c: UnmanagedContainer) {
   }
 }
 
-function openComposeFile() {
-  composeFile.value?.click()
-}
-
-async function readComposeFile(event: Event) {
-  const file = (event.target as HTMLInputElement).files?.[0]
-  if (!file) return
-  composeContent.value = await file.text()
-  if (!composeName.value) composeName.value = file.name.replace(/\.ya?ml$/i, '').toLowerCase().replace(/[^a-z0-9._-]+/g, '-').replace(/^[^a-z0-9]+/, '').slice(0, 64)
-}
-
-async function importCompose() {
-  composeError.value = null
-  if (!composeName.value.trim()) { composeError.value = t('uis.apps.UnmanagedContainers.enterAnAppName'); return }
-  if (!composeContent.value.trim()) { composeError.value = t('uis.apps.UnmanagedContainers.pasteAComposeFileOr'); return }
-  composeImporting.value = true
-  try {
-    await trpc.container.app.importCompose.mutate({ name: composeName.value.trim(), content: composeContent.value })
-    composeOpen.value = false
-    composeName.value = ''
-    composeContent.value = ''
-    emit('imported')
-  } catch (e: any) {
-    composeError.value = e?.message ?? t('uis.apps.UnmanagedContainers.importFailed')
-  } finally {
-    composeImporting.value = false
-  }
-}
-
 function statusColor(status: string) {
   switch (status) {
     case 'running': return 'bg-success'
@@ -168,23 +131,6 @@ usePoll(load, 60_000)
     <!-- Expanded content -->
     <Transition name="ui-fade">
       <div v-if="expanded" class="pt-2 pb-3">
-
-        <div class="mb-3 rounded-box border border-base-300 bg-base-100 p-4">
-          <div class="flex items-center justify-between gap-3">
-            <span class="text-xs text-base-content/70">{{ t('ui.apps.UnmanagedContainers.importComposeFile') }}</span>
-            <Button variant="outline" size="xs" @click="composeOpen = !composeOpen">{{ composeOpen ? 'Close' : 'Paste or upload' }}</Button>
-          </div>
-          <div v-if="composeOpen" class="mt-3 grid gap-2">
-            <Input v-model="composeName" class="h-8 text-xs" :placeholder="t('ui.apps.UnmanagedContainers.appNameForExampleMedia')" maxlength="64" :aria-label="t('ui.apps.UnmanagedContainers.appName')" />
-            <input ref="composeFile" type="file" accept=".yml,.yaml,text/yaml" class="hidden" @change="readComposeFile" />
-            <Button variant="outline" size="xs" class="w-fit" type="button" @click="openComposeFile">{{ t('ui.apps.UnmanagedContainers.chooseYamlFile') }}</Button>
-            <Textarea v-model="composeContent" class="font-mono text-xs" rows="8" spellcheck="false" :placeholder="t('ui.apps.UnmanagedContainers.servicesNWebNImage')" :aria-label="t('ui.apps.UnmanagedContainers.composeFile')" />
-            <p v-if="composeError" class="text-xs text-error" role="alert">{{ composeError }}</p>
-            <Button size="sm" class="w-fit" :disabled="composeImporting" @click="importCompose">
-              {{ composeImporting ? 'Importing…' : 'Import app' }}
-            </Button>
-          </div>
-        </div>
 
         <div v-if="error" role="alert" class="mx-2 mb-2 flex items-start gap-2 rounded-lg border border-error/40 bg-error/10 px-3 py-2 text-xs text-error">
           <CircleAlertIcon class="size-3.5 shrink-0" aria-hidden="true" />

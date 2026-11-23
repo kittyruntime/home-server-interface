@@ -1,0 +1,33 @@
+{
+  "id": "changedetection",
+  "name": "changedetection.io",
+  "category": "Utilities",
+  "added": "2026-11-23",
+  "tagline": "Watch web pages and get told when they change.",
+  "description": "changedetection.io checks web pages on a schedule and notifies you when they change: prices, restocks, announcements, documents.",
+  "website": "https://changedetection.io",
+  "image": "ghcr.io/dgtlmoon/changedetection.io:0.70.4",
+  "changelog": "https://github.com/dgtlmoon/changedetection.io/releases",
+  "license": "Apache-2.0",
+  "source": "https://github.com/dgtlmoon/changedetection.io",
+  "docs": "https://github.com/dgtlmoon/changedetection.io/wiki",
+  "postInstall": [
+    "Open it and add the address of a page to watch.",
+    "It has no password at first: set one in Settings > General."
+  ],
+  "webUiPort": 5000,
+  "ports": [
+    {
+      "container": 5000,
+      "protocol": "tcp",
+      "label": "Web UI"
+    }
+  ],
+  "volumes": [
+    {
+      "target": "/datastore",
+      "label": "Data",
+      "suggest": "named"
+    }
+  ]
+}

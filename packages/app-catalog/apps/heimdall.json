@@ -1,0 +1,49 @@
+{
+  "id": "heimdall",
+  "name": "Heimdall",
+  "category": "Productivity",
+  "added": "2026-11-23",
+  "tagline": "A start page with a tile for each of your apps and sites.",
+  "description": "Heimdall is a clean start page that gathers links to your apps, with live information from many of them on their tile.",
+  "website": "https://heimdall.site",
+  "image": "lscr.io/linuxserver/heimdall:v2.8.4-ls375",
+  "changelog": "https://github.com/linuxserver/Heimdall/releases",
+  "license": "MIT",
+  "source": "https://github.com/linuxserver/Heimdall",
+  "docs": "https://docs.linuxserver.io/images/docker-heimdall/",
+  "postInstall": [
+    "Open it and add an item for each app, with its address.",
+    "Anyone on your network can edit it: add users and a password in its settings if needed."
+  ],
+  "webUiPort": 80,
+  "ports": [
+    {
+      "container": 80,
+      "protocol": "tcp",
+      "label": "Web UI",
+      "hostDefault": 8090
+    }
+  ],
+  "env": [
+    {
+      "key": "PUID",
+      "default": "1000"
+    },
+    {
+      "key": "PGID",
+      "default": "1000"
+    },
+    {
+      "key": "TZ",
+      "default": "Etc/UTC",
+      "prompt": "Time zone (e.g. Europe/Paris)"
+    }
+  ],
+  "volumes": [
+    {
+      "target": "/config",
+      "label": "Configuration",
+      "suggest": "named"
+    }
+  ]
+}

@@ -21,7 +21,7 @@ sidebar:
   your own. Desktop mode is a choice of each device, so a phone can stay on
   the sidebar while a computer uses the desktop.
 
-Storage, the App Store, Monitor and the Assistant are for administrators;
+Storage, Apps (with the App Store), Monitor and the Assistant are for administrators;
 storage admins also get Storage, and accounts allowed to use the assistant get
 the Assistant. Everything else is open to every account, with what each one
 may do inside.

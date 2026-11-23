@@ -1,0 +1,41 @@
+{
+  "id": "home-assistant",
+  "name": "Home Assistant",
+  "category": "Utilities",
+  "added": "2026-11-23",
+  "tagline": "Home automation that puts local control and privacy first.",
+  "description": "Home Assistant connects lights, sensors, thermostats and thousands of other devices and services, and automates them, all running on your own server without a cloud.",
+  "website": "https://www.home-assistant.io",
+  "image": "ghcr.io/home-assistant/home-assistant:2026.11.2",
+  "changelog": "https://www.home-assistant.io/blog/categories/release-notes/",
+  "license": "Apache-2.0",
+  "source": "https://github.com/home-assistant/core",
+  "docs": "https://www.home-assistant.io/docs/",
+  "postInstall": [
+    "Open it and create the owner account, then name your home and its location.",
+    "Devices found by network discovery (mDNS) may not show up on their own: add them by their address in Settings > Devices & services.",
+    "USB radios (Zigbee, Z-Wave) are not passed to the container; use a network coordinator or a radio on another machine."
+  ],
+  "webUiPort": 8123,
+  "ports": [
+    {
+      "container": 8123,
+      "protocol": "tcp",
+      "label": "Web UI"
+    }
+  ],
+  "env": [
+    {
+      "key": "TZ",
+      "default": "Etc/UTC",
+      "prompt": "Time zone (e.g. Europe/Paris)"
+    }
+  ],
+  "volumes": [
+    {
+      "target": "/config",
+      "label": "Configuration",
+      "suggest": "named"
+    }
+  ]
+}

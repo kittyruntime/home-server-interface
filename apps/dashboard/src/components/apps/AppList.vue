@@ -1,15 +1,16 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
 import Tip from '../ui/Tip.vue'
-import { BookmarkIcon, EllipsisIcon, SquareIcon, ExternalLinkIcon, PackageIcon, PlayIcon, PlusIcon, RefreshCwIcon, ScrollTextIcon, SquarePenIcon, Trash2Icon, TriangleAlertIcon, CheckIcon } from '@lucide/vue'
+import { BookmarkIcon, EllipsisIcon, SquareIcon, ExternalLinkIcon, PackageIcon, PlayIcon, PlusIcon, StoreIcon, RefreshCwIcon, ScrollTextIcon, SquarePenIcon, Trash2Icon, TriangleAlertIcon, CheckIcon } from '@lucide/vue'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import AppTile from '../store/AppTile.vue'
 import SearchInput from '../ui/SearchInput.vue'
-import LoadingState from '../ui/LoadingState.vue'
 import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
 import { trpc } from '../../lib/trpc'
 import { useVolumeHolds, holdLabel } from '../../lib/volumes'
 import AppFormModal from './AppFormModal.vue'
+import AppListSkeleton from './AppListSkeleton.vue'
+import NewAppDialog from './NewAppDialog.vue'
 import ContainerLogsPanel from './ContainerLogsPanel.vue'
 import UnmanagedContainers from './UnmanagedContainers.vue'
 import Modal from '../ui/Modal.vue'
@@ -296,7 +297,23 @@ async function applyApp(id: string) {
 
 const logsApp = ref<App | null>(null)
 
-function openNew()        { editName.value = null; showModal.value = true }
+// Adding by hand starts with a choice (one app, or services from a Compose
+// file); the form opens for the first.
+const choosing = ref(false)
+function openNew()        { choosing.value = true }
+function openForm()       { editName.value = null; showModal.value = true }
+
+// Services added from a Compose file: show them, and start them when asked
+// (the start goes through its preview like any other).
+async function onComposeAdded(name: string, start: boolean) {
+  await load()
+  focusedName.value = name
+  if (focusTimer) clearTimeout(focusTimer)
+  focusTimer = setTimeout(() => { focusedName.value = null }, 4000)
+  await nextTick()
+  document.querySelector<HTMLElement>(`[data-app-name="${CSS.escape(name)}"]`)?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+  if (start) void runAction(name, 'start')
+}
 // Multi-service stacks are fine too: the form modal handles them with a
 // notice + the raw YAML editor (advanced tab only). Pinning from the UI is
 // guarded server-side.
@@ -327,6 +344,7 @@ watch([pendingAppFocus, apps], async () => {
 watch(pendingAppFocus, name => { if (name && !loading.value) void silentRefresh() })
 
 defineExpose({ openNew })
+const emit = defineEmits<{ browseStore: [] }>()
 
 function onSaved(_name?: string) { void load() }
 function onDeployed(_name?: string) { void load() }
@@ -378,15 +396,15 @@ async function unpin(app: App) {
   />
 
   <div v-else class="flex-1 overflow-y-auto min-w-0">
-    <div class="mx-auto w-full max-w-4xl px-4 py-5 sm:px-8 sm:py-8">
+    <div class="mx-auto w-full max-w-5xl px-4 py-5 sm:px-8 sm:py-8">
 
-      <LoadingState v-if="loading && !apps.length" variant="block" />
+      <AppListSkeleton v-if="loading && !apps.length" />
 
       <!-- Empty state -->
       <div v-else-if="apps.length === 0 && !loadError" class="flex min-h-[60vh] items-center justify-center">
         <EmptyState
           :message="t('ui.apps.AppList.noContainersYet')"
-          :description="t('ui.apps.AppList.deployYourFirstContainerTo')"
+          :description="t('ui.apps.AppList.startFromTheStore')"
         >
           <template #icon>
             <span class="grid size-16 place-items-center rounded-[23%] bg-base-200 text-base-content/60">
@@ -394,15 +412,18 @@ async function unpin(app: App) {
             </span>
           </template>
           <template #action>
-            <Button @click="openNew"><PlusIcon class="size-4" aria-hidden="true" />{{ t('ui.apps.AppList.newApp') }}</Button>
+            <div class="flex flex-wrap justify-center gap-2">
+              <Button @click="emit('browseStore')"><StoreIcon class="size-4" aria-hidden="true" />{{ t('ui.apps.AppList.browseTheStore') }}</Button>
+              <Button variant="outline" @click="openNew"><PlusIcon class="size-4" aria-hidden="true" />{{ t('ui.apps.AppList.newApp') }}</Button>
+            </div>
           </template>
         </EmptyState>
       </div>
 
-      <template v-else>
+      <div v-else class="content-in">
         <header class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div class="min-w-0">
-            <h1 class="text-2xl font-semibold tracking-tight text-base-content">{{ t('ui.apps.AppList.containers') }}</h1>
+            <h1 class="text-2xl font-semibold tracking-tight text-base-content">{{ t('ui.apps.AppList.installedApps') }}</h1>
             <p class="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-base-content/70 tabular-nums">
               <span class="inline-flex items-center gap-1.5"><span class="size-1.5 rounded-full bg-success" />{{ t('ui.apps.AppList.runningSummary', { p0: counts.running }) }}</span>
               <span class="inline-flex items-center gap-1.5"><span class="size-1.5 rounded-full bg-base-content/50" />{{ t('ui.apps.AppList.stoppedSummary', { p0: counts.stopped }) }}</span>
@@ -528,13 +549,21 @@ async function unpin(app: App) {
             </li>
           </ul>
         </section>
-      </template>
+      </div>
 
       <!-- Containers HSI does not manage yet -->
       <UnmanagedContainers v-if="!loading" class="mt-8" @imported="load" />
     </div>
   </div>
   </div>
+
+  <NewAppDialog
+    v-if="choosing"
+    @close="choosing = false"
+    @single="openForm"
+    @store="emit('browseStore')"
+    @created="onComposeAdded"
+  />
 
   <!-- Container logs -->
   <ContainerLogsPanel

@@ -11,7 +11,7 @@ export const CATALOG_INDEX_SCHEMA = 1
 
 /** Version of the catalog bundled in this HSI release: an index online replaces it only when newer. */
 // Same form as the online index: YYYYMMDDHHmm, UTC.
-export const BUNDLED_CATALOG_VERSION = 202611040000
+export const BUNDLED_CATALOG_VERSION = 202611230000
 
 export interface CatalogIndex {
   version: number

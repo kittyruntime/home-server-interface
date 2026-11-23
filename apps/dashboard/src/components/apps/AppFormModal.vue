@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
-import { ChevronLeftIcon, UploadIcon, XIcon } from '@lucide/vue'
+import { ChevronLeftIcon, XIcon } from '@lucide/vue'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { ref, shallowRef, reactive, watch, computed, onMounted, onUnmounted } from 'vue'
+import { ref, reactive, watch, computed, onMounted, onUnmounted } from 'vue'
 import { trpc } from '../../lib/trpc'
 import { JobError, pollJobResult } from '../../lib/jobs'
 import { deployApp, isSavedBeforeStartFailure } from '../../lib/app-deployment'
@@ -17,8 +17,6 @@ import AdvancedSection                          from './AdvancedSection.vue'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
-import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
-import { Textarea } from '@/components/ui/textarea'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import AppDeploymentProgress from './AppDeploymentProgress.vue'
 import ContainerLogsPanel from './ContainerLogsPanel.vue'
@@ -47,7 +45,6 @@ const tabs: { id: Tab; label: string }[] = [
   { id: 'advanced', label: t('uis.apps.AppFormModal.advanced') },
 ]
 const activeTab   = ref<Tab>('basic')
-const showCompose = ref(false)
 
 function emptyForm() {
   return {
@@ -77,132 +74,6 @@ const error   = ref('')
 
 const places       = ref<Place[]>([])
 const networkInput = ref('')
-
-// ── Compose import panel (new apps) ───────────────────────────────────────────
-const composeRaw             = ref('')
-const composeError           = ref('')
-const composeSelectedService = ref('')
-
-// The YAML parser loads once something is pasted: it stays out of the Apps
-// bundle for everyone who never imports a compose file.
-const parseYaml = shallowRef<typeof import('yaml')['parse'] | null>(null)
-const loadYaml = async () => (parseYaml.value ??= (await import('yaml')).parse)
-watch(composeRaw, raw => { if (raw.trim()) void loadYaml() })
-
-const composeServices = computed<string[]>(() => {
-  if (!composeRaw.value.trim() || !parseYaml.value) return []
-  try {
-    const doc = parseYaml.value(composeRaw.value) as any
-    return Object.keys(doc?.services ?? {})
-  } catch { return [] }
-})
-
-watch(composeServices, svcs => {
-  if (svcs.length && !svcs.includes(composeSelectedService.value))
-    composeSelectedService.value = svcs[0] ?? ''
-})
-
-async function importCompose() {
-  composeError.value = ''
-  if (!composeRaw.value.trim()) { composeError.value = t('uis.apps.AppFormModal.pasteAComposeYmlFirst'); return }
-  const parse = await loadYaml()
-  let doc: any
-  try { doc = parse(composeRaw.value) } catch (e: any) { composeError.value = t('uis.apps.AppFormModal.yamlParseError', { p0: e.message }); return }
-  const services = doc?.services
-  if (!services || typeof services !== 'object') { composeError.value = t('uis.apps.AppFormModal.noServicesFound'); return }
-  const svc = services[composeSelectedService.value]
-  if (!svc) { composeError.value = t('uis.apps.AppFormModal.serviceNotFound', { p0: composeSelectedService.value }); return }
-
-  if (svc.image) form.image = svc.image
-
-  if (Array.isArray(svc.ports)) {
-    const parsed: PortMapping[] = []
-    for (const p of svc.ports) {
-      if (typeof p === 'string') {
-        const m = p.match(/^(\d+):(\d+)(?:\/(tcp|udp))?$/)
-        if (m) parsed.push({ hostPort: parseInt(m[1]!), containerPort: parseInt(m[2]!), protocol: (m[3] as 'tcp'|'udp') ?? 'tcp' })
-      } else if (typeof p === 'object' && p.published != null && p.target != null) {
-        parsed.push({ hostPort: Number(p.published), containerPort: Number(p.target), protocol: p.protocol ?? 'tcp' })
-      }
-    }
-    if (parsed.length) form.ports = parsed
-  }
-
-  if (svc.environment) {
-    const envs: EnvVar[] = []
-    if (Array.isArray(svc.environment)) {
-      for (const e of svc.environment) {
-        const idx = String(e).indexOf('=')
-        if (idx > 0) envs.push({ key: e.slice(0, idx), value: e.slice(idx + 1) })
-      }
-    } else {
-      for (const [k, v] of Object.entries(svc.environment)) envs.push({ key: k, value: String(v ?? '') })
-    }
-    if (envs.length) form.envs = envs
-  }
-
-  if (Array.isArray(svc.volumes)) {
-    const vols: VolumeMount[] = []
-    for (const v of svc.volumes) {
-      if (typeof v === 'string') {
-        const parts = v.split(':')
-        if (parts.length >= 2) {
-          const source = parts[0]!
-          const mode = parts[2]?.split(',') ?? []
-          const type = source.startsWith('/') || source.startsWith('./') || source.startsWith('../') || source.startsWith('~') ? 'bind' : 'named'
-          vols.push({ type, source, target: parts[1]!, readOnly: mode.includes('ro') })
-        }
-      } else if (typeof v === 'object' && v.target) {
-        vols.push({
-          type: v.type === 'volume' ? 'named' : v.type ?? 'bind',
-          source: v.source ?? '', target: v.target, readOnly: v.read_only === true,
-        })
-      }
-    }
-    if (vols.length) form.volumes = vols
-  }
-
-  if (svc.networks) {
-    const nets: string[] = Array.isArray(svc.networks) ? svc.networks : Object.keys(svc.networks)
-    if (nets.length) form.networkNames = nets
-  }
-
-  if (svc.labels) {
-    const lbls: LabelEntry[] = []
-    if (Array.isArray(svc.labels)) {
-      for (const l of svc.labels) { const idx = String(l).indexOf('='); if (idx > 0) lbls.push({ key: l.slice(0, idx), value: l.slice(idx + 1) }) }
-    } else {
-      for (const [k, v] of Object.entries(svc.labels)) lbls.push({ key: k, value: String(v ?? '') })
-    }
-    if (lbls.length) form.labels = lbls
-  }
-
-  if (Array.isArray(svc.cap_add))  form.capAdd  = svc.cap_add
-  if (Array.isArray(svc.cap_drop)) form.capDrop = svc.cap_drop
-
-  if (svc.extra_hosts) {
-    const hosts: string[] = []
-    if (Array.isArray(svc.extra_hosts)) {
-      for (const h of svc.extra_hosts) hosts.push(String(h))
-    } else {
-      for (const [k, v] of Object.entries(svc.extra_hosts)) hosts.push(`${k}:${v}`)
-    }
-    if (hosts.length) form.extraHosts = hosts
-  }
-  if (svc.restart) form.restartPolicy = svc.restart
-  if (svc.hostname) form.hostname = svc.hostname
-  if (svc.user)     form.user     = String(svc.user)
-  if (svc.command != null) {
-    form.command = Array.isArray(svc.command) ? svc.command.join(' ') : String(svc.command)
-  }
-
-  const limits = svc.deploy?.resources?.limits
-  if (limits?.cpus)   form.cpuLimit    = parseFloat(limits.cpus)
-  if (limits?.memory) form.memoryLimit = String(limits.memory).toLowerCase()
-
-  showCompose.value = false
-  activeTab.value = 'basic'
-}
 
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -251,7 +122,6 @@ watch(() => props.editName, async (name) => {
   savedWithoutStarting.value = false
   configurationDirty.value = false
   applyState.value = 'idle'
-  showCompose.value = false
   if (name) {
     editing.value = true
     loading.value = true
@@ -537,17 +407,6 @@ function rawSaved(raw: string) {
       <h2 class="text-sm font-semibold text-base-content flex-1">
         {{ editing ? t('ui.apps.AppFormModal.editTitle', { p0: form.name }) : t('ui.apps.AppFormModal.newTitle') }}
       </h2>
-      <Button
-        v-if="!editName && !multiSvc"
-        variant="ghost" size="sm"
-        @click="showCompose = !showCompose"
-        :tooltip="showCompose ? t('ui.apps.AppFormModal.closeCompose') : t('ui.apps.AppFormModal.importCompose')"
-        :aria-pressed="showCompose"
-        :class="['text-xs', showCompose ? 'bg-primary/10 text-primary hover:bg-primary/15 hover:text-primary' : 'text-base-content/70']"
-      >
-        <UploadIcon class="size-3.5" aria-hidden="true" />
-        <span class="hidden sm:inline">{{ t('ui.apps.AppFormModal.importCompose') }}</span><span class="sm:hidden">{{ t('ui.apps.AppFormModal.compose') }}</span>
-      </Button>
     </div>
 
     <AppDeploymentProgress
@@ -572,42 +431,6 @@ function rawSaved(raw: string) {
     <p class="px-5 pt-2 text-xs text-base-content/70">
       {{ editing ? t('ui.apps.AppFormModal.editSummary') : t('ui.apps.AppFormModal.createSummary') }}
     </p>
-
-    <!-- Compose import panel -->
-    <div v-if="showCompose" class="px-4 sm:px-6 py-4 border-b border-base-300 bg-base-200/60 space-y-3 shrink-0">
-      <p class="text-xs text-base-content/70">{{ t('ui.apps.AppFormModal.pasteA') }} <span class="font-mono">compose.yml</span> {{ t('ui.apps.AppFormModal.toAutoFillTheForm') }}</p>
-      <Textarea
-        v-model="composeRaw"
-        :placeholder="t('ui.apps.AppFormModal.version3810Services')"
-        rows="8"
-        class="w-full px-3 py-2 text-xs font-mono resize-none"
-      />
-      <div class="flex flex-col items-stretch gap-3 sm:flex-row sm:items-center">
-        <div v-if="composeServices.length > 1" class="flex items-center gap-2 flex-1">
-          <label for="compose-service" class="text-xs text-base-content/70 whitespace-nowrap">{{ t('ui.apps.AppFormModal.service') }}</label>
-          <NativeSelect wrapper-class="flex-1"
-            id="compose-service" v-model="composeSelectedService"
-            class="px-3 py-1.5 text-sm"
-          >
-            <NativeSelectOption v-for="s in composeServices" :key="s" :value="s">{{ s }}</NativeSelectOption>
-          </NativeSelect>
-        </div>
-        <div v-else-if="composeServices.length === 1" class="flex-1 text-xs text-base-content/70">
-          {{ t('ui.apps.AppFormModal.service') }} <span class="text-base-content/80">{{ composeServices[0] }}</span>
-        </div>
-        <div v-else class="flex-1" />
-        <Alert v-if="composeError" variant="destructive" role="alert" class="w-full sm:w-auto">
-          <AlertDescription>{{ composeError }}</AlertDescription>
-        </Alert>
-        <Button size="sm"
-          @click="importCompose"
-          :disabled="!composeRaw.trim()"
-          class="whitespace-nowrap"
-        >
-          {{ t('ui.apps.AppFormModal.importFillForm') }}
-        </Button>
-      </div>
-    </div>
 
     <!-- Multi-service notice -->
     <div v-if="multiSvc" class="px-4 sm:px-6 py-3 border-b border-base-300 bg-warning/10 shrink-0">

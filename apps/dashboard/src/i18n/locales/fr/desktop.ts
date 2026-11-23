@@ -5,7 +5,7 @@ export default {
     addWidget: 'Ajouter un widget',
   },
   DesktopWindow: {
-    newApp: 'Nouvelle application',
+    newApp: 'Ajouter une app',
     save: 'Enregistrer',
     download: 'Télécharger',
     minimize: 'Réduire',
