@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.90.1] - 2026-11-23
+
 ### Changed
 - **Faster dashboard**: the first load downloads about a third less code
   (170 KB compressed instead of 262 KB): the file browser, the dashboard's
@@ -2371,7 +2373,8 @@ First stable release.
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.90.0...HEAD
+[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.90.1...HEAD
+[1.90.1]: https://github.com/kittyruntime/home-server-interface/compare/v1.90.0...v1.90.1
 [1.90.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.89.1...v1.90.0
 [1.89.1]: https://github.com/kittyruntime/home-server-interface/compare/v1.89.0...v1.89.1
 [1.89.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.88.1...v1.89.0
