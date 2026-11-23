@@ -17,7 +17,6 @@ import nginxProxyManager from "../apps/nginx-proxy-manager.json" with { type: "j
 import forgejo from "../apps/forgejo.json" with { type: "json" }
 import codeServer from "../apps/code-server.json" with { type: "json" }
 import grafana from "../apps/grafana.json" with { type: "json" }
-import nodeRed from "../apps/node-red.json" with { type: "json" }
 import gotify from "../apps/gotify.json" with { type: "json" }
 import heimdall from "../apps/heimdall.json" with { type: "json" }
 import changedetection from "../apps/changedetection.json" with { type: "json" }
@@ -54,7 +53,6 @@ const RAW: { manifest: unknown; icon: string }[] = [
   { manifest: forgejo, icon: ICONS["forgejo"] },
   { manifest: codeServer, icon: ICONS["code-server"] },
   { manifest: grafana, icon: ICONS["grafana"] },
-  { manifest: nodeRed, icon: ICONS["node-red"] },
   { manifest: gotify, icon: ICONS["gotify"] },
   { manifest: heimdall, icon: ICONS["heimdall"] },
   { manifest: changedetection, icon: ICONS["changedetection"] },

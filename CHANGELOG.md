@@ -8,8 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- **App Store**: eleven new apps: Home Assistant, Nginx Proxy Manager,
-  Forgejo, code-server, Grafana, Node-RED, Gotify, Heimdall,
+- **App Store**: ten new apps: Home Assistant, Nginx Proxy Manager,
+  Forgejo, code-server, Grafana, Gotify, Heimdall,
   changedetection.io, Immich (with its database, cache and machine learning)
   and Open WebUI (with Ollama to run the models).
 

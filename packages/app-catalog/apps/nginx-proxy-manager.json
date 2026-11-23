@@ -12,7 +12,7 @@
   "source": "https://github.com/NginxProxyManager/nginx-proxy-manager",
   "docs": "https://nginxproxymanager.com/guide/",
   "postInstall": [
-    "Open the Admin port and create the administrator account.",
+    "Open the Admin port and sign in with the administrator email and password chosen at install.",
     "Forward ports 80 and 443 of your router to this server for Let's Encrypt and outside access.",
     "Ports 80 and 443 can be taken by HSI's own HTTPS on standard ports: then turn that off, or pick other ports here."
   ],
@@ -32,6 +32,19 @@
       "container": 443,
       "protocol": "tcp",
       "label": "HTTPS"
+    }
+  ],
+  "env": [
+    {
+      "key": "INITIAL_ADMIN_EMAIL",
+      "prompt": "Administrator email",
+      "required": true
+    },
+    {
+      "key": "INITIAL_ADMIN_PASSWORD",
+      "prompt": "Administrator password",
+      "secret": true,
+      "required": true
     }
   ],
   "volumes": [
