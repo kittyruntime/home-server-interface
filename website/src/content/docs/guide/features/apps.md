@@ -44,6 +44,8 @@ A curated catalog with guided installs and pinned image versions.
   is in use and when it was last checked; **Check for new apps** checks now.
   An app that needs a newer HSI is left out and named there.
 
+![An app's page in the App Store](../../../../assets/app-page.png)
+
 ## App updates
 
 When a new catalog or HSI version ships a newer image for an installed App
@@ -56,6 +58,8 @@ the file are kept) and starts the app. An image changed by hand to another
 repository or to a newer tag is left alone.
 
 ## The Apps page
+
+![The Apps page](../../../../assets/apps-list.png)
 
 - **Summary**: a line under the title counts the apps running, stopped and
   waiting for changes to be applied. Search filters the list by name, image or port.

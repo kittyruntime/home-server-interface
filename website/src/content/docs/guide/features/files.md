@@ -107,6 +107,8 @@ deleting**, in My profile, turns that question off or back on.
 
 ## Share links
 
+![Creating a share link](../../../../assets/share-link.png)
+
 **Share** creates a public link to a file or folder. It can be protected by a
 password, expire after 24 hours, 7 days or 30 days (or never), and stop after a
 number of downloads. Anyone with the link can use it until then. **Shared
