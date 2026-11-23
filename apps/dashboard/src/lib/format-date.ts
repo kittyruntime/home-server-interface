@@ -1,3 +1,5 @@
+import { dateFormat } from './intl-cache'
+
 // Dates in one style across the dashboard: the day ("Oct 6, 2026") or the day
 // and time ("Oct 6, 2026, 2:05 PM"), in the browser's locale.
 
@@ -11,11 +13,11 @@ function toDate(v: DateInput): Date | null {
 
 export function formatDay(v: DateInput): string {
   const d = toDate(v)
-  return d ? new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' }).format(d) : '-'
+  return d ? dateFormat(undefined, { dateStyle: 'medium' }).format(d) : '-'
 }
 
 /** The day and time; `seconds` for records where they matter (the audit log). */
 export function formatDateTime(v: DateInput, opts: { seconds?: boolean } = {}): string {
   const d = toDate(v)
-  return d ? new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: opts.seconds ? 'medium' : 'short' }).format(d) : '-'
+  return d ? dateFormat(undefined, { dateStyle: 'medium', timeStyle: opts.seconds ? 'medium' : 'short' }).format(d) : '-'
 }

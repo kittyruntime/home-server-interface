@@ -5,6 +5,7 @@ import { ref, watch } from 'vue'
 import { trpc } from '../../lib/trpc'
 import LoadingState from '../ui/LoadingState.vue'
 import { actionLabel } from '../../lib/audit-labels'
+import { dateFormat } from '../../lib/intl-cache'
 
 const { t } = useI18n()
 
@@ -30,7 +31,7 @@ function label(e: Entry): string {
   if (e.op) return OP_LABELS[e.op] ?? e.op
   return actionLabel(e.action)
 }
-const when = (iso: string) => new Date(iso).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })
+const when = (iso: string) => dateFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(iso))
 
 async function load() {
   loading.value = true

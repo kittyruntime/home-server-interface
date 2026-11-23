@@ -28,6 +28,7 @@ import { filterApps, summarizeApps } from '../../lib/app-list'
 import LoadingSpinner from '../ui/LoadingSpinner.vue'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { clearAppJob, knownAppJobs, registerAppJob, type PendingAppJob } from '../../lib/app-jobs'
+import { usePoll } from '../../lib/poll'
 
 
 const { t } = useI18n()
@@ -44,7 +45,6 @@ const search        = ref('')
 const showModal     = ref(false)
 const editName      = ref<string | null>(null)
 const actionLoading = ref<Record<string, string>>({})
-let   refreshTimer: ReturnType<typeof setInterval> | null = null
 
 const pinDialog     = ref<App | null>(null)
 const pinDialogUrl  = ref('')
@@ -109,11 +109,11 @@ onMounted(async () => {
   void refreshHolds()
   void loadCatalog()
   await load()
-  refreshTimer = setInterval(silentRefresh, 10_000)
 })
+// Container states change behind our back (crash, restart policy, the CLI).
+usePoll(silentRefresh, 10_000, { immediate: false })
 
 onUnmounted(() => {
-  if (refreshTimer !== null) clearInterval(refreshTimer)
   if (focusTimer !== null) clearTimeout(focusTimer)
 })
 

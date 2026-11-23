@@ -1,4 +1,5 @@
 import { formatBytes } from './file-details'
+import { numberFormat, relativeFormat } from './intl-cache'
 
 // What a custom widget shows: an expression over its sources' data, then a
 // format. `$1.data.count` is the value at that path in the first source;
@@ -178,7 +179,7 @@ export function formatValue(v: unknown, o: FormatOptions): string {
     const n = toNumber(v)
     const d = n != null ? new Date(n < 1e12 ? n * 1000 : n) : new Date(String(v))
     if (Number.isNaN(d.getTime())) return wrap(String(v))
-    const rtf = new Intl.RelativeTimeFormat(o.locale, { numeric: 'auto' })
+    const rtf = relativeFormat(o.locale, { numeric: 'auto' })
     const diff = d.getTime() - (o.now ?? Date.now())
     for (const [unit, ms] of [['day', 86_400_000], ['hour', 3_600_000], ['minute', 60_000]] as const) {
       if (Math.abs(diff) >= ms) return rtf.format(Math.round(diff / ms), unit)
@@ -191,7 +192,7 @@ export function formatValue(v: unknown, o: FormatOptions): string {
   if (o.format === 'bitrate') return wrap(`${formatBytes(n)}/s`)
   if (o.format === 'duration') return wrap(formatDuration(n))
   const digits = o.decimals ?? (Math.abs(n) >= 100 || Number.isInteger(n) ? 0 : 1)
-  const text = new Intl.NumberFormat(o.locale, { minimumFractionDigits: digits, maximumFractionDigits: digits }).format(n)
+  const text = numberFormat(o.locale, { minimumFractionDigits: digits, maximumFractionDigits: digits }).format(n)
   return o.format === 'percent' ? `${o.prefix ?? ''}${text} %` : wrap(text)
 }
 

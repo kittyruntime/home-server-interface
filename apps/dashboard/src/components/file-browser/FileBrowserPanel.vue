@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Item } from '@/components/ui/item'
 import { LOADING } from '../../lib/loading'
 import LoadingState from '../ui/LoadingState.vue'
-import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
+import { ref, shallowRef, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
 import { trpc } from '../../lib/trpc'
 import { useAuth } from '../../lib/auth'
 import { useNotifications } from '../../lib/notifications'
@@ -69,11 +69,13 @@ const { openFilePreview } = useDesktop()
 
 // ── state ────────────────────────────────────────────────────────────────────
 const currentPath     = ref<string | null>(null)
-const entries         = ref<Entry[]>([])
+// Listings and the selection are only ever replaced, never edited in place:
+// shallow refs spare a reactive proxy per entry in folders of thousands.
+const entries         = shallowRef<Entry[]>([])
 const dbPlaces        = ref<Place[]>([])
 const loading         = ref(false)
 const error           = ref('')
-const selected        = ref<Set<string>>(new Set())
+const selected        = shallowRef<Set<string>>(new Set())
 const selectionAnchor = ref<string | null>(null)
 const renamingPath    = ref<string | null>(null)
 const renameValue     = ref('')

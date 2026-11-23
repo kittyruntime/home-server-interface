@@ -8,6 +8,7 @@ import { trpc } from '../../lib/trpc'
 import { useToast } from '../../lib/toast'
 import { Button } from '@/components/ui/button'
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
+import { dateFormat } from '../../lib/intl-cache'
 
 const { t } = useI18n()
 
@@ -86,7 +87,7 @@ async function runNow(id: TaskId) {
 
 function fmtWhen(v: string | null): string {
   if (!v) return '-'
-  return new Intl.DateTimeFormat(undefined, { weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }).format(new Date(v))
+  return dateFormat(undefined, { weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }).format(new Date(v))
 }
 
 const statusClass: Record<string, string> = {

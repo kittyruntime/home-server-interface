@@ -11,6 +11,7 @@ import BusyLabel from '../ui/BusyLabel.vue'
 import ShareActivity from './ShareActivity.vue'
 import { trpc } from '../../lib/trpc'
 import type { ShareEventRow, ShareSession, SharingService } from '../../lib/sharing-types'
+import { usePoll } from '../../lib/poll'
 
 const props = defineProps<{ service: SharingService | null; initialShare?: string }>()
 const { t } = useI18n()
@@ -67,12 +68,7 @@ function clearFilters() {
   period.value = 'week'
 }
 
-// New connections show up on their own while the first page is on screen.
-let timer: ReturnType<typeof setInterval> | null = null
-onUnmounted(() => {
-  if (timer) clearInterval(timer)
-  if (typing) clearTimeout(typing)
-})
+onUnmounted(() => { if (typing) clearTimeout(typing) })
 
 let typing: ReturnType<typeof setTimeout> | null = null
 watch([share, result, period], () => { void load() })
@@ -80,13 +76,12 @@ watch(user, () => {
   if (typing) clearTimeout(typing)
   typing = setTimeout(() => { void load() }, 300)
 })
+// New connections show up on their own while the first page is on screen.
+usePoll(() => !more.value && !reloading.value && events.value.length <= 50 && load(false, true), 15000, { immediate: false })
 watch(() => props.initialShare, v => { if (v !== undefined) share.value = v })
 
 onMounted(async () => {
   void load()
-  timer = setInterval(() => {
-    if (!document.hidden && !more.value && !reloading.value && events.value.length <= 50) void load(false, true)
-  }, 15000)
   try {
     shareNames.value = (await trpc.sharing.list.query()).map(s => s.effectiveName)
   } catch { /* the filter keeps "all shares" */ }

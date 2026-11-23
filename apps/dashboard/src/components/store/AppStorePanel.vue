@@ -6,7 +6,7 @@ import CatalogSource from './CatalogSource.vue'
 import { useI18n } from 'vue-i18n'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import LoadingState from '../ui/LoadingState.vue'
-import { ref, computed, nextTick, onMounted, onUnmounted, watch } from 'vue'
+import { ref, computed, nextTick, onMounted, watch } from 'vue'
 import { trpc } from '../../lib/trpc'
 import AppInstallWizard from './AppInstallWizard.vue'
 import AppStoreDetail from './AppStoreDetail.vue'
@@ -18,6 +18,7 @@ import { rollbackPlan, updatePlan, updateText } from '../../lib/app-update'
 import { filterChips, isNew, keptFilter, visibleApps, categoryLabel, type StoreOrder } from '../../lib/store'
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import { Button } from '@/components/ui/button'
+import { usePoll } from '../../lib/poll'
 
 const { t } = useI18n()
 
@@ -160,15 +161,13 @@ async function load() {
   try { await refresh() } finally { loading.value = false }
 }
 
-let poll: ReturnType<typeof setInterval> | null = null
 onMounted(() => {
   void checkDocker()
   load()
-  // Light polling so install → running (and stop/error) transitions show without
-  // a manual reload. Paused while the wizard is open (grid isn't visible then).
-  poll = setInterval(() => { if (!selected.value && !document.hidden) refresh() }, 6000)
 })
-onUnmounted(() => { if (poll !== null) clearInterval(poll) })
+// Light polling so install → running (and stop/error) transitions show without
+// a manual reload. Paused while the wizard is open (grid isn't visible then).
+usePoll(() => !selected.value && refresh(), 6000, { immediate: false })
 </script>
 
 <template>

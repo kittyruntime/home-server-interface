@@ -1,3 +1,5 @@
+import { numberFormat } from './intl-cache'
+
 // Formatting for the properties dialog (#198).
 
 const UNITS = ['B', 'KB', 'MB', 'GB', 'TB', 'PB']
@@ -13,7 +15,7 @@ export function formatBytes(n: number): string {
 
 /** Exact byte count with thousands separators, for next to the human size. */
 export function formatExactBytes(n: number, locale?: string): string {
-  return new Intl.NumberFormat(locale).format(n)
+  return numberFormat(locale).format(n)
 }
 
 /** h:mm:ss, or m:ss under an hour. */

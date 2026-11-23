@@ -6,9 +6,10 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import LoadingSpinner from '../ui/LoadingSpinner.vue'
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref } from 'vue'
 import { trpc } from '../../lib/trpc'
 import { useToast } from '../../lib/toast'
+import { usePoll } from '../../lib/poll'
 
 const { t } = useI18n()
 
@@ -40,7 +41,6 @@ const composeContent = ref('')
 const composeError = ref<string | null>(null)
 const composeImporting = ref(false)
 const composeFile = ref<HTMLInputElement | null>(null)
-let   refreshTimer: ReturnType<typeof setInterval> | null = null
 
 async function load() {
   loading.value = true
@@ -138,14 +138,7 @@ function portsSummary(c: UnmanagedContainer): string {
   return c.ports.length > 3 ? `${shown}  +${c.ports.length - 3}` : shown
 }
 
-onMounted(() => {
-  load()
-  refreshTimer = setInterval(load, 60_000)
-})
-
-onUnmounted(() => {
-  if (refreshTimer !== null) clearInterval(refreshTimer)
-})
+usePoll(load, 60_000)
 </script>
 
 <template>

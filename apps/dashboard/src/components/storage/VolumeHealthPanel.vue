@@ -5,6 +5,7 @@ import { trpc } from '../../lib/trpc'
 import { useNotifications } from '../../lib/notifications'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { dateFormat } from '../../lib/intl-cache'
 
 const { t } = useI18n()
 
@@ -36,7 +37,7 @@ const STATE: Record<string, { label: string; cls: string }> = {
 }
 
 function since(d: string | Date): string {
-  return new Date(d).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })
+  return dateFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(d))
 }
 
 async function resume(mp: string) {

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import { ref, computed, watch, onMounted, onUnmounted, nextTick, defineAsyncComponent } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuth } from '../lib/auth'
 import { useAlerts } from '../composables/useAlerts'
@@ -10,7 +10,6 @@ import { pendingApp, pendingAppFocus, pendingFolder, pendingPlaceAccess, pending
 import { useSystemNotifications } from '../lib/systemNotifications'
 import { useNotifications } from '../lib/notifications'
 import { trpc } from '../lib/trpc'
-import FileBrowserPanel from '../components/file-browser/FileBrowserPanel.vue'
 import DashboardPanel from '../components/dashboard/DashboardPanel.vue'
 import SidebarNavIcon from '../components/desktop/SidebarNavIcon.vue'
 import { useSidebarNav, orderedIds, reorder, persistOrder, setOrder, resetOrder } from '../lib/sidebar-nav'
@@ -19,14 +18,7 @@ import { appFromQuery, appQuery, allowedAppIds } from '../lib/app-route'
 // Dashboard + Files stay eager (default view / most-used); the rest split into
 // their own chunks and load when their app is first opened.
 import type AppsPanelT from '../components/apps/AppsPanel.vue'
-const SettingsPanel = defineAsyncComponent(() => import('../components/SettingsPanel.vue'))
-const StoragePanel = defineAsyncComponent(() => import('../components/storage/StoragePanel.vue'))
-const AppStorePanel = defineAsyncComponent(() => import('../components/store/AppStorePanel.vue'))
-const MonitorPanel = defineAsyncComponent(() => import('../components/monitor/MonitorPanel.vue'))
-const AppsPanel = defineAsyncComponent(() => import('../components/apps/AppsPanel.vue'))
-const SharingPanel = defineAsyncComponent(() => import('../components/sharing/SharingPanel.vue'))
-const AssistantPanel = defineAsyncComponent(() => import('../components/assistant/AssistantPanel.vue'))
-const ActivityPanel = defineAsyncComponent(() => import('../components/activity/ActivityPanel.vue'))
+import { ActivityPanel, AppsPanel, AppStorePanel, AssistantPanel, FileBrowserPanel, MonitorPanel, SettingsPanel, SharingPanel, StoragePanel, prefetchPanel, prefetchPanels } from '../lib/panels'
 import AccountMenu from '../components/AccountMenu.vue'
 import ActivityPopover from '../components/ActivityPopover.vue'
 import BellIndicator from '../components/activity/BellIndicator.vue'
@@ -272,6 +264,9 @@ onMounted(() => {
   syncPreferences()
   void refreshAssistantStatus()
   updateTimer = setInterval(checkUpdateBadge, 3_600_000) // hourly
+  // Warm the chunks of the apps this user can open, so the first click on one
+  // renders at once instead of waiting on its download.
+  prefetchPanels(navItems.value.map(item => item.id))
 })
 onUnmounted(() => {
   window.removeEventListener('resize', updateIsMobile)
@@ -299,6 +294,7 @@ onUnmounted(() => {
             :key="item.id"
             draggable="true"
             @dragstart="onNavDragStart(item.id, $event)"
+            @pointerenter="prefetchPanel(item.id)"
             @dragover.prevent="onNavDragOver(item.id, $event)"
             @dragend="onNavDragEnd"
             @drop.prevent="onNavDragEnd"

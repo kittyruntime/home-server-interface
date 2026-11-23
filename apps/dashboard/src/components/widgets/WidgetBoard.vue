@@ -1,15 +1,17 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, ref } from 'vue'
+import { computed, defineAsyncComponent, nextTick, onBeforeUnmount, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { PlusIcon } from '@lucide/vue'
 import WidgetCard from './WidgetCard.vue'
-import AddWidgetDialog from './AddWidgetDialog.vue'
-import WidgetSettingsDialog from './WidgetSettingsDialog.vue'
-import CustomWidgetEditor from './CustomWidgetEditor.vue'
 import { canUse, widgetDef, type WidgetDef } from './registry'
 import { useBoards, type BoardWidget, type WidgetSize } from '../../lib/dashboard-boards'
 import { requestApp } from '../../lib/app-focus'
 import { provideViewer } from './card-status'
+
+// The editors open only while arranging the board: they load on first use.
+const AddWidgetDialog = defineAsyncComponent(() => import('./AddWidgetDialog.vue'))
+const WidgetSettingsDialog = defineAsyncComponent(() => import('./WidgetSettingsDialog.vue'))
+const CustomWidgetEditor = defineAsyncComponent(() => import('./CustomWidgetEditor.vue'))
 
 // The widgets of the open board. In edit mode a widget moves by its handle
 // (mouse, finger or arrow keys), changes size, opens its settings or goes.
@@ -67,6 +69,8 @@ function onMove(e: PointerEvent) {
 function onDrop() {
   dragging.value = null
   window.removeEventListener('pointermove', onMove)
+  window.removeEventListener('pointerup', onDrop)
+  window.removeEventListener('pointercancel', onDrop)
 }
 onBeforeUnmount(onDrop)
 

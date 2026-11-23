@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import type { Component } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { FolderIcon, ScrollTextIcon, ServerIcon, ShieldIcon } from '@lucide/vue'
@@ -12,6 +12,7 @@ import MySharesSection from './MySharesSection.vue'
 import { trpc } from '../../lib/trpc'
 import { useAuth } from '../../lib/auth'
 import type { SharingService } from '../../lib/sharing-types'
+import { usePoll } from '../../lib/poll'
 
 const { t } = useI18n()
 const { isAdmin } = useAuth()
@@ -32,7 +33,6 @@ const navItems = computed(() => (Object.keys(icons) as SectionId[]).map(id => ({
 
 const service = ref<SharingService | null>(null)
 const serviceLoading = ref(true)
-let timer: ReturnType<typeof setInterval> | null = null
 
 async function loadService() {
   serviceLoading.value = true
@@ -45,12 +45,7 @@ async function loadService() {
   }
 }
 
-onMounted(() => {
-  if (!isAdmin.value) return
-  void loadService()
-  timer = setInterval(() => { if (!document.hidden) void loadService() }, 15000)
-})
-onUnmounted(() => { if (timer) clearInterval(timer) })
+usePoll(() => isAdmin.value && loadService(), 15000)
 </script>
 
 <template>

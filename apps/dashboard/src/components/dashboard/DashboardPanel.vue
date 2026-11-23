@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, defineAsyncComponent, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { ArrowLeftIcon, ArrowRightIcon, CheckIcon, EllipsisIcon, PencilIcon, PlusIcon, Trash2Icon } from '@lucide/vue'
 import { Button } from '@/components/ui/button'
@@ -9,11 +9,12 @@ import GettingStartedCard from './GettingStartedCard.vue'
 import HttpsBanner from './HttpsBanner.vue'
 import WidgetBoard from '../widgets/WidgetBoard.vue'
 import StatusBand from '../widgets/StatusBand.vue'
-import WallDisplaysDialog from '../widgets/WallDisplaysDialog.vue'
 import { canUse, widgetDef } from '../widgets/registry'
 import { defaultBoards, MAX_BOARDS, useBoards } from '../../lib/dashboard-boards'
 import { useAuth } from '../../lib/auth'
 import { useConfirm } from '../../lib/confirm'
+
+const WallDisplaysDialog = defineAsyncComponent(() => import('../widgets/WallDisplaysDialog.vue'))
 
 const { t } = useI18n()
 const emit = defineEmits<{ navigate: [target: 'places' | 'store' | 'backups' | 'secure'] }>()

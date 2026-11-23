@@ -8,6 +8,7 @@ import EmptyState from './ui/EmptyState.vue'
 import { trpc } from '../lib/trpc'
 import { jobLogsTarget } from '../lib/jobLogs'
 import { Button } from '@/components/ui/button'
+import { dateFormat } from '../lib/intl-cache'
 
 const { t } = useI18n()
 
@@ -35,7 +36,7 @@ watch(jobLogsTarget, id => { if (id) void load(id) }, { immediate: true })
 function formatTime(t: string | null): string {
   if (!t) return ''
   const d = new Date(t)
-  return Number.isNaN(d.getTime()) ? t : d.toLocaleTimeString(undefined, { hour12: false }) + '.' + String(d.getMilliseconds()).padStart(3, '0')
+  return Number.isNaN(d.getTime()) ? t : dateFormat(undefined, { hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: false }).format(d) + '.' + String(d.getMilliseconds()).padStart(3, '0')
 }
 
 function formatValue(v: unknown): string {

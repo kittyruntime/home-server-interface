@@ -17,8 +17,12 @@ import router from './router'
 import { i18n, loadLocale, type Locale } from './i18n'
 import './i18n/labels'
 
-// Mount once the starting language is loaded, so it never flashes English.
-// A failed load still mounts, in English.
-void loadLocale(i18n.global.locale.value as Locale).catch(() => {}).finally(() => {
+// Mount once the starting language is loaded, so it never flashes another.
+// A failed load falls back to English, and mounts whatever happens.
+const start = i18n.global.locale.value as Locale
+void loadLocale(start).catch(() => {
+  i18n.global.locale.value = 'en'
+  return loadLocale('en')
+}).catch(() => {}).finally(() => {
   createApp(App).use(router).use(i18n).mount('#app')
 })
