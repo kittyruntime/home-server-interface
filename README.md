@@ -1,19 +1,10 @@
-<p align="center">
-  <img src="website/src/assets/dashboard.png" alt="HSI dashboard" width="880">
-</p>
-
 <h1 align="center">Home Server Interface</h1>
 
 <p align="center">
-  <strong>Turn your Linux server into a private cloud, NAS, and app platform.</strong>
+  <strong>Your Linux home server, managed from one dashboard.</strong>
 </p>
 
-<p align="center">
-  Home Server Interface (HSI) is an open-source control panel for a single Linux server:
-  manage files, run Docker apps from a built-in App Store, operate real storage
-  (S.M.A.R.T., RAID, LVM), and monitor your hardware, all from one modern dashboard,
-  without giving up shell access to the machine underneath.
-</p>
+
 
 <p align="center">
   <a href="https://github.com/kittyruntime/home-server-interface/releases/latest"><img src="https://img.shields.io/github/v/release/kittyruntime/home-server-interface" alt="Latest release"></a>
@@ -26,211 +17,176 @@
   <a href="#quick-install">Install</a> ·
   <a href="#features">Features</a> ·
   <a href="#screenshots">Screenshots</a> ·
-  <a href="#why-hsi">Why HSI?</a> ·
   <a href="https://kittyruntime.github.io/home-server-interface/">Documentation</a> ·
   <a href="https://github.com/kittyruntime/home-server-interface/releases">Releases</a>
 </p>
 
----
+<p align="center">
+  <img src="website/src/assets/dashboard.png" alt="Home Server Interface dashboard showing server health and resources" width="880">
+</p>
+
+Home Server Interface (HSI) brings file management, storage, Docker apps, backups,
+and server monitoring into a web interface for your own hardware. It runs on a
+single Linux host and works with standard tools including Docker Compose,
+Samba, mdadm, LVM, and systemd. You keep shell access and control of the machine.
+
+## Features
+
+| Area | What you can do |
+| --- | --- |
+| **Files** | Browse and edit files, upload with pause/resume support, create expiring share links, and control access through places and permissions. |
+| **Apps and containers** | Install apps from the App Store; manage containers, logs, networks, and mounts; import Compose settings. App definitions remain accessible in `/opt/containers`. |
+| **Storage** | Inspect S.M.A.R.T. health, manage partitions and mounts, and configure mdadm RAID and LVM. |
+| **Monitoring** | Track CPU, memory, network, and storage metrics; review historical activity, disk alerts, and privileged-action audit logs. |
+| **Users and sharing** | Manage users, groups, access permissions, and SMB shares through Samba. |
+| **Backups** | Export encrypted HSI configuration backups and schedule rsync jobs locally or over SSH. |
+
+Use the dashboard or the desktop-style windowed interface. See the
+[feature documentation](https://kittyruntime.github.io/home-server-interface/guide/features/storage/)
+for capabilities and configuration details.
 
 ## Quick install
 
-One command, on a fresh Ubuntu 24.04 server:
+### Requirements
+
+- **Ubuntu 24.04, x86-64.** Other distributions are not officially supported.
+- Root access or `sudo`, and `curl`.
+- Network access to download the installer, release, and dependencies.
+- Port **9001** reachable from the devices that will access HSI.
+- Docker for containers and the App Store; Samba for SMB sharing.
+
+The installer checks and installs required host packages, creates the application
+user, and configures the backend, privileged worker, and NATS broker as systemd
+services.
+
+Run on the server:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/kittyruntime/home-server-interface/main/scripts/install.sh | sudo bash
 ```
 
-That's it: the installer sets up the app user, Node.js, the message broker, the
-privileged worker, and the database, then starts HSI's systemd services. Full
-details, updates and version pinning are in [Install](https://kittyruntime.github.io/home-server-interface/guide/install/).
+You can [read the installer](scripts/install.sh) before running it. For installation
+options and version pinning, see the [installation guide](https://kittyruntime.github.io/home-server-interface/guide/install/).
 
----
+### First login
 
-## Features
+1. Open the **one-time setup link** printed by the installer.
+2. Follow the [secure access guide](https://kittyruntime.github.io/home-server-interface/guide/secure-access/) to verify and trust the local certificate authority. HSI serves HTTPS on port `9001`; your browser initially shows a certificate warning.
+3. Create your administrator account, then use the setup assistant to configure the server.
 
-Every area below is real and in daily use, but HSI is still evolving quickly, so nothing
-here is labeled "Stable" yet. `Beta` means it works and is actively maintained; `Experimental`
-means it's new enough that interfaces may still change. See [Project status](#project-status)
-for what that means in practice.
+There is no default username or password. If you lose the setup link before
+creating an administrator, generate another on the server:
 
-**Files** `Beta`: A full file manager in the browser, not an afterthought.
-- Resumable, pause/resume chunked uploads with integrity checks
-- Built-in code editor and expiring public share links
-- "Places" with per-user and per-group permissions
-
-**Apps & Docker** `Beta`: Run self-hosted apps and containers without touching a shell.
-- Curated App Store with guided installs and pinned image versions
-- Full container lifecycle: create, edit, logs, networks, mounts
-- Import an existing Compose file to prefill a container
-- App definitions live as standard Docker Compose files in `/opt/containers`, usable with or without HSI
-
-**Storage** `Beta`: Real disk and array management, not just a usage bar.
-- S.M.A.R.T. health, partitions, and disk formatting
-- `mdadm` RAID and LVM, with guardrails against destructive actions
-- Mounts and `/etc/fstab` management
-
-**Monitoring** `Beta`: Know what your server is doing, live and over time.
-- CPU, RAM, network and storage metrics with 1h–7d history
-- Background alerts for RAID degradation and failing disks
-- Filterable audit trail of privileged actions
-
-**Users & Sharing** `Beta`: Multi-user from day one.
-- Groups, per-place permissions, and admin/storage delegation
-- Built-in SMB/Samba sharing, synced with HSI accounts
-- Rate-limited logins and redacted audit values
-
-**Backups** `Beta`: Two layers, so config and data are both covered.
-- Encrypted (AES-256-GCM) HSI configuration backup and restore
-- Scheduled rsync backups, local or over SSH, push or pull
-
-Full feature details, including the desktop/windowed mode, live in the
-[Documentation](#documentation).
-
----
+```bash
+sudo hsi-worker setup-token
+```
 
 ## Screenshots
 
 | Desktop mode | App Store |
-|---|---|
-| ![Desktop mode](website/src/assets/desktop.png) | ![App Store](website/src/assets/app-store.png) |
+| --- | --- |
+| ![Desktop interface with movable windows](website/src/assets/desktop.png) | ![App Store](website/src/assets/app-store.png) |
 
 | Storage | File manager |
-|---|---|
-| ![Storage, RAID and LVM](website/src/assets/storage.png) | ![File manager](website/src/assets/files.png) |
+| --- | --- |
+| ![Storage management](website/src/assets/storage.png) | ![File manager](website/src/assets/files.png) |
 
-| Monitoring | |
-|---|---|
-| ![Monitoring](website/src/assets/monitoring.png) | |
+<details>
+<summary>Monitoring and animated demo</summary>
 
-See it in motion: [demo.gif](website/src/assets/demo.gif)
+![Server monitoring](website/src/assets/monitoring.png)
 
----
+[Watch the animated demo](website/src/assets/demo.gif).
 
-## Why HSI?
+</details>
 
-Most home-server tooling makes you choose between a friendly dashboard that hides
-Linux, or a raw admin panel that assumes you already know the command line. HSI
-aims for the middle ground:
+## Updates and maintenance
 
-- **Built for home servers, not adapted from enterprise infra.** Storage, Docker and
-  Sharing are designed around what a home server actually does.
-- **A real file manager, not an afterthought.** Chunked resumable uploads, an inline
-  code editor, and shareable links are first-class features.
-- **Storage you can actually operate.** S.M.A.R.T., partitions, `mdadm` RAID and LVM
-  are managed from the UI, with guardrails against destructive operations.
-- **Docker and an App Store together.** Run a curated app in one click, or manage any
-  container by hand: same interface, same place.
-- **Backups included.** Encrypted config backups and scheduled rsync jobs ship with
-  HSI itself, not as a separate tool you have to wire up.
-- **Security-conscious by design.** The web backend runs unprivileged; every
-  root-level operation goes through a separate, isolated worker process over a
-  message queue, not `sudo` calls from a Node process.
-- **Linux stays visible.** HSI manages your server without hiding it: the Samba
-  shares, `/etc/fstab` entries and systemd units it creates are things you can
-  inspect and touch yourself.
+Update from the administrator dashboard, or rerun the installation command.
+The installer preserves the existing database and secrets.
 
-If that sounds like something you'd want to run on your own hardware, a star on
-GitHub helps more people find the project, and it takes one click.
+Release installations verify signatures and checksums, keep previous versions,
+and snapshot configuration and database state before switching versions. A failed
+health check triggers an automatic rollback. See the
+[update and rollback guide](https://kittyruntime.github.io/home-server-interface/guide/install/#update)
+for details and recovery commands.
 
----
+Check the services on the host:
+
+```bash
+systemctl status hsi-server hsi-worker hsi-nats
+```
+
+Review [release notes](https://github.com/kittyruntime/home-server-interface/releases)
+before updating, and keep backups of your configuration and data.
 
 ## Project status
 
-- **Active development.** New features ship regularly, and some interfaces may
-  still change between releases.
-- **Tested on Ubuntu 24.04** (x86-64). Other distributions are not officially
-  supported.
-- **Not security-audited.** Treat it like any early-stage self-hosted project.
+HSI is published and actively developed. Features and interfaces may change
+between releases. Ubuntu 24.04 on x86-64 is the tested platform.
 
-> [!WARNING]
-> HSI has not undergone a formal security audit and may contain vulnerabilities,
-> incomplete protections, or breaking changes without notice. If you run it, keep
-> it updated, avoid exposing it directly to the internet, and consider network
-> isolation, especially while the project is this young.
+HSI has not undergone a formal security audit. Keep it updated and avoid exposing
+it directly to the internet. Storage operations affect real disks; maintain
+backups of important data.
 
----
-
-## Requirements
-
-- Ubuntu 24.04 on x86-64 (other distributions are not officially supported)
-- `curl` and root access to run the install command (`sudo`, or `curl … | bash` from a root shell)
-- The installer checks the other host packages it needs (storage tools such as `mdadm`,
-  `smartmontools`, `lvm2`, `parted`, plus `openssl`, `rsync`, an OpenSSH client) and installs
-  missing ones with `apt-get`; see [Host packages](https://kittyruntime.github.io/home-server-interface/reference/configuration/#host-packages)
-- Optional: Docker for containers and the App Store; Samba for SMB shares
-- Ports 80 (nginx, optional) and 9001 (backend) reachable from clients
-
----
+The web backend runs as an unprivileged user. A separate Go worker handles
+privileged host operations through NATS. Read the
+[architecture documentation](https://kittyruntime.github.io/home-server-interface/development/architecture/)
+for the process model and privilege boundaries.
 
 ## Documentation
 
-The documentation site is at **[kittyruntime.github.io/home-server-interface](https://kittyruntime.github.io/home-server-interface/)**:
+The [documentation site](https://kittyruntime.github.io/home-server-interface/)
+covers installation, everyday administration, and development.
 
-- [Install](https://kittyruntime.github.io/home-server-interface/guide/install/): requirements, install and update, first login, services
-- [Features](https://kittyruntime.github.io/home-server-interface/guide/features/storage/): storage, files, apps, users and shares, monitoring, maintenance
-- [Manage without HSI](https://kittyruntime.github.io/home-server-interface/guide/manage-without-hsi/): the files and commands behind Docker, Samba, RAID, mounts and systemd, if HSI is down or gone
-- [Configuration](https://kittyruntime.github.io/home-server-interface/reference/configuration/): environment variables, services, install/update options, logs
-- [Architecture](https://kittyruntime.github.io/home-server-interface/development/architecture/) and [Development](https://kittyruntime.github.io/home-server-interface/development/setup/): processes, privilege isolation, local setup, release process
-
-Its sources are in [`website/src/content/docs`](website/src/content/docs).
-
----
-
-## Install / update
-
-Re-running the [install command](#quick-install) updates an existing installation
-and keeps its database and secrets. Version pinning, the systemd services and their
-logs are covered in [Install](https://kittyruntime.github.io/home-server-interface/guide/install/).
-
-> A new installation has no default account: open the setup link the installer
-> prints to create the administrator.
-
----
-
-## Build from source
-
-Requirements: Node.js 20.19+ or 22.12+, pnpm, Go ≥ 1.25, curl, openssl, rsync and an OpenSSH client.
-
-```bash
-git clone https://github.com/kittyruntime/home-server-interface
-cd home-server-interface
-sudo bash scripts/install.sh --from-source
-```
-
-For a local development environment (dev servers, hot reload, project layout, release process) see [Development](https://kittyruntime.github.io/home-server-interface/development/setup/).
-
----
+| Guide | Contents |
+| --- | --- |
+| [Installation](https://kittyruntime.github.io/home-server-interface/guide/install/) | Requirements, setup, updates, rollback, and services |
+| [Secure access](https://kittyruntime.github.io/home-server-interface/guide/secure-access/) | HTTPS and trusting your server's certificate authority |
+| [Configuration](https://kittyruntime.github.io/home-server-interface/reference/configuration/) | Environment variables, host packages, ports, and logs |
+| [Manage without HSI](https://kittyruntime.github.io/home-server-interface/guide/manage-without-hsi/) | Work directly with the underlying Linux tools and configuration |
+| [Development](https://kittyruntime.github.io/home-server-interface/development/setup/) | Local environment, builds, checks, and releases |
 
 ## Contributing
 
-HSI is open source and still shaping its roadmap, so feedback from real usage is
-genuinely useful at this stage.
+Bug reports, documentation improvements, translations, and code contributions
+are welcome. Read the [Code of Conduct](CODE_OF_CONDUCT.md) before participating.
 
-- **Found a bug?** Open an [issue](https://github.com/kittyruntime/home-server-interface/issues).
-- **Missing a feature?** Open an issue describing the use case.
-- **Want to contribute code?** Pull requests are welcome; see
-  [Development](https://kittyruntime.github.io/home-server-interface/development/setup/) for local setup.
-- **General feedback** on the interface or the direction of the project is welcome
-  via issues too.
+- **Report a bug:** [open an issue](https://github.com/kittyruntime/home-server-interface/issues) with your HSI version, operating system, reproduction steps, and relevant logs. Remove credentials and private information from logs.
+- **Suggest a feature:** describe the problem you want to solve and how it fits your server workflow.
+- **Submit a change:** follow the [development setup](https://kittyruntime.github.io/home-server-interface/development/setup/), keep the pull request focused, and explain how you verified it. Discuss substantial changes in an issue first.
 
-Please read the [Code of Conduct](CODE_OF_CONDUCT.md) before participating.
+### Work on the source
 
----
+```bash
+git clone https://github.com/kittyruntime/home-server-interface.git
+cd home-server-interface
+pnpm install
+```
+
+Development requires Node.js `^20.19.0 || >=22.12.0`, pnpm `>=10.18.0`, Go
+`>=1.25`, and a local NATS service. Follow the development guide for the database,
+environment, and four application processes. Use a disposable VM: the privileged
+worker performs real operations on its host.
+
+Run the repository checks after setting up the development environment:
+
+```bash
+pnpm verify
+```
+
+To install from a source checkout instead of a published release:
+
+```bash
+sudo bash scripts/install.sh --from-source
+```
+
+Source installations use a different layout and do not include the signed-release
+update and health-gated rollback workflow. See the installation guide before
+choosing this route.
 
 ## License
 
-Home Server Interface is open-source software licensed under the
-[Mozilla Public License 2.0](LICENSE).
-
-You may use, modify, distribute and use the software commercially. Modifications
-to files covered by the MPL must remain available under the MPL-2.0.
+Home Server Interface is released under the [Mozilla Public License 2.0](LICENSE).
 
 © 2025–2026 kittyruntime
-
----
-
-<p align="center">
-  If you find HSI useful or want to follow its development, consider giving the
-  project a ⭐.
-</p>
