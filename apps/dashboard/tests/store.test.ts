@@ -15,10 +15,9 @@ const apps = [
   app('Syncthing', 'Utilities', { description: 'Peer-to-peer file sync' }),
 ]
 
-test('filterChips counts installed apps, updates and each category', () => {
+test('filterChips counts updates and each category, the installed apps having their own view', () => {
   assert.deepEqual(filterChips(apps), [
     { key: 'All', label: 'All', count: 4 },
-    { key: 'Installed', label: 'Installed', count: 2 },
     { key: 'Updates', label: 'Updates', count: 1 },
     { key: 'Media', label: 'Media', count: 2 },
     { key: 'Productivity', label: 'Productivity', count: 1 },
@@ -26,7 +25,7 @@ test('filterChips counts installed apps, updates and each category', () => {
   ])
 })
 
-test('filterChips leaves out Installed and Updates when there are none', () => {
+test('filterChips leaves out Updates when there are none', () => {
   assert.deepEqual(filterChips([app('Jellyfin', 'Media')]).map(c => c.key), ['All', 'Media'])
 })
 

@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **App Store**: eleven new apps: Home Assistant, Nginx Proxy Manager,
+  Forgejo, code-server, Grafana, Node-RED, Gotify, Heimdall,
+  changedetection.io, Immich (with its database, cache and machine learning)
+  and Open WebUI (with Ollama to run the models).
+
+### Changed
+- **One app for apps**: the App Store is now part of Apps. A switch at the
+  top goes between the installed apps and the store, and each view keeps its
+  place. Links to the former App Store still open it, and the store no longer
+  repeats the installed apps outside a search or a category.
+- **Adding an app by hand**: one **Add an app** button asks whether to add one
+  app (the form) or several services from a Compose file, which used to be
+  hidden under the unmanaged containers. Apps has its own icon.
+- **Loading**: apps, the installed list and the store show placeholders in the
+  shape of what is coming instead of a spinner, content settles in with a
+  short fade, and loading indicators fade in rather than popping.
+
 ## [1.90.1] - 2026-11-23
 
 ### Changed

@@ -17,7 +17,6 @@ export const NAV_ITEMS: NavItem[] = [
   { id: 'files',     label: tr('lib.sidebar_nav.files', 'Files') },
   { id: 'apps',      label: tr('lib.sidebar_nav.apps', 'Apps') },
   { id: 'storage',   label: tr('lib.sidebar_nav.storage', 'Storage'),   adminOnly: true, capability: 'storage' },
-  { id: 'store',     label: tr('lib.sidebar_nav.appStore', 'App Store'), adminOnly: true },
   { id: 'monitor',   label: tr('lib.sidebar_nav.monitor', 'Monitor'),   adminOnly: true },
   // Everyone: admins manage SMB there, others see their own shares.
   { id: 'sharing',   label: tr('lib.sidebar_nav.sharing', 'Sharing') },

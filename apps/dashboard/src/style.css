@@ -472,13 +472,43 @@ select:not(:disabled),
   letter-spacing: 0.04em;
 }
 
-/* Loading indicators appear only after 200 ms: fast loads do not flash. */
+/* Loading indicators wait 200 ms, so fast loads do not flash, then fade in
+   instead of popping. */
 .loading-appear {
-  animation: loading-appear 1ms linear 200ms both;
+  animation: loading-appear var(--dur-slow) var(--ease-out) 200ms both;
 }
 @keyframes loading-appear {
   from { opacity: 0; }
   to   { opacity: 1; }
+}
+
+/* Skeletons: placeholders in the shape of the content. They fade in after a
+   short wait (a fast load shows nothing), and a soft sheen sweeps across
+   them. Under reduced motion they stay still. */
+.skeleton-in {
+  animation: loading-appear var(--dur-slow) var(--ease-out) 150ms both;
+}
+.skeleton-block {
+  background:
+    linear-gradient(100deg, transparent 30%, color-mix(in oklab, var(--color-base-content) 5%, transparent) 50%, transparent 70%) 0 0 / 300% 100%,
+    color-mix(in oklab, var(--color-base-content) 7%, transparent);
+  animation: skeleton-sheen 1.6s ease-in-out infinite;
+}
+@keyframes skeleton-sheen {
+  from { background-position: 100% 0, 0 0; }
+  to   { background-position: -50% 0, 0 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .skeleton-block { animation: none; }
+}
+
+/* Content that replaces a skeleton settles in: a short fade and lift. */
+.content-in {
+  animation: content-in var(--dur-slow) var(--ease-out) both;
+}
+@keyframes content-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: none; }
 }
 
 /* Plain clickable rows and cards (list items, nav rows) are not UI

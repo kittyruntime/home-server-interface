@@ -14,7 +14,7 @@ App Store installs is a normal container, covered under Docker below.
 
 ## Docker
 
-Containers created through the App Store or the Containers app are ordinary Docker
+Containers created through Apps (the App Store or by hand) are ordinary Docker
 containers under their configured name; nothing about them depends on HSI staying
 up. Each app managed by HSI is a Docker Compose project under
 `/opt/containers/<name>/compose.yaml`: the file is the source of truth, usable

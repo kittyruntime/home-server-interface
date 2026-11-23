@@ -1,7 +1,7 @@
 import { ref, reactive } from 'vue'
 import { randomId } from './uuid'
 
-export type AppId = 'files' | 'apps' | 'settings' | 'storage' | 'store' | 'monitor' | 'sharing' | 'assistant' | 'file-preview' | 'activity'
+export type AppId = 'files' | 'apps' | 'settings' | 'storage' | 'monitor' | 'sharing' | 'assistant' | 'file-preview' | 'activity'
 export type SettingsSection = 'profile' | 'users' | 'places' | 'permissions' | 'groups' | 'updates' | 'alerting' | 'notifications' | 'secure'
 
 export interface FilePreviewPayload {
@@ -30,7 +30,7 @@ export interface DesktopWindow {
 // English names; i18n/labels.ts puts them in the interface language.
 export const APP_LABEL = reactive<Record<AppId, string>>({
   files: 'Files', apps: 'Apps', settings: 'Settings', storage: 'Storage',
-  store: 'App Store', monitor: 'Monitor', sharing: 'Sharing', assistant: 'Assistant', 'file-preview': 'Preview', activity: 'Activity',
+  monitor: 'Monitor', sharing: 'Sharing', assistant: 'Assistant', 'file-preview': 'Preview', activity: 'Activity',
 })
 
 const STORAGE_KEY = 'desktop'
@@ -42,10 +42,9 @@ const MIN_VISIBLE = 80
 
 const DEFAULT_SIZE: Record<AppId, { w: number; h: number }> = {
   files: { w: 860, h: 560 },
-  apps: { w: 760, h: 540 },
+  apps: { w: 960, h: 620 },
   settings: { w: 860, h: 560 },
   storage: { w: 900, h: 580 },
-  store: { w: 900, h: 600 },
   monitor: { w: 860, h: 580 },
   sharing: { w: 860, h: 560 },
   assistant: { w: 820, h: 600 },
@@ -61,6 +60,10 @@ function loadWindows(): DesktopWindow[] {
       if (Array.isArray(parsed)) {
         return (parsed as DesktopWindow[])
           .filter(w => (w.appId as string) !== 'dashboard')
+          // The App Store became a view of Apps: its window opens as Apps,
+          // unless an Apps window is already open.
+          .map(w => (w.appId as string) === 'store' ? { ...w, appId: 'apps' as AppId } : w)
+          .filter((w, i, all) => w.appId !== 'apps' || all.findIndex(o => o.appId === 'apps') === i)
           .map(w => ({ ...w, dirty: false }))
       }
     }

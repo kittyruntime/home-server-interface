@@ -4,7 +4,7 @@ export default {
     account: 'Compte',
     youMustChangeYourPassword: 'Vous devez changer votre mot de passe avant toute autre chose.',
     changeItNow: 'Le changer maintenant',
-    newApp: 'Nouvelle application',
+    newApp: 'Ajouter une app',
     selectAnAppFromThe: 'Choisissez une application dans la barre latérale',
     moreApps: 'Plus d’applications',
   },

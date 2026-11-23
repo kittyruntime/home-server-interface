@@ -4,8 +4,12 @@
 type QueryValue = string | null | undefined | Array<string | null>
 
 /** The app a query asks for, if this user has it; Overview otherwise. */
+// Apps that became part of another one: their old links still land.
+const MERGED: Record<string, string> = { store: 'apps' }
+
 export function appFromQuery(value: QueryValue, allowed: string[]): string {
-  const id = Array.isArray(value) ? value[0] : value
+  const raw = Array.isArray(value) ? value[0] : value
+  const id = raw ? MERGED[raw] ?? raw : raw
   return id && allowed.includes(id) ? id : 'dashboard'
 }
 

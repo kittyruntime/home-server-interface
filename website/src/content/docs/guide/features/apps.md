@@ -1,13 +1,15 @@
 ---
 title: Apps and containers
-description: The App Store, the Apps page and Docker containers, stored as standard Compose files.
+description: The Apps app, with the installed apps and the App Store, and Docker containers stored as standard Compose files.
 sidebar:
   order: 3
   badge: Beta
 ---
 
-Run self-hosted apps and containers without a shell. Apps and containers are
-admin-only.
+Run self-hosted apps and containers without a shell. Everything about apps
+lives in one app, **Apps**, for administrators: **Installed** lists the apps
+the server runs, **App Store** adds more. The switch at the top goes from one
+to the other and each keeps its place.
 
 ![The App Store](../../../../assets/app-store.png)
 
@@ -20,9 +22,10 @@ that volume goes missing.
 A curated catalog with guided installs and pinned image versions.
 
 - **Layout**: the top of the store suggests one app the server does not run
-  yet, the newest first. Below, apps are grouped in **Updates**, **Installed**
-  and **Available**, each row with the app's logo, tagline and one button:
-  **Install**, **Update** or **Open**.
+  yet, the newest first. Below, apps are grouped in **Updates** and
+  **Available**, each row with the app's logo, tagline and one button:
+  **Install** or **Update**. The installed apps are in the Installed view, and
+  show here too, with **Open**, through a category or a search.
 - **Finding apps**: search, pick a category, and sort installed first, by name
   or the latest added first. Apps that joined the catalog in the last 60 days
   are marked New; nothing is ranked by popularity.
@@ -50,16 +53,16 @@ A curated catalog with guided installs and pinned image versions.
 
 When a new catalog or HSI version ships a newer image for an installed App
 Store app, the store lists it under Updates with a link to the release notes,
-and the Apps page marks it. **Update…** previews the one changed line of
+and the Installed view marks it. **Update…** previews the one changed line of
 `compose.yaml`, keeps the current file as `compose.yaml.previous`, and
 recreates the app if it runs (a stopped app gets the new image when it starts).
 **Roll back…**, on the app's page, puts the previous image back (later edits to
 the file are kept) and starts the app. An image changed by hand to another
 repository or to a newer tag is left alone.
 
-## The Apps page
+## Installed apps
 
-![The Apps page](../../../../assets/apps-list.png)
+![The installed apps](../../../../assets/apps-list.png)
 
 - **Summary**: a line under the title counts the apps running, stopped and
   waiting for changes to be applied. Search filters the list by name, image or port.
@@ -72,13 +75,17 @@ repository or to a newer tag is left alone.
   **Open**, **Start**, **Apply** (when the saved file differs from what runs)
   or **Check status**. The **…** menu holds the rest: start, stop, restart,
   apply changes, logs, pin, edit and delete.
-- **Creating and editing**: **New App** in the window header creates a
-  container from a form or from Compose YAML. Edit an app to change its
-  services, image, ports, volumes and mounts, environment variables, labels
-  and networks. An existing Compose file can be imported to prefill it.
+- **Adding an app by hand**: **Add an app**, in the header, asks what to add:
+  - **One app**: a container from an image, set up in a form (ports, volumes
+    and mounts, environment variables, labels, networks, limits);
+  - **Several services**: a Compose file, pasted or chosen, kept as is as the
+    app's `compose.yaml`, then added and started, or only added.
+  It also links to the App Store for a ready-made app.
+- **Editing**: edit an app to change its services, image, ports, volumes and
+  mounts, environment variables, labels and networks.
 - **Unmanaged containers**: containers that run on the server but were not
-  created by HSI are listed under the apps. **Import compose file** turns a
-  Compose file into an app HSI manages, under the name you give it.
+  created by HSI are listed under the apps, and **Import** adopts one as an app
+  HSI manages.
 
 ## Safety
 
@@ -90,7 +97,7 @@ repository or to a newer tag is left alone.
   the `compose.yaml` content or its diff and the `docker compose` commands before
   they run. Secret-looking values are masked in the preview and the audit log.
 - **Docker checks**: when Docker is not installed, not running or missing the
-  compose plugin, the Apps page and the App Store say so with the command that
+  compose plugin, Apps says so with the command that
   fixes it.
 - **Background operations**: starting, stopping, installing and updating run in
   the background and show in the Activity panel with their logs.
