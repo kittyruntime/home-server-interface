@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.91.0] - 2026-11-23
+
 ### Added
 - **App Store**: ten new apps: Home Assistant, Nginx Proxy Manager,
   Forgejo, code-server, Grafana, Gotify, Heimdall,
@@ -2391,7 +2393,8 @@ First stable release.
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.90.1...HEAD
+[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.91.0...HEAD
+[1.91.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.90.1...v1.91.0
 [1.90.1]: https://github.com/kittyruntime/home-server-interface/compare/v1.90.0...v1.90.1
 [1.90.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.89.1...v1.90.0
 [1.89.1]: https://github.com/kittyruntime/home-server-interface/compare/v1.89.0...v1.89.1
