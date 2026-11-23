@@ -43,7 +43,7 @@ const SETTING_REF = /\{\{([A-Za-z_][A-Za-z0-9_]*)\}\}/g
 export const zAppManifest = z.object({
   id:            z.string().regex(/^[a-z0-9-]+$/),
   name:          z.string(),
-  category:      z.enum(["Media", "Productivity", "Network", "Downloads", "Developer", "Utilities"]),
+  category:      z.enum(["Media", "Productivity", "Network", "Downloads", "Developer", "Utilities", "Games"]),
   // The day the app joined the catalog: the store marks it New for a while,
   // and can list the latest first (#26). Never a popularity signal.
   added:         z.string().regex(/^\d{4}-\d{2}-\d{2}$/),

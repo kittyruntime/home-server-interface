@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **App Store**: a Games category, with Minecraft servers for Java Edition and
+  Bedrock Edition (consoles, phones and tablets), and five more apps:
+  Audiobookshelf, FreshRSS, Mealie, Actual Budget and linkding.
+
 ## [1.91.0] - 2026-11-23
 
 ### Added
