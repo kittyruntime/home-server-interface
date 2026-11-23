@@ -1,4 +1,3 @@
-import nodemailer from "nodemailer"
 import type { ResolvedConnector, SmtpConfig } from "./notification-connectors"
 import { eventVars, interpolatePlain, renderWebhookRequest, type NotificationEvent, type WebhookRequest } from "./notifications"
 
@@ -44,7 +43,10 @@ export interface MailSender {
   sendMail(mail: { from: string; to: string[]; subject: string; text: string }): Promise<unknown>
 }
 
-function smtpSender(smtp: SmtpConfig): MailSender {
+// nodemailer is loaded on the first email only: most servers never send one,
+// and it would otherwise sit in memory from the start.
+async function smtpSender(smtp: SmtpConfig): Promise<MailSender> {
+  const { default: nodemailer } = await import("nodemailer")
   return nodemailer.createTransport({
     host: smtp.host,
     port: smtp.port,
@@ -58,9 +60,9 @@ function smtpSender(smtp: SmtpConfig): MailSender {
   })
 }
 
-export async function sendEmail(smtp: SmtpConfig, event: NotificationEvent, sender: MailSender = smtpSender(smtp)): Promise<DeliveryResult> {
+export async function sendEmail(smtp: SmtpConfig, event: NotificationEvent, sender?: MailSender): Promise<DeliveryResult> {
   try {
-    await sender.sendMail(renderEmail(smtp, event))
+    await (sender ?? await smtpSender(smtp)).sendMail(renderEmail(smtp, event))
     return { ok: true }
   } catch (e) {
     return { ok: false, error: errorMessage(e) }

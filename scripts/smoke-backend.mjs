@@ -1,7 +1,12 @@
 import { spawn } from "node:child_process"
-import { mkdtempSync, rmSync } from "node:fs"
+import { mkdtempSync, readFileSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
+
+// Node keeps the bundle's source in memory: one character outside Latin-1
+// stores all of it as two bytes per character.
+const nonAscii = readFileSync("apps/backend/dist/server.js", "utf8").match(/[\u0080-\uffff]/)
+if (nonAscii) throw new Error(`The backend bundle has a non-ASCII character (${JSON.stringify(nonAscii[0])}): build it with scripts/ascii-bundle.mjs`)
 
 const dbDir = mkdtempSync(join(tmpdir(), "hsi-smoke-"))
 process.on("exit", () => rmSync(dbDir, { recursive: true, force: true }))

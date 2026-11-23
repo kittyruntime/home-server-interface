@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **Memory**: the HSI server uses about a quarter less memory at rest (about
+  150 MB instead of 195 MB resident in our measurements). The backend bundle
+  is minified and pure ASCII, Prisma uses its smaller query compiler, the
+  email and AI assistant libraries load on first use, and the service runs
+  with a smaller young generation and fewer malloc arenas.
+
 ## [1.89.1] - 2026-11-21
 
 ### Security
