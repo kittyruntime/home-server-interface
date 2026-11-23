@@ -3,7 +3,7 @@ import { useI18n } from 'vue-i18n'
 import { Button } from '@/components/ui/button'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import Modal from '../ui/Modal.vue'
-import { ArrowDownIcon, TriangleAlertIcon, XIcon } from '@lucide/vue'
+import { ArrowDownToLineIcon, EraserIcon, TriangleAlertIcon } from '@lucide/vue'
 import { ref, shallowRef, onMounted, onUnmounted, nextTick } from 'vue'
 import { useAuth } from '../../lib/auth'
 import { dateFormat } from '../../lib/intl-cache'
@@ -20,7 +20,13 @@ function close() { modal.value?.requestClose() }
 
 const { token } = useAuth()
 
-interface LogLine { id: number; ts: string; text: string; stream?: 'stdout' | 'stderr' }
+interface LogLine { id: number; ts: string; text: string; tone: '' | 'text-error' | 'text-warning' }
+
+// Most images tag their lines with a level: errors and warnings stand out the
+// way they do in the operation logs.
+const ERROR_RE = /\b(ERR|ERROR|FATAL|CRIT|CRITICAL|PANIC)\b/i
+const WARN_RE = /\b(WRN|WARN|WARNING)\b/i
+const toneOf = (text: string): LogLine['tone'] => ERROR_RE.test(text) ? 'text-error' : WARN_RE.test(text) ? 'text-warning' : ''
 
 // Replaced on each flush (never edited in place), and keyed by a running id so
 // trimming the head of the buffer does not re-render every line.
@@ -50,9 +56,9 @@ function parseLine(raw: string): LogLine {
     const ts = isNaN(d.getTime())
       ? m[1]!
       : dateFormat(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit' }).format(d)
-    return { id: nextId++, ts, text: m[2]! }
+    return { id: nextId++, ts, text: m[2]!, tone: toneOf(m[2]!) }
   }
-  return { id: nextId++, ts: '', text: raw }
+  return { id: nextId++, ts: '', text: raw, tone: toneOf(raw) }
 }
 
 async function startStream() {
@@ -154,94 +160,69 @@ onUnmounted(() => controller?.abort())
 <template>
   <Modal
     ref="modal"
-    :show-close="false"
-    :label="name"
-    panel-class="w-full max-w-none h-[calc(100dvh-1rem)] max-h-none sm:h-[calc(100dvh-4rem)] sm:max-h-none sm:mx-4 overflow-hidden border-base-300 bg-[#0d1117] [--color-base-content:#e6edf3]"
+    panel-class="w-full sm:max-w-5xl h-[calc(100dvh-1rem)] sm:h-[min(85dvh,56rem)]"
     @close="emit('close')"
   >
-    <div class="flex h-full flex-col min-h-0">
-
-      <!-- Header -->
-      <div class="flex items-center gap-3 px-4 py-3 border-b border-[#30363d] bg-[#161b22] flex-shrink-0">
-        <div class="flex items-center gap-2 flex-1 min-w-0">
-          <!-- Status dot -->
-          <span :class="['w-2 h-2 rounded-full shrink-0', connected ? 'bg-success animate-pulse' : 'bg-base-content/70']" />
-          <span class="font-mono text-sm font-semibold text-[#e6edf3]">{{ name }}</span>
-          <span class="text-2xs text-[#7d8590] ml-1">{{ connected ? 'streaming' : 'disconnected' }}</span>
-        </div>
-        <div class="flex items-center gap-1.5 shrink-0">
-          <!-- Follow toggle -->
-          <Button
-            variant="outline" size="xs"
-            @click="toggleFollow"
-            :tooltip="follow ? 'Auto-scroll on' : 'Auto-scroll off'"
-            :aria-pressed="follow"
-            :class="['bg-transparent text-2xs',
-              follow
-                ? 'bg-primary/20 border-primary/50 text-primary hover:bg-primary/25 hover:text-primary'
-                : 'border-[#30363d] text-[#7d8590] hover:border-[#484f58] hover:bg-[#21262d] hover:text-[#e6edf3]']"
-          >
-            <ArrowDownIcon class="size-3" aria-hidden="true" />
-            {{ t('ui.apps.ContainerLogsPanel.follow') }}
-          </Button>
-          <!-- Clear -->
-          <Button
-            variant="outline" size="xs"
-            @click="clear"
-            :tooltip="t('ui.apps.ContainerLogsPanel.clear')"
-            class="bg-transparent text-2xs border-[#30363d] text-[#7d8590] hover:border-[#484f58] hover:bg-[#21262d] hover:text-[#e6edf3]"
-          >
-            <XIcon class="size-3" aria-hidden="true" />
-            {{ t('ui.apps.ContainerLogsPanel.clear') }}
-          </Button>
-          <!-- Close -->
-          <Button variant="ghost" size="icon-sm"
-            @click="close"
-            :tooltip="t('ui.apps.ContainerLogsPanel.close')" :aria-label="t('ui.apps.ContainerLogsPanel.close')"
-            class="text-[#7d8590] hover:text-[#e6edf3] hover:bg-[#21262d]"
-          >
-            <XIcon class="w-4 h-4" aria-hidden="true" />
-          </Button>
-        </div>
+    <template #header>
+      <div class="min-w-0">
+        <h3 class="text-sm font-semibold text-base-content">{{ t('ui.apps.ContainerLogsPanel.title') }}</h3>
+        <p class="text-2xs font-mono text-base-content/70 truncate">{{ name }}</p>
       </div>
-
-      <!-- Log area -->
-      <div
-        ref="logEl"
-        @scroll="onScroll"
-        class="flex-1 overflow-y-auto font-mono text-xs leading-relaxed p-4 select-text"
-        style="color: #e6edf3"
+      <span
+        :class="['inline-flex shrink-0 items-center gap-1.5 text-2xs', connected ? 'text-success' : 'text-base-content/70']"
+        role="status"
       >
-        <!-- Error -->
-        <Alert v-if="error" variant="destructive" class="mb-2"><TriangleAlertIcon /><AlertDescription>{{ error }}</AlertDescription></Alert>
+        <span :class="['size-1.5 rounded-full', connected ? 'bg-success animate-pulse' : 'bg-base-content/40']" aria-hidden="true" />
+        {{ connected ? t('ui.apps.ContainerLogsPanel.live') : t('ui.apps.ContainerLogsPanel.ended') }}
+      </span>
+    </template>
 
-        <!-- Empty -->
-        <div v-if="lines.length === 0 && !error && connected"
-          class="text-[#7d8590] italic">{{ t('ui.apps.ContainerLogsPanel.waitingForLogs') }}</div>
+    <div
+      ref="logEl"
+      class="h-full overflow-y-auto bg-base-200 px-3 py-2 font-mono text-2xs leading-5 select-text sm:px-5"
+      @scroll="onScroll"
+    >
+      <Alert v-if="error" variant="destructive" class="mb-2 font-sans"><TriangleAlertIcon /><AlertDescription>{{ error }}</AlertDescription></Alert>
 
-        <!-- Lines -->
-        <div
-          v-for="line in lines"
-          :key="line.id"
-          class="flex gap-3 hover:bg-white/5 px-1 rounded-sm leading-6"
-        >
-          <span v-if="line.ts" class="text-[#484f58] shrink-0 tabular-nums select-none">{{ line.ts }}</span>
-          <span class="break-all whitespace-pre-wrap min-w-0">{{ line.text }}</span>
-        </div>
+      <p v-if="lines.length === 0 && !error && connected" class="py-6 text-center font-sans text-xs text-base-content/70">
+        {{ t('ui.apps.ContainerLogsPanel.waitingForLogs') }}
+      </p>
 
-        <!-- Reconnect hint when not connected -->
-        <div v-if="!connected && !error && lines.length > 0" class="text-[#484f58] mt-2 italic">
-          [stream ended]
-        </div>
+      <div
+        v-for="line in lines"
+        :key="line.id"
+        class="-mx-1.5 flex gap-3 rounded-sm px-1.5 hover:bg-base-300/60"
+      >
+        <span v-if="line.ts" class="shrink-0 tabular-nums text-base-content/50 select-none">{{ line.ts }}</span>
+        <span :class="['min-w-0 whitespace-pre-wrap break-all', line.tone || 'text-base-content']">{{ line.text }}</span>
       </div>
 
-      <!-- Bottom status bar -->
-      <div class="flex items-center justify-between px-4 py-1.5 border-t border-[#30363d] bg-[#161b22] flex-shrink-0">
-        <span class="text-2xs text-[#484f58] tabular-nums">{{ lines.length }} lines</span>
-        <span v-if="!follow" class="text-2xs text-[#7d8590]">
-          {{ t('ui.apps.ContainerLogsPanel.scrollToBottomToResume') }}
-        </span>
-      </div>
+      <p v-if="!connected && !error && lines.length > 0" class="mt-3 border-t border-base-300 pt-2 font-sans text-2xs text-base-content/70">
+        {{ t('ui.apps.ContainerLogsPanel.streamEnded') }}
+      </p>
     </div>
+
+    <template #footer>
+      <p class="text-2xs tabular-nums text-base-content/70">
+        {{ t('ui.apps.ContainerLogsPanel.lineCount', { n: lines.length }, lines.length) }}
+        <span v-if="!follow" class="hidden sm:inline"> · {{ t('ui.apps.ContainerLogsPanel.scrollToBottomToResume') }}</span>
+      </p>
+      <div class="flex-1" />
+      <Button
+        variant="ghost" size="sm"
+        :aria-pressed="follow"
+        :tooltip="follow ? t('ui.apps.ContainerLogsPanel.followOn') : t('ui.apps.ContainerLogsPanel.followOff')"
+        :class="follow ? 'text-primary' : ''"
+        @click="toggleFollow"
+      >
+        <ArrowDownToLineIcon aria-hidden="true" />
+        {{ t('ui.apps.ContainerLogsPanel.follow') }}
+      </Button>
+      <Button variant="ghost" size="sm" :disabled="lines.length === 0" @click="clear">
+        <EraserIcon aria-hidden="true" />
+        {{ t('ui.apps.ContainerLogsPanel.clear') }}
+      </Button>
+      <Button size="sm" @click="close">{{ t('ui.apps.ContainerLogsPanel.close') }}</Button>
+    </template>
   </Modal>
 </template>

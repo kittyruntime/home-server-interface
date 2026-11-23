@@ -14,6 +14,9 @@ const APPS: Record<AppId, string> = {
 }
 
 watchEffect(() => {
+  // The texts load on demand (i18n/index.ts): wait for them, this effect runs
+  // again once they are in.
+  if (!i18n.global.te('apps.files')) return
   const t = i18n.global.t
   for (const [id, key] of Object.entries(APPS)) APP_LABEL[id as AppId] = t(`apps.${key}`)
   for (const s of Object.keys(SECTION_LABELS) as StorageSection[]) SECTION_LABELS[s] = t(`storage.nav.${s}`)

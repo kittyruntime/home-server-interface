@@ -20,6 +20,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   on a slow server. Long file listings and container logs render with less
   overhead, and dates are formatted without rebuilding a formatter per row.
 
+### Fixed
+- **Container logs**: the logs window now follows the dashboard's theme
+  (light or dark, its colors and its dialog layout) instead of a fixed dark
+  look, shows errors and warnings in their colors, and is fully translated.
+
 ## [1.90.0] - 2026-11-23
 
 ### Changed
