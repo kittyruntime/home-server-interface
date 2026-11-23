@@ -95,6 +95,13 @@ export default {
     close: 'Close',
     waitingForLogs: 'Waiting for logs…',
     scrollToBottomToResume: 'Scroll to bottom to resume auto-scroll',
+    title: 'Container logs',
+    live: 'Live',
+    ended: 'Stream ended',
+    followOn: 'New lines scroll into view',
+    followOff: 'Scrolling stays where it is',
+    streamEnded: 'The container stopped sending logs.',
+    lineCount: 'No lines | 1 line | {n} lines',
   },
   EnvsEditor: {
     noEnvironmentVariables: 'No environment variables.',

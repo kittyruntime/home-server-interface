@@ -94,6 +94,13 @@ export default {
     close: 'Fermer',
     waitingForLogs: 'En attente des journaux…',
     scrollToBottomToResume: 'Faites défiler jusqu’en bas pour reprendre le défilement automatique',
+    title: 'Journaux du conteneur',
+    live: 'En direct',
+    ended: 'Flux terminé',
+    followOn: 'Les nouvelles lignes s’affichent automatiquement',
+    followOff: 'Le défilement reste où il est',
+    streamEnded: 'Le conteneur n’envoie plus de journaux.',
+    lineCount: 'Aucune ligne | 1 ligne | {n} lignes',
   },
   EnvsEditor: {
     noEnvironmentVariables: 'Aucune variable d’environnement.',
