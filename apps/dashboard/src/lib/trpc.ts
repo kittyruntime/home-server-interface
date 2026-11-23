@@ -1,4 +1,5 @@
-import { createTRPCClient, httpBatchLink, httpLink, splitLink } from '@trpc/client'
+import { createTRPCClient, httpBatchStreamLink, httpLink, splitLink, type TRPCLink } from '@trpc/client'
+import { tap } from '@trpc/server/observable'
 import type { AppRouter } from '@app/shared-types'
 
 // When a stored session token is rejected (expired or revoked), tear down the
@@ -66,17 +67,41 @@ const linkOptions = {
   fetch: createSessionAwareFetch(fetch, onSessionInvalid),
 }
 
-// A batch answers only once its slowest call is done (metrics, containers...).
-// The account's preferences go on their own, so its look applies right after
-// sign-in instead of keeping the previous account's theme for seconds.
+interface CallError { data?: { code?: unknown; sessionInvalid?: unknown } | null }
+
+// A streamed batch answers 200 with one result per call, so a rejected session
+// or a refusal during maintenance shows on each call's error rather than on
+// the HTTP status: this link reads it there.
+export function createSessionLink(
+  currentToken: () => string | null,
+  invalidateSession: (rejectedToken: string) => void,
+  dispatchMaintenance: () => void = () => window.dispatchEvent(new Event(MAINTENANCE_EVENT)),
+): TRPCLink<AppRouter> {
+  return () => ({ op, next }) => {
+    const token = currentToken()
+    return next(op).pipe(tap({
+      error(err) {
+        const data = (err as CallError).data
+        if (token && data?.code === 'UNAUTHORIZED' && data.sessionInvalid === true) invalidateSession(token)
+        if (data?.code === 'SERVICE_UNAVAILABLE') dispatchMaintenance()
+      },
+    }))
+  }
+}
+
+// Calls made together share one request, and the server streams each answer as
+// soon as it is ready: a quick call is never held back by a slow one (metrics,
+// containers) in the same batch. The account's preferences go on their own, so
+// its look applies right after sign-in.
 const UNBATCHED = new Set(['user.preferences'])
 
 export const trpc = createTRPCClient<AppRouter>({
   links: [
+    createSessionLink(() => wallToken ?? localStorage.getItem('token'), onSessionInvalid),
     splitLink({
       condition: op => UNBATCHED.has(op.path),
       true: httpLink(linkOptions),
-      false: httpBatchLink(linkOptions),
+      false: httpBatchStreamLink(linkOptions),
     }),
   ],
 })

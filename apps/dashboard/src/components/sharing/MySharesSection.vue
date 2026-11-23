@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { nextTick, onMounted, onUnmounted, ref, useTemplateRef } from 'vue'
+import { nextTick, ref, useTemplateRef } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { CircleCheckIcon, TriangleAlertIcon } from '@lucide/vue'
 import { Alert, AlertDescription } from '@/components/ui/alert'
@@ -16,6 +16,7 @@ import ShareActivity from './ShareActivity.vue'
 import { trpc } from '../../lib/trpc'
 import { useToast } from '../../lib/toast'
 import type { ShareEventRow, ShareSession } from '../../lib/sharing-types'
+import { usePoll } from '../../lib/poll'
 
 const { t } = useI18n()
 const toast = useToast()
@@ -26,7 +27,6 @@ const sessions = ref<ShareSession[]>([])
 const events = ref<ShareEventRow[]>([])
 const loading = ref(true)
 const error = ref('')
-let timer: ReturnType<typeof setInterval> | null = null
 
 async function load() {
   try {
@@ -44,11 +44,7 @@ async function load() {
   }
 }
 
-onMounted(() => {
-  void load()
-  timer = setInterval(() => { if (!document.hidden) void load() }, 10000)
-})
-onUnmounted(() => { if (timer) clearInterval(timer) })
+usePoll(load, 10000)
 
 const repairing = ref(false)
 const password = ref('')

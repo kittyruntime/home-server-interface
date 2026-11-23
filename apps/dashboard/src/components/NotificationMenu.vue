@@ -14,6 +14,7 @@ import SegmentedBar from './ui/SegmentedBar.vue'
 import LoadingSpinner from './ui/LoadingSpinner.vue'
 import ActivityTaskList from './activity/ActivityTaskList.vue'
 import { useActivity } from '../lib/activity'
+import { dateFormat } from '../lib/intl-cache'
 
 // Body of the Activity popover (DashboardLayout), mounted each time it opens:
 // what runs in the background first (on the NAS and in this browser), then the
@@ -63,7 +64,7 @@ function formatTime(createdAt: string): string {
   if (s < 60) return t('uis.settings.NotificationMenu.justNow')
   if (s < 3600) return t('uis.settings.NotificationMenu.mAgo', { p0: Math.floor(s / 60) })
   if (s < 86400) return t('uis.settings.NotificationMenu.hAgo', { p0: Math.floor(s / 3600) })
-  return new Date(createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+  return dateFormat(undefined, { month: 'short', day: 'numeric' }).format(new Date(createdAt))
 }
 
 // Also clears this browser's finished operations, so the badge goes back to zero.

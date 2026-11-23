@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **Faster dashboard**: the first load downloads about a third less code
+  (170 KB compressed instead of 262 KB): the file browser, the dashboard's
+  editors and the interface texts load on demand, and a French session no
+  longer downloads the English texts. Every app the account can open is then
+  fetched in the background, so opening one no longer waits on the network.
+- **Quicker answers**: calls made together no longer wait for the slowest one;
+  the server sends each answer as soon as it is ready.
+- **Lighter at rest**: the pages that refresh on their own pause while the tab
+  is hidden, refresh as soon as it is shown again, and never pile up requests
+  on a slow server. Long file listings and container logs render with less
+  overhead, and dates are formatted without rebuilding a formatter per row.
+
 ## [1.90.0] - 2026-11-23
 
 ### Changed

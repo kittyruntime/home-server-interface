@@ -13,6 +13,7 @@ import { useSystemNotifications } from '../../lib/systemNotifications'
 import { openJobLogs } from '../../lib/jobLogs'
 import { useAuth } from '../../lib/auth'
 import { trpc } from '../../lib/trpc'
+import { dateFormat } from '../../lib/intl-cache'
 
 /* The Activity app: the bell panel with room to breathe, plus the history of
    finished background tasks. */
@@ -62,7 +63,7 @@ function duration(h: HistoryItem): string {
 
 function when(h: HistoryItem): string {
   const at = h.finishedAt ?? h.createdAt
-  return new Date(at).toLocaleString(undefined, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+  return dateFormat(undefined, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }).format(new Date(at))
 }
 
 const runningCount = computed(() => activity.items.value.length)

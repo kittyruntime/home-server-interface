@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref, toRef } from 'vue'
+import { computed, ref, toRef } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { ShieldBanIcon } from '@lucide/vue'
 import { Alert, AlertDescription } from '@/components/ui/alert'
@@ -15,6 +15,7 @@ import { formatDateTime } from '../../lib/format-date'
 import { useToast } from '../../lib/toast'
 import { BLOCK_FIELDS, LIMITS, useSmbSettingsForm, type SmbBlock } from '../../lib/smb-settings-form'
 import type { SharingService } from '../../lib/sharing-types'
+import { usePoll } from '../../lib/poll'
 
 const props = defineProps<{ service: SharingService | null }>()
 const emit = defineEmits<{ changed: [] }>()
@@ -56,12 +57,7 @@ async function unblock(ip: string) {
   unblocking.value = null
 }
 // An address blocked while this page is open shows up on its own.
-let timer: ReturnType<typeof setInterval> | null = null
-onMounted(() => {
-  void loadBlocks()
-  timer = setInterval(() => { if (!document.hidden && !unblocking.value) void loadBlocks() }, 10000)
-})
-onUnmounted(() => { if (timer) clearInterval(timer) })
+usePoll(() => !unblocking.value && loadBlocks(), 10000)
 </script>
 
 <template>

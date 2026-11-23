@@ -24,6 +24,7 @@
     "@lezer/highlight": "^1.2.5",
     "@lucide/vue": "^1.56.0",
     "@trpc/client": "^11.19.0",
+    "@trpc/server": "^11.19.0",
     "@vueuse/core": "^14.4.0",
     "chart.js": "^4.6.1",
     "clsx": "^2.1.1",

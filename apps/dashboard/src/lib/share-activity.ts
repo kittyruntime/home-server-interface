@@ -6,6 +6,7 @@
 // one (macOS does), so successful openings and leavings are read as visits:
 // one line per person, share and machine from the first opening to the last
 // leaving, open-ended while that person is still connected.
+import { dateFormat, relativeFormat } from './intl-cache'
 
 export interface ActivityEvent {
   id: string
@@ -142,11 +143,11 @@ function dayLabel(d: Date, now: number, locale: string): string {
   that.setHours(0, 0, 0, 0)
   const days = Math.round((that.getTime() - today.getTime()) / 86_400_000)
   if (days === 0 || days === -1) {
-    const s = new Intl.RelativeTimeFormat(locale, { numeric: 'auto' }).format(days, 'day')
+    const s = relativeFormat(locale, { numeric: 'auto' }).format(days, 'day')
     return s.charAt(0).toLocaleUpperCase(locale) + s.slice(1)
   }
   const sameYear = that.getFullYear() === today.getFullYear()
-  const s = new Intl.DateTimeFormat(locale, { weekday: 'long', day: 'numeric', month: 'long', ...(sameYear ? {} : { year: 'numeric' }) }).format(d)
+  const s = dateFormat(locale, { weekday: 'long', day: 'numeric', month: 'long', ...(sameYear ? {} : { year: 'numeric' }) }).format(d)
   return s.charAt(0).toLocaleUpperCase(locale) + s.slice(1)
 }
 

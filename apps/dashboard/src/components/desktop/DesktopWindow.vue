@@ -9,25 +9,16 @@ import AppIcon from './AppIcon.vue'
 import { useAuth } from '../../lib/auth'
 import { useConfirm } from '../../lib/confirm'
 import { downloadUrl } from '../../lib/file-url'
-import FileBrowserPanel from '../file-browser/FileBrowserPanel.vue'
-import FilePreviewBody from '../file-browser/preview/FilePreviewBody.vue'
 // Type-only imports keep the async chunks split while typing the template refs.
 import type AppsPanelT from '../apps/AppsPanel.vue'
 import type SettingsPanelT from '../SettingsPanel.vue'
 import { Badge } from '@/components/ui/badge'
+import { ActivityPanel, AppsPanel, AppStorePanel, AssistantPanel, FileBrowserPanel, MonitorPanel, SettingsPanel, SharingPanel, StoragePanel } from '../../lib/panels'
+
+// A preview window opens from the file browser, which has loaded it already.
+const FilePreviewBody = defineAsyncComponent(() => import('../file-browser/preview/FilePreviewBody.vue'))
 
 const { t } = useI18n()
-
-// Split the heavier per-app panels into their own chunks: only the window's
-// active app is ever mounted, so they need not weigh down the initial bundle.
-const AppsPanel = defineAsyncComponent(() => import('../apps/AppsPanel.vue'))
-const SettingsPanel = defineAsyncComponent(() => import('../SettingsPanel.vue'))
-const StoragePanel = defineAsyncComponent(() => import('../storage/StoragePanel.vue'))
-const AppStorePanel = defineAsyncComponent(() => import('../store/AppStorePanel.vue'))
-const MonitorPanel = defineAsyncComponent(() => import('../monitor/MonitorPanel.vue'))
-const SharingPanel = defineAsyncComponent(() => import('../sharing/SharingPanel.vue'))
-const AssistantPanel = defineAsyncComponent(() => import('../assistant/AssistantPanel.vue'))
-const ActivityPanel = defineAsyncComponent(() => import('../activity/ActivityPanel.vue'))
 
 const props = defineProps<{
   win: DesktopWindow

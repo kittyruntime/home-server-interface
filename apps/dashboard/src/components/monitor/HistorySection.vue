@@ -12,6 +12,7 @@ import { useAppearance } from '../../lib/theme'
 import { resolveThemeColor, withAlpha } from '../../lib/theme-colors'
 import { fmtRate, niceBytes } from '../../lib/perf-math'
 import { formatBytes } from '../../lib/file-details'
+import { dateFormat } from '../../lib/intl-cache'
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Filler)
 
@@ -60,8 +61,8 @@ onUnmounted(() => darkQuery?.removeEventListener('change', onScheme))
 const labels = computed(() => data.value.map(s => {
   const d = new Date(s.timestamp)
   return period.value === '7d'
-    ? d.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric' }) + ' ' + d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })
-    : d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })
+    ? dateFormat(undefined, { weekday: 'short', day: 'numeric' }).format(d) + ' ' + dateFormat(undefined, { hour: '2-digit', minute: '2-digit' }).format(d)
+    : dateFormat(undefined, { hour: '2-digit', minute: '2-digit' }).format(d)
 }))
 
 const dataset = (values: number[], color: string, dashed = false) => ({

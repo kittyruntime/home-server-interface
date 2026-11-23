@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, ref } from 'vue'
 import { BotIcon } from '@lucide/vue'
 import { Button } from '@/components/ui/button'
 import Modal from './ui/Modal.vue'
@@ -8,6 +8,7 @@ import AgentRequestCard from './assistant/AgentRequestCard.vue'
 import { trpc } from '../lib/trpc'
 import { useToast } from '../lib/toast'
 import { AGENT_DECIDED_EVENT } from '../lib/assistant'
+import { usePoll } from '../lib/poll'
 
 // Changes an AI assistant asked for, over MCP (#138) or in the built-in chat,
 // waiting for this account's approval. Nothing runs until Approve: then exactly the request is
@@ -25,7 +26,6 @@ const pending = ref<Request[]>([])
 const open = ref(false)
 const modal = ref<InstanceType<typeof Modal> | null>(null)
 const busy = ref<string | null>(null)
-let timer: ReturnType<typeof setInterval> | undefined
 
 async function refresh() {
   if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return
@@ -57,17 +57,7 @@ async function decide(r: Request, approve: boolean) {
 
 const first = computed(() => pending.value[0])
 
-function onVisible() { if (document.visibilityState === 'visible') void refresh() }
-
-onMounted(() => {
-  void refresh()
-  timer = setInterval(refresh, POLL_MS)
-  document.addEventListener('visibilitychange', onVisible)
-})
-onBeforeUnmount(() => {
-  clearInterval(timer)
-  document.removeEventListener('visibilitychange', onVisible)
-})
+usePoll(refresh, POLL_MS)
 </script>
 
 <template>

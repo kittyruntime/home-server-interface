@@ -4,8 +4,9 @@ import { Button } from '@/components/ui/button'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import Modal from '../ui/Modal.vue'
 import { ArrowDownIcon, TriangleAlertIcon, XIcon } from '@lucide/vue'
-import { ref, onMounted, onUnmounted, nextTick } from 'vue'
+import { ref, shallowRef, onMounted, onUnmounted, nextTick } from 'vue'
 import { useAuth } from '../../lib/auth'
+import { dateFormat } from '../../lib/intl-cache'
 
 const { t } = useI18n()
 
@@ -19,9 +20,12 @@ function close() { modal.value?.requestClose() }
 
 const { token } = useAuth()
 
-interface LogLine { ts: string; text: string; stream?: 'stdout' | 'stderr' }
+interface LogLine { id: number; ts: string; text: string; stream?: 'stdout' | 'stderr' }
 
-const lines      = ref<LogLine[]>([])
+// Replaced on each flush (never edited in place), and keyed by a running id so
+// trimming the head of the buffer does not re-render every line.
+const lines      = shallowRef<LogLine[]>([])
+let nextId = 0
 const logEl      = ref<HTMLElement | null>(null)
 const follow     = ref(true)
 const connected  = ref(false)
@@ -45,10 +49,10 @@ function parseLine(raw: string): LogLine {
     const d = new Date(m[1]!)
     const ts = isNaN(d.getTime())
       ? m[1]!
-      : d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
-    return { ts, text: m[2]! }
+      : dateFormat(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit' }).format(d)
+    return { id: nextId++, ts, text: m[2]! }
   }
-  return { ts: '', text: raw }
+  return { id: nextId++, ts: '', text: raw }
 }
 
 async function startStream() {
@@ -83,9 +87,8 @@ async function startStream() {
   function flush() {
     flushTimer = null
     if (!batch.length) return
-    lines.value.push(...batch)
+    lines.value = lines.value.concat(batch).slice(-2000)
     batch.length = 0
-    if (lines.value.length > 2000) lines.value = lines.value.slice(-2000)
     if (follow.value) nextTick(scrollToBottom)
   }
 
@@ -218,8 +221,8 @@ onUnmounted(() => controller?.abort())
 
         <!-- Lines -->
         <div
-          v-for="(line, i) in lines"
-          :key="i"
+          v-for="line in lines"
+          :key="line.id"
           class="flex gap-3 hover:bg-white/5 px-1 rounded-sm leading-6"
         >
           <span v-if="line.ts" class="text-[#484f58] shrink-0 tabular-nums select-none">{{ line.ts }}</span>

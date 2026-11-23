@@ -6,13 +6,14 @@ import { ArrowRightIcon, CheckIcon, ExternalLinkIcon, HistoryIcon, PowerIcon, Re
 import { formatDateTime, formatDay } from '../lib/format-date'
 import { lastResultText, lastResultIsProblem, previousVersionText, rollbackCommand } from '../lib/update-result'
 import LoadingState from './ui/LoadingState.vue'
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref } from 'vue'
 import { trpc } from '../lib/trpc'
 import ReleaseNotes from './ReleaseNotes.vue'
 import { useConfirm } from '../lib/confirm'
 import { startMaintenance } from '../lib/maintenance'
 import LoadingSpinner from './ui/LoadingSpinner.vue'
 import { Button } from '@/components/ui/button'
+import { usePoll } from '../lib/poll'
 
 const { t } = useI18n()
 
@@ -118,13 +119,7 @@ async function rebootHost() {
   }
 }
 
-let timer: ReturnType<typeof setInterval>
-
-onMounted(() => {
-  fetchStatus()
-  timer = setInterval(fetchStatus, 60_000)
-})
-onUnmounted(() => clearInterval(timer))
+usePoll(fetchStatus, 60_000)
 </script>
 
 <template>

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { HistoryIcon, KeyRoundIcon, MonitorIcon } from '@lucide/vue'
 import { Alert, AlertDescription } from '@/components/ui/alert'
@@ -18,6 +18,7 @@ import { trpc } from '../../lib/trpc'
 import { useConfirm } from '../../lib/confirm'
 import { useToast } from '../../lib/toast'
 import type { ConnectInfo, ShareDetailData, ShareSession } from '../../lib/sharing-types'
+import { usePoll } from '../../lib/poll'
 
 const props = defineProps<{ id: string; connect: ConnectInfo }>()
 const emit = defineEmits<{ loaded: [share: ShareDetailData['share']]; seeAll: [share: string] }>()
@@ -30,7 +31,6 @@ const toast = useToast()
 const data = ref<ShareDetailData | null>(null)
 const error = ref('')
 const loading = ref(true)
-let timer: ReturnType<typeof setInterval> | null = null
 const disconnecting = ref<string | null>(null)
 
 type Tab = 'connect' | 'access' | 'activity'
@@ -50,12 +50,8 @@ async function load() {
 defineExpose({ reload: load })
 
 watch(() => props.id, () => { loading.value = true; data.value = null; void load() })
-onMounted(() => {
-  void load()
-  // Sessions come and go: keep the detail current while it is open.
-  timer = setInterval(() => { if (!document.hidden) void load() }, 5000)
-})
-onUnmounted(() => { if (timer) clearInterval(timer) })
+// Sessions come and go: keep the detail current while it is open.
+usePoll(load, 5000)
 
 // People on it now over every protocol, counted like the list does.
 const live = computed(() => data.value?.connected ?? 0)

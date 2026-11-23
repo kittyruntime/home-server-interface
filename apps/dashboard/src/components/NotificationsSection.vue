@@ -13,6 +13,7 @@ import { useConfirm } from '../lib/confirm'
 import { Switch } from '@/components/ui/switch'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { dateFormat } from '../lib/intl-cache'
 
 const { t } = useI18n()
 
@@ -172,8 +173,8 @@ function deliveryText(d: Delivery): string {
 
 function formatTime(at: string | Date): string {
   const d = new Date(at)
-  const day = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
-  const time = d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+  const day = dateFormat(undefined, { month: 'short', day: 'numeric' }).format(d)
+  const time = dateFormat(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit' }).format(d)
   return `${day} ${time}`
 }
 </script>
