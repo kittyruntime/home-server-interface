@@ -1968,7 +1968,11 @@ WorkingDirectory=$SERVER_DIR
 EnvironmentFile=$ENV_FILE
 $SOURCE_EXTRA
 Environment=BACKEND_PORT=$BACKEND_PORT
-ExecStart=$NODE_BIN $BACKEND_DIST
+# Memory at rest: two malloc arenas instead of one per thread, and a 2 MB
+# young generation instead of 16 MB per semi-space. A home server's backend
+# idles most of the time; both only cost a little more GC under heavy load.
+Environment=MALLOC_ARENA_MAX=2
+ExecStart=$NODE_BIN --max-semi-space-size=2 $BACKEND_DIST
 Restart=on-failure
 RestartSec=5
 StandardOutput=append:$LOG_DIR/app.log

@@ -5,4 +5,7 @@ datasource db {
 generator client {
   provider = "prisma-client"
   output   = "../../src/generated/prisma"
+  // The smaller query compiler: half the WebAssembly to load and keep in
+  // memory, for queries a home server runs at a few per second at most.
+  compilerBuild = "small"
 }
