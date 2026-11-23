@@ -1,0 +1,40 @@
+{
+  "id": "node-red",
+  "name": "Node-RED",
+  "category": "Utilities",
+  "added": "2026-11-23",
+  "tagline": "Wire devices, APIs and services together in a visual flow editor.",
+  "description": "Node-RED builds automations by connecting nodes in the browser: MQTT, HTTP, home automation, databases and thousands of community nodes.",
+  "website": "https://nodered.org",
+  "image": "nodered/node-red:5.0.10",
+  "changelog": "https://github.com/node-red/node-red/releases",
+  "license": "Apache-2.0",
+  "source": "https://github.com/node-red/node-red",
+  "docs": "https://nodered.org/docs/",
+  "postInstall": [
+    "The editor has no password at first and can run commands: protect it (adminAuth in settings.js, see Securing Node-RED in its docs) before opening it beyond your network.",
+    "Flows and installed nodes are kept in its Data volume."
+  ],
+  "webUiPort": 1880,
+  "ports": [
+    {
+      "container": 1880,
+      "protocol": "tcp",
+      "label": "Web UI"
+    }
+  ],
+  "env": [
+    {
+      "key": "TZ",
+      "default": "Etc/UTC",
+      "prompt": "Time zone (e.g. Europe/Paris)"
+    }
+  ],
+  "volumes": [
+    {
+      "target": "/data",
+      "label": "Data",
+      "suggest": "named"
+    }
+  ]
+}

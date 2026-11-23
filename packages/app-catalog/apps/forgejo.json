@@ -1,0 +1,49 @@
+{
+  "id": "forgejo",
+  "name": "Forgejo",
+  "category": "Developer",
+  "added": "2026-11-23",
+  "tagline": "Lightweight Git forge: repositories, issues, pull requests and CI.",
+  "description": "Forgejo hosts your Git repositories with issues, pull requests, a wiki, packages and Actions, in a light and fast service run by a community.",
+  "website": "https://forgejo.org",
+  "image": "codeberg.org/forgejo/forgejo:17.0.2",
+  "changelog": "https://codeberg.org/forgejo/forgejo/releases",
+  "license": "GPL-3.0",
+  "source": "https://codeberg.org/forgejo/forgejo",
+  "docs": "https://forgejo.org/docs/latest/",
+  "postInstall": [
+    "Open it: the first page sets it up. Keep SQLite, set the server address to the one you use to reach it, and create the administrator account at the bottom.",
+    "Clone over SSH on the SSH port published at install."
+  ],
+  "webUiPort": 3000,
+  "ports": [
+    {
+      "container": 3000,
+      "protocol": "tcp",
+      "label": "Web UI"
+    },
+    {
+      "container": 22,
+      "protocol": "tcp",
+      "label": "SSH",
+      "hostDefault": 2222
+    }
+  ],
+  "env": [
+    {
+      "key": "USER_UID",
+      "default": "1000"
+    },
+    {
+      "key": "USER_GID",
+      "default": "1000"
+    }
+  ],
+  "volumes": [
+    {
+      "target": "/data",
+      "label": "Repositories and data",
+      "suggest": "named"
+    }
+  ]
+}

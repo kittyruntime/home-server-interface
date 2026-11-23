@@ -1,0 +1,53 @@
+{
+  "id": "gotify",
+  "name": "Gotify",
+  "category": "Utilities",
+  "added": "2026-11-23",
+  "tagline": "Send and receive notifications through your own server.",
+  "description": "Gotify receives messages from your scripts and services through a simple REST API and pushes them to its web page and Android app, without a third-party service.",
+  "website": "https://gotify.net",
+  "image": "gotify/server:3.1.1",
+  "changelog": "https://github.com/gotify/server/releases",
+  "license": "MIT",
+  "source": "https://github.com/gotify/server",
+  "docs": "https://gotify.net/docs/",
+  "postInstall": [
+    "Sign in with the administrator name and password chosen at install.",
+    "Create an application to get a token, then send messages to /message with it."
+  ],
+  "webUiPort": 80,
+  "ports": [
+    {
+      "container": 80,
+      "protocol": "tcp",
+      "label": "Web UI",
+      "hostDefault": 8070
+    }
+  ],
+  "env": [
+    {
+      "key": "GOTIFY_DEFAULTUSER_NAME",
+      "default": "admin",
+      "prompt": "Administrator name",
+      "required": true
+    },
+    {
+      "key": "GOTIFY_DEFAULTUSER_PASS",
+      "prompt": "Administrator password",
+      "secret": true,
+      "required": true
+    },
+    {
+      "key": "TZ",
+      "default": "Etc/UTC",
+      "prompt": "Time zone (e.g. Europe/Paris)"
+    }
+  ],
+  "volumes": [
+    {
+      "target": "/app/data",
+      "label": "Data",
+      "suggest": "named"
+    }
+  ]
+}

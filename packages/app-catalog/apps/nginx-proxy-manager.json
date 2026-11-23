@@ -1,0 +1,49 @@
+{
+  "id": "nginx-proxy-manager",
+  "name": "Nginx Proxy Manager",
+  "category": "Network",
+  "added": "2026-11-23",
+  "tagline": "Reverse proxy with free Let's Encrypt certificates, managed from a web page.",
+  "description": "Nginx Proxy Manager gives each of your apps its own address (photos.example.com) with HTTPS, and requests the Let's Encrypt certificates itself, from a simple web interface.",
+  "website": "https://nginxproxymanager.com",
+  "image": "jc21/nginx-proxy-manager:2.17.1",
+  "changelog": "https://github.com/NginxProxyManager/nginx-proxy-manager/releases",
+  "license": "MIT",
+  "source": "https://github.com/NginxProxyManager/nginx-proxy-manager",
+  "docs": "https://nginxproxymanager.com/guide/",
+  "postInstall": [
+    "Open the Admin port and create the administrator account.",
+    "Forward ports 80 and 443 of your router to this server for Let's Encrypt and outside access.",
+    "Ports 80 and 443 can be taken by HSI's own HTTPS on standard ports: then turn that off, or pick other ports here."
+  ],
+  "webUiPort": 81,
+  "ports": [
+    {
+      "container": 81,
+      "protocol": "tcp",
+      "label": "Admin"
+    },
+    {
+      "container": 80,
+      "protocol": "tcp",
+      "label": "HTTP"
+    },
+    {
+      "container": 443,
+      "protocol": "tcp",
+      "label": "HTTPS"
+    }
+  ],
+  "volumes": [
+    {
+      "target": "/data",
+      "label": "Data",
+      "suggest": "named"
+    },
+    {
+      "target": "/etc/letsencrypt",
+      "label": "Certificates",
+      "suggest": "named"
+    }
+  ]
+}
