@@ -45,6 +45,8 @@ administrator in Settings > Notifications, see
 
 ## My profile
 
+![My profile, with the themes](../../../../assets/profile.png)
+
 Settings > My profile is for every account:
 
 - **Display name** and **password** (the current one is asked for).
