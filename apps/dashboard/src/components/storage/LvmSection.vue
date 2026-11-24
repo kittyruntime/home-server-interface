@@ -324,7 +324,7 @@ const shown = computed(() => props.only ? lvmVGs.value.filter(x => x.name === pr
                 </div>
               </div>
               <!-- LV actions: revealed on hover, hidden by default -->
-              <div v-if="!lv2bd(lv).isSystem" class="flex items-center gap-1 shrink-0 opacity-0 group-hover/lv:opacity-100 transition-opacity">
+              <div v-if="!lv2bd(lv).isSystem" class="flex items-center gap-1 shrink-0 opacity-0 group-hover/lv:opacity-100 focus-within:opacity-100 pointer-coarse:opacity-100 transition-opacity">
                 <Button variant="outline" size="xs" v-if="!lv2bd(lv).mountpoint" @click="openFormat(lv2bd(lv))"
                   class="text-2xs text-base-content/70 hover:border-primary/50 hover:text-primary">{{ t('ui.storage.LvmSection.format') }}</Button>
                 <Button variant="outline" size="xs" v-if="lv2bd(lv).fstype && !lv2bd(lv).mountpoint" @click="openMount(lv2bd(lv))"

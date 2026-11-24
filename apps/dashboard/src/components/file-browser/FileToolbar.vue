@@ -102,7 +102,7 @@ async function openSearch() {
   <div class="flex flex-wrap @3xl:flex-nowrap items-center gap-x-1.5 gap-y-1 px-3 py-2 @3xl:h-11">
     <!-- Mobile: places sidebar toggle -->
     <Button variant="ghost" size="icon-sm" @click="emit('toggleSidebar')" :tooltip="t('ui.files.FileToolbar.places')" :aria-label="t('ui.files.FileToolbar.togglePlacesSidebar')"
-      class="sm:hidden flex-shrink-0"
+      class="@2xl/files:hidden flex-shrink-0"
       :class="sidebarOpen ? 'text-primary bg-primary/10' : 'text-base-content/70 hover:text-base-content hover:bg-base-200'">
       <MenuIcon class="w-4 h-4" aria-hidden="true" />
     </Button>

@@ -919,20 +919,20 @@ watch(pendingFolder, path => {
 </script>
 
 <template>
-  <div ref="rootEl" class="flex h-full relative overflow-hidden" @click="clearSelection">
+  <div ref="rootEl" class="@container/files flex h-full relative overflow-hidden" @click="clearSelection">
 
     <!-- Mobile sidebar overlay -->
     <div
       v-if="sidebarOpen"
-      class="absolute inset-0 z-10 bg-black/40 sm:hidden"
+      class="absolute inset-0 z-10 bg-black/40 @2xl/files:hidden"
       @click.stop="sidebarOpen = false"
     />
 
     <PlacesSidebar
       :class="[
         'transition-transform duration-200',
-        'absolute sm:relative z-20 sm:z-0 inset-y-0 left-0',
-        sidebarOpen ? 'translate-x-0' : '-translate-x-full sm:translate-x-0',
+        'absolute @2xl/files:relative z-20 @2xl/files:z-0 inset-y-0 left-0',
+        sidebarOpen ? 'translate-x-0' : '-translate-x-full @2xl/files:translate-x-0',
       ]"
       :places="allPlaces"
       :active-place-id="activePlaceId"
@@ -958,13 +958,13 @@ watch(pendingFolder, path => {
 
       <!-- Settings (display, shared links) replace the files while open -->
       <template v-if="showShared">
-        <div class="flex items-center gap-1.5 px-3 py-2 border-b border-base-300 bg-base-200 flex-shrink-0 h-11 sm:hidden" @click.stop>
+        <div class="flex items-center gap-1.5 px-3 py-2 border-b border-base-300 bg-base-200 flex-shrink-0 h-11 @2xl/files:hidden" @click.stop>
           <Button variant="ghost" size="icon-sm" @click="sidebarOpen = !sidebarOpen" :aria-label="t('ui.files.FileToolbar.togglePlacesSidebar')"
             :class="sidebarOpen ? 'text-primary bg-primary/10' : 'text-base-content/70 hover:text-base-content hover:bg-base-200'">
             <MenuIcon class="w-4 h-4" aria-hidden="true" />
           </Button>
         </div>
-        <div class="flex-1 overflow-auto p-4 sm:p-8" @click.stop>
+        <div class="flex-1 overflow-auto p-4 @2xl/files:p-8" @click.stop>
           <div v-if="trashOpen" class="max-w-2xl">
             <h2 class="mb-4 text-lg font-semibold">{{ t('files.trash.title') }}</h2>
             <TrashView />

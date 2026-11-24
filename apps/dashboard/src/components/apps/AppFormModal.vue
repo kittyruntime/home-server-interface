@@ -464,8 +464,8 @@ function rawSaved(raw: string) {
     </div>
 
     <!-- Tabs -->
-    <Tabs :model-value="activeTab" class="shrink-0 border-b border-base-300 px-5 py-2 overflow-x-auto" @update:model-value="v => activeTab = v as Tab">
-      <TabsList>
+    <Tabs :model-value="activeTab" class="shrink-0 border-b border-base-300 px-5 py-2" @update:model-value="v => activeTab = v as Tab">
+      <TabsList class="scroll-fade-x">
         <TabsTrigger v-for="tab in visibleTabs" :key="tab.id" :value="tab.id">{{ tab.label }}</TabsTrigger>
       </TabsList>
     </Tabs>

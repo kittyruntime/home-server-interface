@@ -286,14 +286,16 @@ onUnmounted(() => {
   <div class="flex h-[100dvh] w-full max-w-full flex-col overflow-hidden bg-base-100 sm:flex-row">
 
     <!-- Sidebar: 64px (desktop only) -->
-    <aside class="hidden sm:flex flex-col items-center w-16 bg-base-100 text-base-content border-r border-base-300 py-4 flex-shrink-0">
+    <aside class="rail hidden sm:flex flex-col items-center w-16 bg-base-100 text-base-content border-r border-base-300 py-4 flex-shrink-0">
 
       <template v-if="desktopMode && !isMobile">
         <Dock class="flex-1" @open-launchpad="launchpadOpen = true" />
       </template>
       <template v-else>
         <!-- App nav (drag an icon to reorder, persisted per browser) -->
-        <nav class="flex flex-col items-stretch gap-1 flex-1 w-full">
+        <!-- Scrolls on a short screen (a phone held sideways) rather than
+             pushing the bell and the account off the bottom. -->
+        <nav class="rail-scroll flex min-h-0 w-full flex-1 flex-col items-stretch gap-1 overflow-y-auto overscroll-contain">
           <div
             v-for="item in navItems"
             :key="item.id"
@@ -482,11 +484,14 @@ onUnmounted(() => {
         :class="['relative h-11 min-w-0 flex-1 rounded-xl transition-all duration-150 hover:bg-transparent',
           activeApp === 'activity' ? 'text-primary' : 'text-base-content/70']"
         @click="openActivity">
-        <BellIcon class="size-5" />
-        <BellIndicator />
-        <span v-if="badgeCount > 0"
-          class="absolute top-1.5 right-1.5 min-w-[14px] h-3.5 px-0.5 bg-primary rounded-full text-2xs font-bold text-primary-content flex items-center justify-center tabular-nums leading-none"
-        >{{ badgeCount > 9 ? '9+' : badgeCount }}</span>
+        <!-- The dot and the count sit on the icon, not on the wide button. -->
+        <span class="relative grid size-11 place-items-center">
+          <BellIcon class="size-5" />
+          <BellIndicator />
+          <span v-if="badgeCount > 0"
+            class="absolute top-1.5 right-1.5 min-w-[14px] h-3.5 px-0.5 bg-primary rounded-full text-2xs font-bold text-primary-content flex items-center justify-center tabular-nums leading-none"
+          >{{ badgeCount > 9 ? '9+' : badgeCount }}</span>
+        </span>
       </Button>
 
       <!-- User avatar -->

@@ -217,7 +217,7 @@ usePoll(() => !selected.value && refresh(), 6000, { immediate: false })
           </div>
         </header>
 
-        <div v-if="!loading" class="content-in mt-5 -mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
+        <div v-if="!loading" class="content-in scroll-fade-x mt-5 -mx-4 px-4 sm:mx-0 sm:px-0">
           <ToggleGroup type="single" variant="tabs" size="sm" :aria-label="t('ui.store.AppStorePanel.category')"
             :model-value="category" @update:model-value="v => { if (v) category = v as typeof category }"
             class="flex-nowrap">
