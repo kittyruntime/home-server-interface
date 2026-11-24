@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.93.0] - 2026-11-24
+
 ### Added
 - **App icons**: an app added by hand can wear one of 40 generic icons,
   picked in its form (optional, its initial otherwise). It shows in the app
@@ -2441,7 +2443,8 @@ First stable release.
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.92.1...HEAD
+[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.93.0...HEAD
+[1.93.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.92.1...v1.93.0
 [1.92.1]: https://github.com/kittyruntime/home-server-interface/compare/v1.92.0...v1.92.1
 [1.92.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.91.0...v1.92.0
 [1.91.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.90.1...v1.91.0
