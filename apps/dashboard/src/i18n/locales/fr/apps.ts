@@ -1,5 +1,6 @@
 export default {
   AppList: {
+    openPort: 'Ouvrir le port {p0}',
     allApps: 'Toutes les apps',
     open: 'Ouvrir',
     pinQuickAccess: 'Épingler dans l\'accès rapide',
@@ -159,8 +160,8 @@ export default {
     noNetworksAttached: 'Aucun réseau.',
     cancel: 'Annuler',
     close: 'Fermer',
-    createAndStart: 'Créer et démarrer',
-    saveWithoutStarting: 'Enregistrer sans démarrer',
+    create: 'Créer',
+    startAfterCreate: 'Démarrer l’application après sa création',
     saveChanges: 'Enregistrer les modifications',
     savedNotStarted: 'Configuration enregistrée. Cette application n’a pas été démarrée.',
     deploymentSummaryTitle: 'Après la création',

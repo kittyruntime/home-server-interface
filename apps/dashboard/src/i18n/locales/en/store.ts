@@ -21,6 +21,9 @@ export default {
     noPlacesYetCreateOne: 'No places yet. Create one from the Places page, or pick another source.',
     placeName: 'Place name',
     cancel: 'Cancel',
+    startAfterInstall: 'Start the app once it is installed',
+    installing: 'Installing…',
+    installButton: 'Install',
   },
   AppStorePanel: {
     sectionUpdates: 'Updates',
