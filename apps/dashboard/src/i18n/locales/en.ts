@@ -51,6 +51,10 @@ export default {
   },
   monitor: {
     nav: { performance: 'Performance', processes: 'Processes', history: 'History', alerts: 'Alerts', audit: 'Audit log' },
+    live: {
+      pause: 'Pause',
+      resume: 'Resume',
+    },
     perf: {
       disks: 'Disks',
       networkAll: 'Network',

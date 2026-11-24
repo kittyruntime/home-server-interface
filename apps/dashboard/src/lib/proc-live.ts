@@ -1,5 +1,6 @@
 import { shallowRef } from 'vue'
 import { trpc } from './trpc'
+import { livePaused } from './live-pause'
 
 export type ProcessRow = Awaited<ReturnType<typeof trpc.system.processes.query>>[number]
 
@@ -27,7 +28,7 @@ export async function loadProcs(): Promise<void> {
 }
 
 function poll() {
-  if (procsPaused.value || (typeof document !== 'undefined' && document.hidden)) return
+  if (procsPaused.value || livePaused.value || (typeof document !== 'undefined' && document.hidden)) return
   void loadProcs()
 }
 

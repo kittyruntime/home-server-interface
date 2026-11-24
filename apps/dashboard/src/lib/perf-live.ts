@@ -1,6 +1,7 @@
 import { reactive, shallowRef } from 'vue'
 import { trpc } from './trpc'
 import { pushSample } from './perf-math'
+import { livePaused } from './live-pause'
 
 export type Perf = Awaited<ReturnType<typeof trpc.system.perf.query>>
 
@@ -27,7 +28,7 @@ function record(key: string, value: number) {
 }
 
 async function poll() {
-  if (typeof document !== 'undefined' && document.hidden) return
+  if (livePaused.value || (typeof document !== 'undefined' && document.hidden)) return
   let p: Perf
   try {
     p = await trpc.system.perf.query()
