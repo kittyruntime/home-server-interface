@@ -12,6 +12,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -170,12 +171,19 @@ func TestEmbeddedKeyMatchesScriptsCopy(t *testing.T) {
 }
 
 func TestArchiveName(t *testing.T) {
-	if got := archiveName("v1.66.0"); got != "hsi-v1.66.0-linux-amd64.tar.gz" {
+	if got := archiveNameFor("v1.66.0", "amd64"); got != "hsi-v1.66.0-linux-amd64.tar.gz" {
+		t.Fatal(got)
+	}
+	if got := archiveNameFor("v1.66.0", "arm64"); got != "hsi-v1.66.0-linux-arm64.tar.gz" {
+		t.Fatal(got)
+	}
+	// The worker asks for the archive of the machine it runs on.
+	if got := archiveName("v1.66.0"); got != "hsi-v1.66.0-linux-"+runtime.GOARCH+".tar.gz" {
 		t.Fatal(got)
 	}
 	// Release archives keep the hsi name whatever APP_NAME the install uses.
 	t.Setenv("HSI_UNIT_PREFIX", "test")
-	if got := archiveName("v2.0.0"); got != "hsi-v2.0.0-linux-amd64.tar.gz" {
+	if got := archiveName("v2.0.0"); got != "hsi-v2.0.0-linux-"+runtime.GOARCH+".tar.gz" {
 		t.Fatal(got)
 	}
 }

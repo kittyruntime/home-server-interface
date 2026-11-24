@@ -27,7 +27,7 @@ DEV_KEY="$ROOT/scripts/tests/fixtures/dev-signing.key"
 RELEASE_SIGNING_PUB="$(openssl pkey -in "$DEV_KEY" -pubout)"
 VERSION=v1.67.0
 RELEASE_APP_NAME=hsi
-NAME="hsi-${VERSION}-linux-amd64.tar.gz"
+NAME="hsi-${VERSION}-linux-$(release_arch).tar.gz"
 
 # make_release <dir> [key]: an archive, install.sh, SHA256SUMS and its signature.
 make_release() {
@@ -148,5 +148,13 @@ tar -czf "$SERVED/$NAME" -C "$TMP/evil" "hsi-$VERSION" other
 sign "$SERVED" "$DEV_KEY"
 out="$( (stage_release) 2>&1)"; rc=$?
 check "archive with an unexpected layout refused" '[[ $rc -ne 0 && "$out" == *"unsafe"* && ! -e "$DL_DIR/release" ]]'
+
+# release_arch: the archive of each 64-bit machine, none for the others.
+arch_of() { local m=$1; ( uname() { echo "$m"; }; release_arch ); }
+check "x86_64 takes the amd64 archive" '[[ "$(arch_of x86_64)" == amd64 ]]'
+check "aarch64 (Raspberry Pi, 64-bit OS) takes the arm64 archive" '[[ "$(arch_of aarch64)" == arm64 ]]'
+check "a 32-bit Raspberry Pi OS has no archive" '! arch_of armv7l >/dev/null'
+out="$( (uname() { echo armv7l; }; stage_release) 2>&1)"; rc=$?
+check "stage_release refuses an unsupported machine, naming it" '[[ $rc -ne 0 && "$out" == *"armv7l"* && "$out" == *"64-bit OS"* ]]'
 
 exit $FAILED

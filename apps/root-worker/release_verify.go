@@ -14,6 +14,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strings"
 	"time"
 )
@@ -131,10 +132,15 @@ func releasePublicKey() (ed25519.PublicKey, error) {
 	return pub, nil
 }
 
-// archiveName is the release archive of version. Archives keep the hsi name whatever
-// unit prefix the install uses.
+// archiveName is the release archive of version for the architecture this worker
+// was built for (amd64 or arm64), which is the machine's. Archives keep the hsi
+// name whatever unit prefix the install uses.
 func archiveName(version string) string {
-	return "hsi-" + version + "-linux-amd64.tar.gz"
+	return archiveNameFor(version, runtime.GOARCH)
+}
+
+func archiveNameFor(version, arch string) string {
+	return "hsi-" + version + "-linux-" + arch + ".tar.gz"
 }
 
 // verifyRelease checks the signature over Sums, then the sha256 of Archive and

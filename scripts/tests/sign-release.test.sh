@@ -45,6 +45,21 @@ check "SHA256SUMS lists exactly the archive and install.sh" \
 check "the signature is a single base64 line" '[[ "$(wc -l < "$TMP/rel/SHA256SUMS.sig")" == 0 ]]'
 export HSI_ALLOW_DEV_SIGNING_KEY=1
 check "the installer accepts the output" '(verify_release_files "$TMP/rel" "$NAME") >/dev/null 2>&1'
+
+# One SHA256SUMS for the archives of every architecture: each installer checks its own.
+ARM="hsi-v1.67.0-linux-arm64.tar.gz"
+mkdir -p "$TMP/multi"
+echo amd > "$TMP/multi/$NAME"
+echo arm > "$TMP/multi/$ARM"
+check "signs several archives" 'HSI_RELEASE_SIGNING_KEY="$DEV_KEY" "$SIGN" "$TMP/multi" "$NAME" "$ARM" >/dev/null'
+check "SHA256SUMS lists both archives and install.sh" \
+  '[[ "$(cut -d" " -f3 "$TMP/multi/SHA256SUMS" | sort | tr "\n" " ")" == "$NAME $ARM install.sh " ]]'
+check "the installer accepts the amd64 archive" '(verify_release_files "$TMP/multi" "$NAME") >/dev/null 2>&1'
+check "the installer accepts the arm64 archive" '(verify_release_files "$TMP/multi" "$ARM") >/dev/null 2>&1'
+echo tampered > "$TMP/multi/$ARM"
+check "a modified arm64 archive is refused" '! (verify_release_files "$TMP/multi" "$ARM") >/dev/null 2>&1'
+check "the amd64 archive still verifies" '(verify_release_files "$TMP/multi" "$NAME") >/dev/null 2>&1'
+check "refuses a missing archive" '! HSI_RELEASE_SIGNING_KEY="$DEV_KEY" "$SIGN" "$TMP/multi" "$NAME" missing.tar.gz >/dev/null 2>&1'
 echo tampered >> "$TMP/rel/SHA256SUMS"
 check "the installer rejects a modified SHA256SUMS" '! (verify_release_files "$TMP/rel" "$NAME") >/dev/null 2>&1'
 

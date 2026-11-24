@@ -203,12 +203,25 @@ check_release_sums() {
     || die "The release files do not match SHA256SUMS: this release is not authentic."
 }
 
+# release_arch: the architecture of this machine's release archive, amd64 (64-bit
+# x86) or arm64 (64-bit ARM: Raspberry Pi 4 and 5 under a 64-bit OS). Fails on
+# any other one.
+release_arch() {
+  case "$(uname -m)" in
+    x86_64|amd64) echo amd64 ;;
+    aarch64|arm64) echo arm64 ;;
+    *) return 1 ;;
+  esac
+}
+
 # stage_release: puts the archive of $VERSION in $DL_DIR (downloaded from
 # $RELEASE_BASE_URL and verified, or taken as is from HSI_RELEASE_ARCHIVE, which
 # `hsi-worker update apply` has verified already), checks its layout, then extracts
 # it to $DL_DIR/release. A refusal leaves nothing extracted.
 stage_release() {
-  local name="${RELEASE_APP_NAME}-${VERSION}-linux-amd64.tar.gz"
+  local arch
+  arch=$(release_arch) || die "No release for $(uname -m): HSI runs on 64-bit x86 (amd64) and 64-bit ARM (arm64). On a Raspberry Pi, install a 64-bit OS."
+  local name="${RELEASE_APP_NAME}-${VERSION}-linux-${arch}.tar.gz"
   local url="${RELEASE_BASE_URL}/${VERSION}" root="${RELEASE_APP_NAME}-${VERSION}"
   TARBALL="$DL_DIR/$name"
   RELEASE_STAGE="$DL_DIR/release"
@@ -1650,8 +1663,9 @@ if command -v nats-server &>/dev/null && \
    nats-server --version 2>/dev/null | grep -qF "${NATS_SERVER_VERSION#v}"; then
   success "nats-server $NATS_SERVER_VERSION already installed"
 else
+  NATS_ARCH=$(release_arch) || die "No nats-server build for $(uname -m): HSI runs on amd64 and arm64."
   NATS_TMP=$(mktemp -d)
-  NATS_DL="https://github.com/nats-io/nats-server/releases/download/${NATS_SERVER_VERSION}/nats-server-${NATS_SERVER_VERSION}-linux-amd64.tar.gz"
+  NATS_DL="https://github.com/nats-io/nats-server/releases/download/${NATS_SERVER_VERSION}/nats-server-${NATS_SERVER_VERSION}-linux-${NATS_ARCH}.tar.gz"
   curl -fsSL --progress-bar "$NATS_DL" -o "$NATS_TMP/nats.tar.gz" \
     || die "Failed to download nats-server"
   tar -xzf "$NATS_TMP/nats.tar.gz" -C "$NATS_TMP" --strip-components=1
