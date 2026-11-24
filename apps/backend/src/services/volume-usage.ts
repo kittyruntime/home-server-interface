@@ -1,7 +1,7 @@
-import { prisma } from "@app/database"
-import { requestSync } from "../nats"
-import { buildVolumes, type VDev, type VolumeInput } from "./volumes"
-import { log } from "../utils/log"
+import { prisma } from '@app/database'
+import { requestSync } from '../nats'
+import { buildVolumes, type VDev, type VolumeInput } from './volumes'
+import { log } from '../utils/log'
 
 // Space used on each volume over time, for the "full in about n months"
 // estimate. One sample an hour, kept 180 days.
@@ -29,7 +29,7 @@ export function forecast(points: UsagePoint[]): Forecast | null {
 }
 
 async function sample(): Promise<void> {
-  const block = await requestSync<{ devices: VDev[]; raids: VolumeInput["raids"] }>("root.sys.blockdevices", {}, 15_000)
+  const block = await requestSync<{ devices: VDev[]; raids: VolumeInput['raids'] }>('root.sys.blockdevices', {}, 15_000)
   const { volumes } = buildVolumes({
     devices: block.devices ?? [], raids: block.raids ?? [], lvm: { pvs: [], vgs: [], lvs: [] },
     guard: [], holds: [], places: [], shares: [], apps: [],
@@ -41,7 +41,7 @@ async function sample(): Promise<void> {
 }
 
 export function startVolumeUsageSampler(): void {
-  const run = () => sample().catch(e => log.warn({ err: e }, "volume-usage sampler failed"))
+  const run = () => sample().catch(e => log.warn({ err: e }, 'volume-usage sampler failed'))
   setTimeout(run, 90_000)
   setInterval(run, 3_600_000)
 }
@@ -50,7 +50,7 @@ export function startVolumeUsageSampler(): void {
 export async function volumeForecasts(): Promise<Record<string, Forecast>> {
   const rows = await prisma.volumeUsageSample.findMany({
     where: { timestamp: { gte: new Date(Date.now() - 30 * DAY) } },
-    orderBy: { timestamp: "asc" },
+    orderBy: { timestamp: 'asc' },
   })
   const by = new Map<string, UsagePoint[]>()
   for (const r of rows) {

@@ -14,7 +14,6 @@ import { Input } from '@/components/ui/input'
 
 const { t } = useI18n()
 
-
 type Status = Awaited<ReturnType<typeof trpc.tls.status.query>>
 
 const DOCS_URL = 'https://kittyruntime.github.io/home-server-interface/guide/secure-access/'

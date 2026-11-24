@@ -1,1 +1,1 @@
-export type { AppRouter } from "../../../apps/backend/src/trpc/routers/index"
+export type { AppRouter } from '../../../apps/backend/src/trpc/routers/index'

@@ -47,7 +47,6 @@ export default {
     turnHttpsOn: 'Activer HTTPS',
     importACertificateOrUse: 'Importez un certificat ou utilisez un proxy inverse plus tard, dans Réglages > Accès sécurisé.',
     yourServerIsReady: 'Votre serveur est prêt',
-    aFewThingsWorthDoing: 'Quelques étapes utiles pour la suite. Tout reste accessible ensuite depuis le tableau de bord.',
     goToTheDashboard: 'Aller au tableau de bord',
     stepOf: 'Étape {n} sur {total}',
     uses: 'Utilise',

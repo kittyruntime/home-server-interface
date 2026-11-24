@@ -1,8 +1,6 @@
 export default {
   AppList: {
-    deleteFailed: 'La suppression a échoué',
     failed: 'Échec : {p0}',
-    applyFailed: 'L’application des changements a échoué',
     failedToApply: 'Impossible d’appliquer',
     failedToSave: 'Impossible d’enregistrer',
     failedToUnpin: 'Impossible de désépingler',
@@ -19,8 +17,6 @@ export default {
     start2: 'Démarrer',
     apply: 'Appliquer {p0}',
     apply2: 'Appliquer',
-    applying: 'Application de {p0}…',
-    applyFailed2: 'L’application de {p0} a échoué',
   },
   AdvancedSection: {
     saveTheAppFirstTo: 'Enregistrez d’abord l’application pour lui donner un nom.',
@@ -35,8 +31,6 @@ export default {
     streamError: 'Erreur du flux',
   },
   UnmanagedContainers: {
-    enterAnAppName: 'Saisissez un nom d’application.',
-    pasteAComposeFileOr: 'Collez un fichier Compose ou choisissez un fichier.',
     failedToLoad: 'Impossible de charger',
     importFailed: 'L’import a échoué',
   },
@@ -46,10 +40,6 @@ export default {
     dockerComposeIsMissing: 'Docker Compose est absent',
   },
   AppFormModal: {
-    pasteAComposeYmlFirst: 'Collez d’abord un compose.yml.',
-    yamlParseError: 'Erreur de lecture du YAML : {p0}',
-    noServicesFound: 'Aucun service trouvé.',
-    serviceNotFound: 'Service « {p0} » introuvable.',
     failedToLoadApp: 'Impossible de charger l’application',
     failedToSave: 'Impossible d’enregistrer',
     applyFailed: 'L’application des changements a échoué',

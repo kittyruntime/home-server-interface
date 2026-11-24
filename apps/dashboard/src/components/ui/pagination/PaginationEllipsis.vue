@@ -1,18 +1,18 @@
 <script setup lang="ts">
-import type { HTMLAttributes } from "vue"
-import type { ButtonVariants } from "@/components/ui/button"
-import { MoreHorizontal } from "@lucide/vue"
-import { cn } from "@/lib/utils"
-import { buttonVariants } from "@/components/ui/button"
+import type { HTMLAttributes } from 'vue'
+import type { ButtonVariants } from '@/components/ui/button'
+import { MoreHorizontal } from '@lucide/vue'
+import { cn } from '@/lib/utils'
+import { buttonVariants } from '@/components/ui/button'
 
 const props = withDefaults(defineProps<{
   /** Position in the list, kept for callers that key on it. */
   index?: number
-  size?: ButtonVariants["size"]
-  class?: HTMLAttributes["class"]
+  size?: ButtonVariants['size']
+  class?: HTMLAttributes['class']
 }>(), {
   index: undefined,
-  size: "icon",
+  size: 'icon',
 })
 </script>
 

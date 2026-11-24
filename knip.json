@@ -1,0 +1,36 @@
+{
+  "$schema": "https://unpkg.com/knip@5/schema.json",
+  "ignoreWorkspaces": ["website"],
+  "ignoreExportsUsedInFile": true,
+  "rules": { "types": "off", "binaries": "off" },
+  "workspaces": {
+    ".": {
+      "entry": ["scripts/**/*.{mjs,ts}"],
+      "project": ["scripts/**/*.{mjs,ts}"]
+    },
+    "apps/backend": {
+      "project": ["src/**/*.ts"],
+      "ignoreDependencies": ["@prisma/client", "better-sqlite3"]
+    },
+    "apps/dashboard": {
+      "entry": ["tests/*.test.ts"],
+      "project": ["src/**/*.{ts,vue}", "tests/**/*.ts"],
+      "ignoreDependencies": ["daisyui", "tailwindcss"]
+    },
+    "packages/app-catalog": {
+      "entry": ["src/*.test.ts", "scripts/*.ts"],
+      "project": ["src/**/*.ts", "scripts/**/*.ts"]
+    },
+    "packages/compose": {
+      "project": ["src/**/*.ts"]
+    },
+    "packages/database": {
+      "entry": ["src/**/*.test.ts", "prisma/**/*.ts"],
+      "project": ["src/**/*.ts", "prisma/**/*.ts"],
+      "ignoreDependencies": ["@prisma/client"]
+    },
+    "packages/shared-types": {
+      "project": ["src/**/*.ts"]
+    }
+  }
+}

@@ -1,21 +1,21 @@
-import { TRPCError } from "@trpc/server"
-import { prisma } from "@app/database"
-import { composeBindSources } from "@app/compose"
-import { requestSync, publishJob } from "../nats"
-import { log } from "../utils/log"
-import { listStacks } from "./containerStacks"
-import { reconcileSource } from "./alert-sampler"
+import { TRPCError } from '@trpc/server'
+import { prisma } from '@app/database'
+import { composeBindSources } from '@app/compose'
+import { requestSync, publishJob } from '../nats'
+import { log } from '../utils/log'
+import { listStacks } from './containerStacks'
+import { reconcileSource } from './alert-sampler'
 
 // Missing volume guard (#3). The worker reports the state of each HSI data
 // volume; one that is not usable gets a hold: apps using it are stopped, its
 // shares become unavailable, and backups and file writes under it are refused.
 // When it is usable again the hold waits for the admin to resume.
 
-export type VolumeState = "ok" | "missing" | "wrong" | "readonly" | "unmounted"
+export type VolumeState = 'ok' | 'missing' | 'wrong' | 'readonly' | 'unmounted'
 type Hold = { mountPoint: string; status: string; reason: string }
 
 export function pathUnder(path: string, mountPoint: string): boolean {
-  return path === mountPoint || path.startsWith(mountPoint.replace(/\/$/, "") + "/")
+  return path === mountPoint || path.startsWith(mountPoint.replace(/\/$/, '') + '/')
 }
 
 export function holdFor<T extends Hold>(holds: T[], path: string): T | null {
@@ -27,7 +27,7 @@ export function holdFor<T extends Hold>(holds: T[], path: string): T | null {
 }
 
 export function holdMessage(h: Hold): string {
-  const state = h.status === "back" ? "waiting for confirmation" : h.reason
+  const state = h.status === 'back' ? 'waiting for confirmation' : h.reason
   return `Volume ${h.mountPoint} is ${state}; resume it in Storage first`
 }
 
@@ -41,9 +41,9 @@ export function planHolds(volumes: Array<{ mountPoint: string; state: string }>,
   const release = holds.filter(h => !present.has(h.mountPoint)).map(h => h.mountPoint)
   for (const v of volumes) {
     const h = byMp.get(v.mountPoint)
-    if (v.state !== "ok" && !h) create.push({ mountPoint: v.mountPoint, reason: v.state })
-    else if (v.state === "ok" && h?.status === "blocked") back.push(v.mountPoint)
-    else if (v.state !== "ok" && h?.status === "back") reblock.push({ mountPoint: v.mountPoint, reason: v.state })
+    if (v.state !== 'ok' && !h) create.push({ mountPoint: v.mountPoint, reason: v.state })
+    else if (v.state === 'ok' && h?.status === 'blocked') back.push(v.mountPoint)
+    else if (v.state !== 'ok' && h?.status === 'back') reblock.push({ mountPoint: v.mountPoint, reason: v.state })
   }
   return { create, back, reblock, release }
 }
@@ -54,9 +54,9 @@ export function appsUnder(apps: Array<{ name: string; sources: string[]; running
 }
 
 const ALERT_MESSAGES: Record<string, string> = {
-  missing: "Volume is not mounted",
-  wrong: "Another filesystem is mounted in place of the volume",
-  readonly: "Volume is mounted read-only",
+  missing: 'Volume is not mounted',
+  wrong: 'Another filesystem is mounted in place of the volume',
+  readonly: 'Volume is mounted read-only',
 }
 
 // `alertTargets`: mount points that currently have an alert, so one whose
@@ -65,9 +65,9 @@ const ALERT_MESSAGES: Record<string, string> = {
 export function volumeFindings(volumes: Array<{ mountPoint: string; state: string }>, alertTargets: string[] = []) {
   return {
     checked: [...new Set([...volumes.map(v => v.mountPoint), ...alertTargets])],
-    found: volumes.filter(v => v.state !== "ok" && v.state !== "unmounted").map(v => ({
+    found: volumes.filter(v => v.state !== 'ok' && v.state !== 'unmounted').map(v => ({
       target: v.mountPoint,
-      severity: (v.state === "readonly" ? "warning" : "critical") as "warning" | "critical",
+      severity: (v.state === 'readonly' ? 'warning' : 'critical') as 'warning' | 'critical',
       message: ALERT_MESSAGES[v.state] ?? v.state,
     })),
   }
@@ -78,7 +78,7 @@ export function volumeFindings(volumes: Array<{ mountPoint: string; state: strin
 export type WorkerVolume = { mountPoint: string; uuid: string; state: VolumeState; strayFiles: boolean; guardError?: string }
 
 export async function fetchVolumes(): Promise<WorkerVolume[]> {
-  const res = await requestSync<{ volumes: WorkerVolume[] }>("root.storage.volumes", {}, 30_000)
+  const res = await requestSync<{ volumes: WorkerVolume[] }>('root.storage.volumes', {}, 30_000)
   return res.volumes
 }
 
@@ -102,12 +102,12 @@ export const volumeStates = createVolumeCache(fetchVolumes)
 
 export async function appSources(): Promise<Array<{ name: string; sources: string[]; running: boolean }>> {
   const stacks = await listStacks()
-  return stacks.map(s => ({ name: s.name, sources: composeBindSources(s.rawYaml), running: s.status === "running" }))
+  return stacks.map(s => ({ name: s.name, sources: composeBindSources(s.rawYaml), running: s.status === 'running' }))
 }
 
 // Loaded lazily: sharing.service imports this module for holdFor.
 async function syncShares(): Promise<void> {
-  const { syncSharesBestEffort } = await import("./sharing.service")
+  const { syncSharesBestEffort } = await import('./sharing.service')
   await syncSharesBestEffort(prisma)
 }
 
@@ -119,37 +119,37 @@ export async function runVolumeGuard(): Promise<void> {
   try {
     const volumes = await fetchVolumes()
     volumeStates.set(volumes)
-    const alerted = await prisma.alert.findMany({ where: { source: "storage.volume" }, select: { target: true } })
-    await reconcileSource("storage.volume", volumeFindings(volumes, alerted.map(a => a.target)))
+    const alerted = await prisma.alert.findMany({ where: { source: 'storage.volume' }, select: { target: true } })
+    await reconcileSource('storage.volume', volumeFindings(volumes, alerted.map(a => a.target)))
     const holds = await prisma.volumeHold.findMany()
     const plan = planHolds(volumes, holds)
     if (plan.release.length > 0) {
       await prisma.volumeHold.deleteMany({ where: { mountPoint: { in: plan.release } } })
-      log.info({ released: plan.release }, "volume-guard: released holds of volumes HSI no longer manages")
+      log.info({ released: plan.release }, 'volume-guard: released holds of volumes HSI no longer manages')
     }
     if (plan.create.length > 0) {
       const apps = await appSources().catch(() => [])
       for (const c of plan.create) {
         const stopped = appsUnder(apps, c.mountPoint)
         const stray = volumes.find(v => v.mountPoint === c.mountPoint)?.strayFiles ?? false
-        await prisma.volumeHold.create({ data: { mountPoint: c.mountPoint, reason: c.reason, status: "blocked", stoppedApps: JSON.stringify(stopped), strayFiles: stray } })
+        await prisma.volumeHold.create({ data: { mountPoint: c.mountPoint, reason: c.reason, status: 'blocked', stoppedApps: JSON.stringify(stopped), strayFiles: stray } })
         for (const name of stopped) {
-          await publishJob("container.composeStop", { name }).catch(e => log.warn({ err: e, app: name }, "volume-guard: could not stop app"))
+          await publishJob('container.composeStop', { name }).catch(e => log.warn({ err: e, app: name }, 'volume-guard: could not stop app'))
         }
-        log.warn({ mountPoint: c.mountPoint, reason: c.reason, stopped }, "volume-guard: volume blocked")
+        log.warn({ mountPoint: c.mountPoint, reason: c.reason, stopped }, 'volume-guard: volume blocked')
       }
       await syncShares()
     }
     for (const mp of plan.back) {
-      await prisma.volumeHold.update({ where: { mountPoint: mp }, data: { status: "back" } })
-      log.info({ mountPoint: mp }, "volume-guard: volume is back, waiting for the admin")
+      await prisma.volumeHold.update({ where: { mountPoint: mp }, data: { status: 'back' } })
+      log.info({ mountPoint: mp }, 'volume-guard: volume is back, waiting for the admin')
     }
     for (const r of plan.reblock) {
-      await prisma.volumeHold.update({ where: { mountPoint: r.mountPoint }, data: { status: "blocked", reason: r.reason } })
+      await prisma.volumeHold.update({ where: { mountPoint: r.mountPoint }, data: { status: 'blocked', reason: r.reason } })
     }
     if (plan.release.length > 0 && plan.create.length === 0) await syncShares()
   } catch (e) {
-    log.warn({ err: e }, "volume-guard: check failed")
+    log.warn({ err: e }, 'volume-guard: check failed')
   } finally {
     running = false
   }
@@ -173,20 +173,20 @@ export async function assertVolumeAvailable(paths: string | string[]): Promise<v
   const holds = await prisma.volumeHold.findMany()
   for (const p of list) {
     const h = holdFor(holds, p)
-    if (h) throw new TRPCError({ code: "PRECONDITION_FAILED", message: holdMessage(h) })
+    if (h) throw new TRPCError({ code: 'PRECONDITION_FAILED', message: holdMessage(h) })
   }
 }
 
 export async function resumeVolume(mountPoint: string): Promise<{ restarted: string[] }> {
   const hold = await prisma.volumeHold.findUnique({ where: { mountPoint } })
-  if (!hold) throw new TRPCError({ code: "NOT_FOUND", message: "No hold for this volume" })
-  if (hold.status !== "back") throw new TRPCError({ code: "PRECONDITION_FAILED", message: holdMessage(hold) })
+  if (!hold) throw new TRPCError({ code: 'NOT_FOUND', message: 'No hold for this volume' })
+  if (hold.status !== 'back') throw new TRPCError({ code: 'PRECONDITION_FAILED', message: holdMessage(hold) })
   await prisma.volumeHold.delete({ where: { mountPoint } })
   const apps: string[] = JSON.parse(hold.stoppedApps)
   for (const name of apps) {
-    await publishJob("container.composeUp", { name }).catch(e => log.warn({ err: e, app: name }, "volume-guard: could not restart app"))
+    await publishJob('container.composeUp', { name }).catch(e => log.warn({ err: e, app: name }, 'volume-guard: could not restart app'))
   }
   await syncShares()
-  log.info({ mountPoint, restarted: apps }, "volume-guard: volume resumed")
+  log.info({ mountPoint, restarted: apps }, 'volume-guard: volume resumed')
   return { restarted: apps }
 }

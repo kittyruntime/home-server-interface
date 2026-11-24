@@ -1,15 +1,15 @@
-import { prisma } from "@app/database"
-import { log } from "../utils/log"
-import { encryptSecret, isEncrypted, revealSecret, secretsKey, SecretsError, UNREADABLE_SECRETS } from "./secrets"
+import { prisma } from '@app/database'
+import { log } from '../utils/log'
+import { encryptSecret, isEncrypted, revealSecret, secretsKey, SecretsError, UNREADABLE_SECRETS } from './secrets'
 
 // Connector shapes. Stored: what the database holds (secrets encrypted).
 // Resolved: plaintext, server-side only (delivery, preview, test). Public:
 // what the UI gets (secrets masked). The UI sends masks back unchanged when a
 // secret was not edited; mergeConnectorInput keeps the stored value then.
 
-export const SECRET_MASK = "••••••"
+export const SECRET_MASK = '••••••'
 
-export type SmtpSecurity = "starttls" | "tls" | "none"
+export type SmtpSecurity = 'starttls' | 'tls' | 'none'
 
 export interface SmtpConfig {
   host: string
@@ -24,12 +24,12 @@ export interface SmtpConfig {
 }
 
 export type ResolvedConnector =
-  | { type: "webhook"; method: string; url: string; headers: Record<string, string>; bodyTemplate: string }
-  | { type: "smtp"; smtp: SmtpConfig }
+  | { type: 'webhook'; method: string; url: string; headers: Record<string, string>; bodyTemplate: string }
+  | { type: 'smtp'; smtp: SmtpConfig }
 
 export type ConnectorInput =
-  | { type: "webhook"; method: "POST" | "PUT"; url: string; headers: string; bodyTemplate: string }
-  | { type: "smtp"; smtp: SmtpConfig }
+  | { type: 'webhook'; method: 'POST' | 'PUT'; url: string; headers: string; bodyTemplate: string }
+  | { type: 'smtp'; smtp: SmtpConfig }
 
 export interface StoredConnectorFields {
   type: string
@@ -43,7 +43,7 @@ export interface StoredConnectorFields {
 export interface PublicConnector {
   id: string
   name: string
-  type: "webhook" | "smtp"
+  type: 'webhook' | 'smtp'
   enabled: boolean
   rateLimitPerMinute: number
   createdAt: Date
@@ -51,11 +51,11 @@ export interface PublicConnector {
   url: string
   headers: string
   bodyTemplate: string
-  smtp: (Omit<SmtpConfig, "password"> & { passwordSet: boolean }) | null
+  smtp: (Omit<SmtpConfig, 'password'> & { passwordSet: boolean }) | null
   secretsUnreadable: boolean
 }
 
-export const DEFAULT_EMAIL_SUBJECT = "[HSI {{event.severity}}] {{event.source}}: {{event.target}}"
+export const DEFAULT_EMAIL_SUBJECT = '[HSI {{event.severity}}] {{event.source}}: {{event.target}}'
 export const DEFAULT_EMAIL_BODY = `{{event.message}}
 
 Type:     {{event.type}}
@@ -65,12 +65,12 @@ Target:   {{event.target}}
 Time:     {{event.time}}`
 
 export const SMTP_PRESETS: Array<{ id: string; label: string; host: string; port: number; security: SmtpSecurity }> = [
-  { id: "generic", label: "Generic SMTP", host: "", port: 587, security: "starttls" },
-  { id: "gmail", label: "Gmail (app password)", host: "smtp.gmail.com", port: 587, security: "starttls" },
-  { id: "fastmail", label: "Fastmail", host: "smtp.fastmail.com", port: 465, security: "tls" },
+  { id: 'generic', label: 'Generic SMTP', host: '', port: 587, security: 'starttls' },
+  { id: 'gmail', label: 'Gmail (app password)', host: 'smtp.gmail.com', port: 587, security: 'starttls' },
+  { id: 'fastmail', label: 'Fastmail', host: 'smtp.fastmail.com', port: 465, security: 'tls' },
 ]
 
-const isPublicHeader = (name: string) => name.toLowerCase() === "content-type"
+const isPublicHeader = (name: string) => name.toLowerCase() === 'content-type'
 
 export function maskUrl(url: string): string {
   try {
@@ -83,7 +83,7 @@ export function maskUrl(url: string): string {
 function parseObject(json: string): Record<string, unknown> {
   try {
     const v = JSON.parse(json) as unknown
-    return v && typeof v === "object" && !Array.isArray(v) ? v as Record<string, unknown> : {}
+    return v && typeof v === 'object' && !Array.isArray(v) ? v as Record<string, unknown> : {}
   } catch {
     return {}
   }
@@ -92,12 +92,12 @@ function parseObject(json: string): Record<string, unknown> {
 function parseSmtp(config: string): SmtpConfig {
   const c = parseObject(config)
   return {
-    host: String(c.host ?? ""),
+    host: String(c.host ?? ''),
     port: Number(c.port ?? 587),
-    security: (["starttls", "tls", "none"].includes(String(c.security)) ? c.security : "starttls") as SmtpSecurity,
-    username: String(c.username ?? ""),
-    password: String(c.password ?? ""),
-    from: String(c.from ?? ""),
+    security: (['starttls', 'tls', 'none'].includes(String(c.security)) ? c.security : 'starttls') as SmtpSecurity,
+    username: String(c.username ?? ''),
+    password: String(c.password ?? ''),
+    from: String(c.from ?? ''),
     to: Array.isArray(c.to) ? c.to.map(String) : [],
     subjectTemplate: String(c.subjectTemplate ?? DEFAULT_EMAIL_SUBJECT),
     bodyTemplate: String(c.bodyTemplate ?? DEFAULT_EMAIL_BODY),
@@ -105,14 +105,14 @@ function parseSmtp(config: string): SmtpConfig {
 }
 
 export function resolveStored(row: StoredConnectorFields, key: Buffer | null | undefined = secretsKey()): ResolvedConnector {
-  if (row.type === "smtp") {
+  if (row.type === 'smtp') {
     const smtp = parseSmtp(row.config)
-    return { type: "smtp", smtp: { ...smtp, password: smtp.password ? revealSecret(smtp.password, key) : "" } }
+    return { type: 'smtp', smtp: { ...smtp, password: smtp.password ? revealSecret(smtp.password, key) : '' } }
   }
   const headers = Object.fromEntries(
-    Object.entries(parseObject(row.headers)).map(([k, v]) => [k, revealSecret(String(v ?? ""), key)]),
+    Object.entries(parseObject(row.headers)).map(([k, v]) => [k, revealSecret(String(v ?? ''), key)]),
   )
-  return { type: "webhook", method: row.method || "POST", url: row.url ? revealSecret(row.url, key) : "", headers, bodyTemplate: row.bodyTemplate }
+  return { type: 'webhook', method: row.method || 'POST', url: row.url ? revealSecret(row.url, key) : '', headers, bodyTemplate: row.bodyTemplate }
 }
 
 function assertHttpUrl(url: string): void {
@@ -120,17 +120,17 @@ function assertHttpUrl(url: string): void {
   try {
     parsed = new URL(url)
   } catch {
-    throw new Error("URL must be a valid http(s) URL")
+    throw new Error('URL must be a valid http(s) URL')
   }
-  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") throw new Error("URL must be a valid http(s) URL")
-  if (parsed.username || parsed.password) throw new Error("URL must not contain credentials; put them in an Authorization header")
+  if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') throw new Error('URL must be a valid http(s) URL')
+  if (parsed.username || parsed.password) throw new Error('URL must not contain credentials; put them in an Authorization header')
 }
 
-const REBIND = "re-enter the secrets after changing the destination"
+const REBIND = 're-enter the secrets after changing the destination'
 
 function originOf(url: string): string | null {
   try {
-    return new URL(url.replace(/…$/, "")).origin
+    return new URL(url.replace(/…$/, '')).origin
   } catch {
     return null
   }
@@ -143,26 +143,26 @@ function originOf(url: string): string | null {
 export function mergeConnectorInput(
   input: ConnectorInput, stored: ResolvedConnector | null, opts: { unreadable?: boolean } = {},
 ): ResolvedConnector {
-  if (input.type === "smtp") {
-    const prev = stored?.type === "smtp" ? stored.smtp : null
-    const keep = input.smtp.password === "" || input.smtp.password === SECRET_MASK
-    if (!keep) return { type: "smtp", smtp: input.smtp }
+  if (input.type === 'smtp') {
+    const prev = stored?.type === 'smtp' ? stored.smtp : null
+    const keep = input.smtp.password === '' || input.smtp.password === SECRET_MASK
+    if (!keep) return { type: 'smtp', smtp: input.smtp }
     // An empty password without a username means "no authentication".
-    if (!input.smtp.username) return { type: "smtp", smtp: { ...input.smtp, password: "" } }
+    if (!input.smtp.username) return { type: 'smtp', smtp: { ...input.smtp, password: '' } }
     if (opts.unreadable || (input.smtp.password === SECRET_MASK && !prev)) throw new SecretsError(UNREADABLE_SECRETS)
-    if (!prev) return { type: "smtp", smtp: { ...input.smtp, password: "" } }
+    if (!prev) return { type: 'smtp', smtp: { ...input.smtp, password: '' } }
     const sameServer = prev.host === input.smtp.host && prev.port === input.smtp.port && prev.username === input.smtp.username
     if (prev.password && !sameServer) throw new SecretsError(REBIND)
-    return { type: "smtp", smtp: { ...input.smtp, password: prev.password } }
+    return { type: 'smtp', smtp: { ...input.smtp, password: prev.password } }
   }
 
-  const prev = stored?.type === "webhook" ? stored : null
+  const prev = stored?.type === 'webhook' ? stored : null
   let url = input.url.trim()
   // "<origin>/…" is what maskUrl shows; it is never a real target.
-  const masked = url === "" || url === SECRET_MASK || url.endsWith("/…")
+  const masked = url === '' || url === SECRET_MASK || url.endsWith('/…')
   if (masked) {
     if (!prev) throw new SecretsError(UNREADABLE_SECRETS)
-    if (url.endsWith("/…") && originOf(url) !== originOf(prev.url)) throw new SecretsError(REBIND)
+    if (url.endsWith('/…') && originOf(url) !== originOf(prev.url)) throw new SecretsError(REBIND)
     url = prev.url
   } else {
     assertHttpUrl(url)
@@ -171,7 +171,7 @@ export function mergeConnectorInput(
 
   const headers: Record<string, string> = {}
   for (const [k, raw] of Object.entries(parseObject(input.headers))) {
-    const v = String(raw ?? "")
+    const v = String(raw ?? '')
     if (v === SECRET_MASK && !isPublicHeader(k)) {
       if (prev?.headers[k] === undefined) throw new SecretsError(UNREADABLE_SECRETS)
       if (!sameOrigin) throw new SecretsError(REBIND)
@@ -180,23 +180,23 @@ export function mergeConnectorInput(
       headers[k] = v
     }
   }
-  return { type: "webhook", method: input.method, url, headers, bodyTemplate: input.bodyTemplate }
+  return { type: 'webhook', method: input.method, url, headers, bodyTemplate: input.bodyTemplate }
 }
 
 export function toStoredFields(resolved: ResolvedConnector, key: Buffer | null | undefined = secretsKey()): StoredConnectorFields {
-  if (resolved.type === "smtp") {
+  if (resolved.type === 'smtp') {
     const { password, ...rest } = resolved.smtp
     return {
-      type: "smtp", method: "POST", url: "", headers: "{}", bodyTemplate: "",
-      config: JSON.stringify({ ...rest, password: password ? encryptSecret(password, key) : "" }),
+      type: 'smtp', method: 'POST', url: '', headers: '{}', bodyTemplate: '',
+      config: JSON.stringify({ ...rest, password: password ? encryptSecret(password, key) : '' }),
     }
   }
   const headers = Object.fromEntries(
     Object.entries(resolved.headers).map(([k, v]) => [k, isPublicHeader(k) ? v : encryptSecret(v, key)]),
   )
   return {
-    type: "webhook", method: resolved.method, url: encryptSecret(resolved.url, key),
-    headers: JSON.stringify(headers), bodyTemplate: resolved.bodyTemplate, config: "{}",
+    type: 'webhook', method: resolved.method, url: encryptSecret(resolved.url, key),
+    headers: JSON.stringify(headers), bodyTemplate: resolved.bodyTemplate, config: '{}',
   }
 }
 
@@ -213,16 +213,16 @@ export function toPublicConnector<T extends StoredConnectorFields & { id: string
   } catch {
     resolved = null
   }
-  if (row.type === "smtp") {
+  if (row.type === 'smtp') {
     const { password, ...rest } = parseSmtp(row.config)
-    return { ...base, type: "smtp", url: "", headers: "{}", smtp: { ...rest, passwordSet: password !== "" }, secretsUnreadable: resolved === null }
+    return { ...base, type: 'smtp', url: '', headers: '{}', smtp: { ...rest, passwordSet: password !== '' }, secretsUnreadable: resolved === null }
   }
   const headers = Object.fromEntries(
-    Object.entries(parseObject(row.headers)).map(([k, v]) => [k, isPublicHeader(k) ? String(v ?? "") : SECRET_MASK]),
+    Object.entries(parseObject(row.headers)).map(([k, v]) => [k, isPublicHeader(k) ? String(v ?? '') : SECRET_MASK]),
   )
   return {
-    ...base, type: "webhook",
-    url: resolved?.type === "webhook" ? maskUrl(resolved.url) : SECRET_MASK,
+    ...base, type: 'webhook',
+    url: resolved?.type === 'webhook' ? maskUrl(resolved.url) : SECRET_MASK,
     headers: JSON.stringify(headers), smtp: null, secretsUnreadable: resolved === null,
   }
 }
@@ -230,20 +230,20 @@ export function toPublicConnector<T extends StoredConnectorFields & { id: string
 // Boot-time, idempotent: converts pre-queue journal rows and encrypts
 // connector secrets stored in plaintext by earlier versions.
 export async function migrateNotificationStorage(): Promise<void> {
-  await prisma.notificationDelivery.updateMany({ where: { status: "legacy", ok: true }, data: { status: "sent" } })
-  await prisma.notificationDelivery.updateMany({ where: { status: "legacy" }, data: { status: "failed" } })
+  await prisma.notificationDelivery.updateMany({ where: { status: 'legacy', ok: true }, data: { status: 'sent' } })
+  await prisma.notificationDelivery.updateMany({ where: { status: 'legacy' }, data: { status: 'failed' } })
 
   const key = secretsKey()
   const rows = await prisma.notificationConnector.findMany()
-  const legacy = rows.filter(r => r.type === "webhook" && r.url !== "" && !isEncrypted(r.url))
+  const legacy = rows.filter(r => r.type === 'webhook' && r.url !== '' && !isEncrypted(r.url))
   if (legacy.length === 0) return
   if (!key) {
-    log.warn({ count: legacy.length }, "notifications: HSI_SECRETS_KEY missing, connector secrets stay unencrypted")
+    log.warn({ count: legacy.length }, 'notifications: HSI_SECRETS_KEY missing, connector secrets stay unencrypted')
     return
   }
   for (const row of legacy) {
     const fields = toStoredFields(resolveStored(row, key), key)
     await prisma.notificationConnector.update({ where: { id: row.id }, data: fields })
   }
-  log.info({ count: legacy.length }, "notifications: encrypted legacy connector secrets")
+  log.info({ count: legacy.length }, 'notifications: encrypted legacy connector secrets')
 }

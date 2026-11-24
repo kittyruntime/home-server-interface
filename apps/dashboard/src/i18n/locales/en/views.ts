@@ -48,7 +48,6 @@ export default {
     turnHttpsOn: 'Turn HTTPS on',
     importACertificateOrUse: 'Import a certificate or use a reverse proxy later in Settings > Secure access.',
     yourServerIsReady: 'Your server is ready',
-    aFewThingsWorthDoing: 'A few things worth doing next. Everything stays available later from the dashboard.',
     goToTheDashboard: 'Go to the dashboard',
     stepOf: 'Step {n} of {total}',
     uses: 'Uses',

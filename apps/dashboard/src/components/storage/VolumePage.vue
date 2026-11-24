@@ -248,7 +248,7 @@ async function afterChange() { await refreshDevices(); await load() }
           <component
             :is="layer.kind === 'filesystem' ? 'div' : 'button'"
             :class="['w-full flex items-center justify-between gap-3 rounded-lg border border-base-300 bg-base-100 px-3 py-2 text-left text-sm',
-              layer.kind !== 'filesystem' && 'hover:border-base-300 transition-colors']"
+                     layer.kind !== 'filesystem' && 'hover:border-base-300 transition-colors']"
             @click="layer.kind !== 'filesystem' && openLayer(layer.kind, layer.name)"
           >
             <span class="text-base-content/70 text-xs w-28 shrink-0">{{ LAYER[layer.kind] }}</span>

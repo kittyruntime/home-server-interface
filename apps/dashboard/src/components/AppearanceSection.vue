@@ -41,7 +41,7 @@ const RADII: { value: Appearance['radius']; key: string }[] = [
         <div role="radiogroup" :aria-label="t('appearance.theme')" class="grid grid-cols-2 gap-3 p-1 sm:grid-cols-3 lg:grid-cols-5">
           <label v-for="name in ['auto', ...THEMES] as const" :key="name"
             class="group cursor-pointer rounded-box outline-offset-2 has-[:checked]:outline-2 has-[:checked]:outline-primary has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-primary">
-            <input type="radio" name="appearance-theme" :value="name" class="sr-only" v-model="theme" />
+            <input type="radio" name="appearance-theme" :value="name" class="sr-only" v-model="theme">
             <span class="relative block overflow-hidden rounded-box border border-base-300 transition-colors duration-(--dur-fast) group-hover:border-base-content/30">
               <span v-if="name === 'auto'" class="grid grid-cols-2" aria-hidden="true">
                 <ThemePreview theme="light" />
@@ -69,7 +69,7 @@ const RADII: { value: Appearance['radius']; key: string }[] = [
               class="radio radio-sm" :class="{ 'radio-neutral': !opt.color }"
               :style="opt.color ? { '--input-color': opt.color } : undefined"
               v-model="accent"
-            />
+            >
             {{ t(`appearance.accents.${opt.value}`) }}
           </label>
         </div>
@@ -87,7 +87,7 @@ const RADII: { value: Appearance['radius']; key: string }[] = [
             class="tab"
             :aria-label="t(`appearance.radii.${r.key}`)"
             v-model="radius"
-          />
+          >
         </div>
       </Card>
     </div>
@@ -103,7 +103,7 @@ const RADII: { value: Appearance['radius']; key: string }[] = [
             class="tab"
             :aria-label="t(`appearance.densities.${d}`)"
             v-model="density"
-          />
+          >
         </div>
       </Card>
     </div>

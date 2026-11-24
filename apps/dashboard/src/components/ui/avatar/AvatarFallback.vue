@@ -1,13 +1,13 @@
 <script setup lang="ts">
-import type { HTMLAttributes } from "vue"
-import { computed, inject, onBeforeUnmount, onMounted, ref } from "vue"
-import { cn } from "@/lib/utils"
-import { avatarKey } from "./context"
+import type { HTMLAttributes } from 'vue'
+import { computed, inject, onBeforeUnmount, onMounted, ref } from 'vue'
+import { cn } from '@/lib/utils'
+import { avatarKey } from './context'
 
 const props = defineProps<{
   /** Wait this long (ms) before showing, so a fast image does not flash the fallback. */
   delayMs?: number
-  class?: HTMLAttributes["class"]
+  class?: HTMLAttributes['class']
 }>()
 
 const avatar = inject(avatarKey, null)
@@ -20,7 +20,7 @@ onMounted(() => {
 })
 onBeforeUnmount(() => clearTimeout(timer))
 
-const visible = computed(() => delayed.value && avatar?.status.value !== "loaded")
+const visible = computed(() => delayed.value && avatar?.status.value !== 'loaded')
 </script>
 
 <template>

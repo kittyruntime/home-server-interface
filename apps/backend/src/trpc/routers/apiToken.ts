@@ -1,7 +1,7 @@
-import { TRPCError } from "@trpc/server"
-import { z } from "zod"
-import { router, protectedProcedure, adminProcedure } from "../index"
-import { API_SCOPES, DEFAULT_SCOPES, newTokenSecret, parseScopes, tokenUsable } from "../../services/api-tokens"
+import { TRPCError } from '@trpc/server'
+import { z } from 'zod'
+import { router, protectedProcedure, adminProcedure } from '../index'
+import { API_SCOPES, DEFAULT_SCOPES, newTokenSecret, parseScopes, tokenUsable } from '../../services/api-tokens'
 
 // Personal access tokens for AI assistants (#138). Signed-in sessions only:
 // a token can neither make nor revoke tokens (closedToApiTokens).
@@ -18,7 +18,7 @@ const view = <T extends Listed>(t: T) => ({ ...t, scopes: parseScopes(t.scopes),
 
 export const apiTokenRouter = router({
   list: protectedProcedure.query(async ({ ctx }) => {
-    const tokens = await ctx.prisma.apiToken.findMany({ where: { userId: ctx.user.userId }, select: listed, orderBy: { createdAt: "desc" } })
+    const tokens = await ctx.prisma.apiToken.findMany({ where: { userId: ctx.user.userId }, select: listed, orderBy: { createdAt: 'desc' } })
     return tokens.map(view)
   }),
 
@@ -27,7 +27,7 @@ export const apiTokenRouter = router({
     const tokens = await ctx.prisma.apiToken.findMany({
       where: { revokedAt: null },
       select: { ...listed, user: { select: { username: true } } },
-      orderBy: { createdAt: "desc" },
+      orderBy: { createdAt: 'desc' },
     })
     return tokens.map(view).filter(t => t.active)
   }),
@@ -46,7 +46,7 @@ export const apiTokenRouter = router({
         where: { userId: ctx.user.userId, revokedAt: null, OR: [{ expiresAt: null }, { expiresAt: { gt: now } }] },
       })
       if (active >= MAX_ACTIVE_TOKENS) {
-        throw new TRPCError({ code: "BAD_REQUEST", message: `At most ${MAX_ACTIVE_TOKENS} active tokens: revoke one first` })
+        throw new TRPCError({ code: 'BAD_REQUEST', message: `At most ${MAX_ACTIVE_TOKENS} active tokens: revoke one first` })
       }
       const { secret, hash, prefix } = newTokenSecret()
       const scopes = [...new Set(input.scopes)]
@@ -66,7 +66,7 @@ export const apiTokenRouter = router({
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
       const token = await ctx.prisma.apiToken.findUnique({ where: { id: input.id }, select: { userId: true, name: true, revokedAt: true } })
-      if (!token || (token.userId !== ctx.user.userId && !ctx.user.isAdmin)) throw new TRPCError({ code: "NOT_FOUND" })
+      if (!token || (token.userId !== ctx.user.userId && !ctx.user.isAdmin)) throw new TRPCError({ code: 'NOT_FOUND' })
       ctx.audit.target = token.name
       if (!token.revokedAt) await ctx.prisma.apiToken.update({ where: { id: input.id }, data: { revokedAt: new Date() } })
       return { ok: true }

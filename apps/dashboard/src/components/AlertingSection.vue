@@ -55,7 +55,7 @@ async function saveThresholds() {
 
 const dirty = computed(() =>
   form.value.diskUsageWarningPercent !== thresholds.value.diskUsageWarningPercent ||
-  form.value.diskUsageCriticalPercent !== thresholds.value.diskUsageCriticalPercent
+  form.value.diskUsageCriticalPercent !== thresholds.value.diskUsageCriticalPercent,
 )
 
 onMounted(load)
@@ -84,7 +84,7 @@ onMounted(load)
               v-model.number="form.diskUsageWarningPercent"
               type="number" min="1" max="99"
               class="w-16 px-2 py-1.5 text-sm tabular-nums"
-             />
+            />
             <span class="text-sm text-base-content/70">%</span>
           </div>
         </label>
@@ -95,7 +95,7 @@ onMounted(load)
               v-model.number="form.diskUsageCriticalPercent"
               type="number" min="1" max="99"
               class="w-16 px-2 py-1.5 text-sm tabular-nums"
-             />
+            />
             <span class="text-sm text-base-content/70">%</span>
           </div>
         </label>

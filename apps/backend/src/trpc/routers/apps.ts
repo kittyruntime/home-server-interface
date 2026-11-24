@@ -1,48 +1,48 @@
-import crypto from "node:crypto"
-import { readFile } from "node:fs/promises"
-import { z } from "zod"
-import { TRPCError } from "@trpc/server"
-import { composeBindSources } from "@app/compose"
-import { catalogApps } from "../../services/catalog-source"
-import { router, adminProcedure } from "../index"
-import type { Context } from "../context"
-import { publishJob, requestSync } from "../../nats"
+import crypto from 'node:crypto'
+import { readFile } from 'node:fs/promises'
+import { z } from 'zod'
+import { TRPCError } from '@trpc/server'
+import { composeBindSources } from '@app/compose'
+import { catalogApps } from '../../services/catalog-source'
+import { router, adminProcedure } from '../index'
+import type { Context } from '../context'
+import { publishJob, requestSync } from '../../nats'
 import {
   readPreviousStack, removePreviousStack, removeStackDir, stackFilePath, stackStatusNow, writePreviousStack, writeStack,
-} from "../../services/containerStacks"
-import { assertDockerReady } from "../../services/docker-status"
-import { assertVolumeAvailable } from "../../services/volume-guard"
-import { planAuditMeta } from "../../services/storage-plan"
-import { preparePlaceDir } from "../../services/sharing.service"
+} from '../../services/containerStacks'
+import { assertDockerReady } from '../../services/docker-status'
+import { assertVolumeAvailable } from '../../services/volume-guard'
+import { planAuditMeta } from '../../services/storage-plan'
+import { preparePlaceDir } from '../../services/sharing.service'
 import {
   APP_OPS, appAuditInput, appFingerprint, buildAppPlan, executeAppPlan, publicSteps,
   type AppOp, type AppPlan, type AppPlanDeps,
-} from "../../services/app-plan"
+} from '../../services/app-plan'
 
 function deps(ctx: Context, userId: string): AppPlanDeps {
   return {
     stackPath: stackFilePath,
     readStack: async name => {
-      try { return await readFile(stackFilePath(name), "utf8") } catch { return null }
+      try { return await readFile(stackFilePath(name), 'utf8') } catch { return null }
     },
     readPrevious: readPreviousStack,
     appStatus:    stackStatusNow,
     findPlace:   id => ctx.prisma.place.findUnique({ where: { id }, select: { id: true, name: true, path: true } }),
     placeAtPath: async path => (await ctx.prisma.place.findFirst({ where: { path } })) !== null,
     catalog:     id => catalogApps().find(m => m.id === id),
-    secret:      () => crypto.randomBytes(24).toString("base64url"),
+    secret:      () => crypto.randomBytes(24).toString('base64url'),
     effects: {
       writeStack:     async (name, yaml) => { await writeStack(name, yaml) },
       removeStackDir,
       // No path-containment check on root.fs.mkdirp: admin only, as the
       // catalog install it replaces.
-      mkdirp:         async path => { await requestSync("root.fs.mkdirp", { path }) },
+      mkdirp:         async path => { await requestSync('root.fs.mkdirp', { path }) },
       createPlace:    async (name, path) => {
         const place = await ctx.prisma.place.create({ data: { name, path } })
         await preparePlaceDir(place.path)
         return place.id
       },
-      validate:       async name => { await requestSync("root.container.composeValidate", { name }, 30_000) },
+      validate:       async name => { await requestSync('root.container.composeValidate', { name }, 30_000) },
       publishJob:     (action, payload) => publishJob(action, payload, userId),
       writePrevious:  writePreviousStack,
       removePrevious: removePreviousStack,
@@ -54,15 +54,15 @@ function deps(ctx: Context, userId: string): AppPlanDeps {
 // bind-mounting a path on a missing volume must not start (#3).
 async function preconditions(plan: AppPlan): Promise<void> {
   await assertDockerReady()
-  if (plan.op === "app.save" && plan.observed.startContent !== undefined) {
+  if (plan.op === 'app.save' && plan.observed.startContent !== undefined) {
     await assertVolumeAvailable(composeBindSources(plan.observed.startContent))
   }
-  if (plan.op === "app.apply" || plan.op === "app.start") {
-    await assertVolumeAvailable(composeBindSources(plan.observed.content ?? ""))
+  if (plan.op === 'app.apply' || plan.op === 'app.start') {
+    await assertVolumeAvailable(composeBindSources(plan.observed.content ?? ''))
   }
   // An update recreates a running app; a rollback always starts it.
-  if ((plan.op === "app.update" && plan.observed.status === "running") || plan.op === "app.rollback") {
-    await assertVolumeAvailable(composeBindSources(plan.observed.content ?? ""))
+  if ((plan.op === 'app.update' && plan.observed.status === 'running') || plan.op === 'app.rollback') {
+    await assertVolumeAvailable(composeBindSources(plan.observed.content ?? ''))
   }
 }
 
@@ -76,7 +76,7 @@ export const appsRouter = router({
     .mutation(async ({ ctx, input }) => {
       ctx.audit.meta = { input: appAuditInput(input) }
       const plan = await buildAppPlan(input.op, input.input, deps(ctx, ctx.user.userId))
-      if (plan.op !== "app.save" || plan.observed.startContent !== undefined) await preconditions(plan)
+      if (plan.op !== 'app.save' || plan.observed.startContent !== undefined) await preconditions(plan)
       return { steps: publicSteps(plan), fingerprint: appFingerprint(plan, input.input) }
     }),
 
@@ -86,9 +86,9 @@ export const appsRouter = router({
       ctx.audit.meta = { input: appAuditInput(input) }
       const plan = await buildAppPlan(input.op, input.input, deps(ctx, ctx.user.userId))
       if (appFingerprint(plan, input.input) !== input.fingerprint) {
-        throw new TRPCError({ code: "CONFLICT", message: "The app changed since the preview: review the plan again" })
+        throw new TRPCError({ code: 'CONFLICT', message: 'The app changed since the preview: review the plan again' })
       }
-      if (plan.op !== "app.save" || plan.observed.startContent !== undefined) await preconditions(plan)
+      if (plan.op !== 'app.save' || plan.observed.startContent !== undefined) await preconditions(plan)
       const res = await executeAppPlan(plan)
       const steps = publicSteps(plan)
       ctx.audit.meta = { input: appAuditInput(input), plan: planAuditMeta(input.op, steps, res.results) }

@@ -37,14 +37,6 @@ export default {
     succeeded2: 'Réussi',
     unknownError: 'erreur inconnue',
   },
-  dashboard_widgets: {
-    memory: 'Mémoire',
-    network: 'Réseau',
-    containers: 'Conteneurs',
-    storage: 'Stockage',
-    system: 'Système',
-    diskHealth: 'Santé des disques',
-  },
   jobLogs: { viewLogs: 'Voir les journaux' },
   jobs: {
     theOperationDidNotFinish: 'L’opération ne s’est pas terminée en {p0} s. Elle tourne peut-être encore ; actualisez pour vérifier.',
@@ -63,7 +55,6 @@ export default {
     files: 'Fichiers',
     apps: 'Applications',
     storage: 'Stockage',
-    appStore: 'App Store',
     monitor: 'Supervision',
     sharing: 'Partage',
     assistant: 'Assistant',
@@ -71,7 +62,6 @@ export default {
   },
   store: {
     all: 'Toutes',
-    installed: 'Installées',
     updates: 'Mises à jour',
     categories: {
       Media: 'Médias',

@@ -11,8 +11,8 @@ export function looksBinary(buf: Buffer): boolean {
   const sample = buf.subarray(0, Math.min(buf.length, SAMPLE_SIZE))
   if (sample.includes(0)) return true
 
-  const text = sample.toString("utf-8")
+  const text = sample.toString('utf-8')
   let replacementCount = 0
-  for (const ch of text) if (ch === "�") replacementCount++
+  for (const ch of text) if (ch === '�') replacementCount++
   return replacementCount / text.length > REPLACEMENT_CHAR_RATIO_THRESHOLD
 }

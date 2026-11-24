@@ -184,12 +184,12 @@ onMounted(async () => {
         <div class="flex gap-3">
           <div class="flex-1">
             <label class="block text-xs text-base-content/80 mb-1">{{ t('ui.settings.PlacesSection.name') }}</label>
-            <Input v-model="newName" type="text" :placeholder="t('ui.settings.PlacesSection.media')"/>
+            <Input v-model="newName" type="text" :placeholder="t('ui.settings.PlacesSection.media')" />
             <p class="text-2xs text-base-content/70 mt-1 leading-relaxed">{{ t('ui.settings.PlacesSection.shownToUsersInThe') }}</p>
           </div>
           <div class="flex-[2]">
             <label class="block text-xs text-base-content/80 mb-1">{{ t('ui.settings.PlacesSection.path') }}</label>
-            <Input v-model="newPath" type="text" laceholder="/mnt/data" class="font-mono"/>
+            <Input v-model="newPath" type="text" laceholder="/mnt/data" class="font-mono" />
             <p class="text-2xs text-base-content/70 mt-1 leading-relaxed">{{ t('ui.settings.PlacesSection.absolutePathToAFolder') }}</p>
           </div>
         </div>

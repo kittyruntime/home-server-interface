@@ -1,18 +1,18 @@
 <script setup lang="ts">
-import type { HTMLAttributes } from "vue"
-import type { PrimitiveProps } from "../Primitive.vue"
-import { computed, inject, onMounted, onUnmounted, onUpdated } from "vue"
-import { cn } from "@/lib/utils"
-import Primitive from "../Primitive.vue"
-import { makeId, tabsKey } from "./context"
+import type { HTMLAttributes } from 'vue'
+import type { PrimitiveProps } from '../Primitive.vue'
+import { computed, inject, onMounted, onUnmounted, onUpdated } from 'vue'
+import { cn } from '@/lib/utils'
+import Primitive from '../Primitive.vue'
+import { makeId, tabsKey } from './context'
 
 interface TabsTriggerProps extends PrimitiveProps {
   value: string
   disabled?: boolean
-  class?: HTMLAttributes["class"]
+  class?: HTMLAttributes['class']
 }
 
-const props = withDefaults(defineProps<TabsTriggerProps>(), { as: "button", disabled: false })
+const props = withDefaults(defineProps<TabsTriggerProps>(), { as: 'button', disabled: false })
 
 const ctx = inject(tabsKey)!
 const active = computed(() => ctx.model.value === props.value)
@@ -23,7 +23,7 @@ onUnmounted(ctx.refresh)
 
 function onFocus() {
   ctx.focused.value = props.value
-  if (ctx.activationMode.value === "automatic" && !props.disabled)
+  if (ctx.activationMode.value === 'automatic' && !props.disabled)
     ctx.select(props.value)
 }
 

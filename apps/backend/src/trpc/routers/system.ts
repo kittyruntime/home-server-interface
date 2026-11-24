@@ -1,10 +1,10 @@
-import * as os from "os"
-import * as fs from "fs"
-import { z } from "zod"
-import { TRPCError } from "@trpc/server"
-import { router, publicProcedure, protectedProcedure, adminProcedure } from "../index"
-import { currentMaintenance } from "../../services/maintenance"
-import { endProcess, perfSnapshot, processSnapshot } from "../../services/system-perf.service"
+import * as os from 'os'
+import * as fs from 'fs'
+import { z } from 'zod'
+import { TRPCError } from '@trpc/server'
+import { router, publicProcedure, protectedProcedure, adminProcedure } from '../index'
+import { currentMaintenance } from '../../services/maintenance'
+import { endProcess, perfSnapshot, processSnapshot } from '../../services/system-perf.service'
 
 // System router: live metrics, metrics history, and static system info. Disk/RAID/
 // LVM/mount management moved to the `storage` router.
@@ -43,17 +43,17 @@ let netPrevMs = 0
 
 function parseNetDev(): Record<string, { rx: number; tx: number }> {
   try {
-    const content = fs.readFileSync("/proc/net/dev", "utf8")
+    const content = fs.readFileSync('/proc/net/dev', 'utf8')
     const result: Record<string, { rx: number; tx: number }> = {}
-    for (const line of content.split("\n").slice(2)) {
+    for (const line of content.split('\n').slice(2)) {
       const trimmed = line.trim()
       if (!trimmed) continue
-      const [iface, rest] = trimmed.split(":")
+      const [iface, rest] = trimmed.split(':')
       if (!iface || !rest) continue
       const cols = rest.trim().split(/\s+/)
       result[iface.trim()] = {
-        rx: parseInt(cols[0] ?? "0", 10),
-        tx: parseInt(cols[8] ?? "0", 10),
+        rx: parseInt(cols[0] ?? '0', 10),
+        tx: parseInt(cols[8] ?? '0', 10),
       }
     }
     return result
@@ -78,7 +78,7 @@ function netRates(): { rx: number; tx: number } {
   let rxDelta = 0
   let txDelta = 0
   for (const [iface, vals] of Object.entries(current)) {
-    if (iface === "lo") continue
+    if (iface === 'lo') continue
     const prev = netPrev[iface]
     if (!prev) continue
     rxDelta += Math.max(0, vals.rx - prev.rx)
@@ -114,17 +114,17 @@ function sysinfoSnapshot() {
     .map(([name, addrs]) => ({
       name,
       addrs: (addrs ?? [])
-        .filter(a => a.family === "IPv4" || a.family === "IPv6")
+        .filter(a => a.family === 'IPv4' || a.family === 'IPv6')
         .map(a => ({ addr: a.address, family: a.family as string })),
     }))
     .filter(i => i.addrs.length > 0)
-    .sort((a, b) => (a.name === "lo" ? 1 : b.name === "lo" ? -1 : a.name.localeCompare(b.name)))
+    .sort((a, b) => (a.name === 'lo' ? 1 : b.name === 'lo' ? -1 : a.name.localeCompare(b.name)))
   return {
     hostname: os.hostname(),
     platform: os.platform() as string,
     arch:     os.arch() as string,
     release:  os.release(),
-    cpuModel: cpus[0]?.model?.replace(/\s+/g, " ").trim() ?? "Unknown",
+    cpuModel: cpus[0]?.model?.replace(/\s+/g, ' ').trim() ?? 'Unknown',
     cpuCount: cpus.length,
     loadavg:  os.loadavg() as [number, number, number],
     ifaces,
@@ -147,7 +147,7 @@ export const systemRouter = router({
       // The byte/rate columns are BigInt in the DB; convert to Number for the
       // client (values are well within Number's safe range) since tRPC has no
       // BigInt-aware transformer and JSON can't serialize a bigint.
-      return rows.map((r) => ({
+      return rows.map(r => ({
         ...r,
         ramUsed:  Number(r.ramUsed),
         ramTotal: Number(r.ramTotal),
@@ -177,13 +177,13 @@ export const systemRouter = router({
   processEnd: adminProcedure
     .input(z.object({ pid: z.number().int().positive(), start: z.string().regex(/^[0-9]+$/), name: z.string().max(64), force: z.boolean() }))
     .mutation(async ({ ctx, input }) => {
-      ctx.audit.target = `${input.name} (pid ${input.pid})${input.force ? " forced" : ""}`
+      ctx.audit.target = `${input.name} (pid ${input.pid})${input.force ? ' forced' : ''}`
       try {
         await endProcess(input.pid, input.start, input.force)
       } catch (e) {
         const code = (e as { code?: string }).code
-        if (code === "NOT_FOUND") throw new TRPCError({ code: "NOT_FOUND", message: (e as Error).message })
-        if (code === "PROTECTED") throw new TRPCError({ code: "FORBIDDEN", message: (e as Error).message })
+        if (code === 'NOT_FOUND') throw new TRPCError({ code: 'NOT_FOUND', message: (e as Error).message })
+        if (code === 'PROTECTED') throw new TRPCError({ code: 'FORBIDDEN', message: (e as Error).message })
         throw e
       }
       return { ok: true }

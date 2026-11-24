@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import { computed, inject, onBeforeUnmount, onMounted, ref } from "vue"
-import type { PrimitiveProps } from "../Primitive.vue"
-import Primitive from "../Primitive.vue"
-import { popoverKey } from "./context"
+import { computed, inject, onBeforeUnmount, onMounted, ref } from 'vue'
+import type { PrimitiveProps } from '../Primitive.vue'
+import Primitive from '../Primitive.vue'
+import { popoverKey } from './context'
 
-const props = withDefaults(defineProps<PrimitiveProps>(), { as: "button" })
+const props = withDefaults(defineProps<PrimitiveProps>(), { as: 'button' })
 const ctx = inject(popoverKey)!
 
 const el = ref<InstanceType<typeof Primitive> | null>(null)
@@ -12,11 +12,11 @@ onMounted(() => ctx.setTrigger((el.value?.$el as HTMLElement | undefined) ?? nul
 onBeforeUnmount(() => ctx.setTrigger(null))
 
 const bindings = computed(() => ({
-  "aria-haspopup": "dialog",
-  "aria-expanded": ctx.open.value,
+  'aria-haspopup': 'dialog',
+  'aria-expanded': ctx.open.value,
   // Overridden by a child that sets its own data-state.
-  "data-state": ctx.open.value ? "open" : "closed",
-  "aria-controls": ctx.open.value ? ctx.contentId : undefined,
+  'data-state': ctx.open.value ? 'open' : 'closed',
+  'aria-controls': ctx.open.value ? ctx.contentId : undefined,
 }))
 </script>
 

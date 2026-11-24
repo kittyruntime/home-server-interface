@@ -1,22 +1,22 @@
 <script setup lang="ts">
-import type { HTMLAttributes } from "vue"
-import { Check } from "@lucide/vue"
-import MenuItem from "./MenuItem.vue"
+import type { HTMLAttributes } from 'vue'
+import { Check } from '@lucide/vue'
+import MenuItem from './MenuItem.vue'
 
 const props = defineProps<{
-  modelValue?: boolean | "indeterminate"
+  modelValue?: boolean | 'indeterminate'
   disabled?: boolean
   textValue?: string
-  class?: HTMLAttributes["class"]
+  class?: HTMLAttributes['class']
 }>()
 const emit = defineEmits<{
-  "update:modelValue": [value: boolean]
-  select: [event: Event]
+  'update:modelValue': [value: boolean]
+  'select': [event: Event]
 }>()
 
 function onSelect(event: Event) {
-  emit("select", event)
-  if (!event.defaultPrevented) emit("update:modelValue", props.modelValue !== true)
+  emit('select', event)
+  if (!event.defaultPrevented) emit('update:modelValue', props.modelValue !== true)
 }
 </script>
 

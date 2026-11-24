@@ -1,45 +1,45 @@
-import assert from "node:assert/strict"
-import { composeBindSources, composeNamedVolumes, generateComposeYaml, parseComposeYaml, repairNamedVolumeDeclarations, withSidecars } from "../compose.js"
-import { parseDocument } from "yaml"
-import { STACK_NAME_RE, zAppInput, type AppInput } from "../model.js"
+import assert from 'node:assert/strict'
+import { composeBindSources, composeNamedVolumes, generateComposeYaml, parseComposeYaml, repairNamedVolumeDeclarations, withSidecars } from '../compose.js'
+import { parseDocument } from 'yaml'
+import { STACK_NAME_RE, zAppInput, type AppInput } from '../model.js'
 
-for (const pinnedUrl of ["https://media.example.com", "http://192.168.1.20:8080/app", null]) {
-  assert.equal(zAppInput.safeParse({ name: "jellyfin", image: "jellyfin/jellyfin:latest", pinnedUrl }).success, true)
+for (const pinnedUrl of ['https://media.example.com', 'http://192.168.1.20:8080/app', null]) {
+  assert.equal(zAppInput.safeParse({ name: 'jellyfin', image: 'jellyfin/jellyfin:latest', pinnedUrl }).success, true)
 }
-for (const pinnedUrl of ["javascript:alert(1)", "data:text/html,<script>alert(1)</script>"]) {
-  assert.equal(zAppInput.safeParse({ name: "jellyfin", image: "jellyfin/jellyfin:latest", pinnedUrl }).success, false)
+for (const pinnedUrl of ['javascript:alert(1)', 'data:text/html,<script>alert(1)</script>']) {
+  assert.equal(zAppInput.safeParse({ name: 'jellyfin', image: 'jellyfin/jellyfin:latest', pinnedUrl }).success, false)
 }
 
 // The icon picked for an app added by hand round-trips through x-hsi; an
 // unknown shape is dropped rather than refusing the file.
 {
-  const yaml = generateComposeYaml({ ...zAppInput.parse({ name: "notes", image: "example/notes:1" }), icon: "book-open" })
+  const yaml = generateComposeYaml({ ...zAppInput.parse({ name: 'notes', image: 'example/notes:1' }), icon: 'book-open' })
   assert.match(yaml, /icon: book-open/)
-  assert.equal(parseComposeYaml(yaml).app?.icon, "book-open")
-  const cleared = generateComposeYaml({ ...zAppInput.parse({ name: "notes", image: "example/notes:1" }), icon: null }, yaml)
+  assert.equal(parseComposeYaml(yaml).app?.icon, 'book-open')
+  const cleared = generateComposeYaml({ ...zAppInput.parse({ name: 'notes', image: 'example/notes:1' }), icon: null }, yaml)
   assert.doesNotMatch(cleared, /icon:/)
   const odd = parseComposeYaml(`services:\n  notes:\n    image: example/notes:1\n    x-hsi:\n      icon: "<svg/>"\n`)
   assert.equal(odd.app?.icon, undefined)
 }
 
 const legacyUnsafePin = parseComposeYaml(`services:\n  jellyfin:\n    image: jellyfin/jellyfin:latest\n    x-hsi:\n      pinnedUrl: javascript:alert(1)\n`)
-assert.ok(legacyUnsafePin.app, "legacy unsafe pin metadata should not make a single-service app uneditable")
+assert.ok(legacyUnsafePin.app, 'legacy unsafe pin metadata should not make a single-service app uneditable')
 assert.equal(legacyUnsafePin.app?.pinnedUrl, null)
 
 const base: AppInput = {
-  name: "jellyfin", image: "jellyfin/jellyfin:latest",
-  ports: [{ hostPort: 8096, containerPort: 8096, protocol: "tcp", domain: "media.example.com", tls: true, publicPort: 443 }],
-  envs: [{ key: "TZ", value: "Europe/Paris" }],
-  volumes: [{ type: "bind", source: "/srv/media", target: "/media", readOnly: false }],
-  networkNames: ["hsi-net"], labels: [{ key: "hsi.catalog.id", value: "jellyfin" }],
-  capAdd: [], capDrop: [], extraHosts: [], restartPolicy: "unless-stopped",
-  hostname: null, user: null, command: null, cpuLimit: null, memoryLimit: null, pinnedUrl: "https://media.example.com",
+  name: 'jellyfin', image: 'jellyfin/jellyfin:latest',
+  ports: [{ hostPort: 8096, containerPort: 8096, protocol: 'tcp', domain: 'media.example.com', tls: true, publicPort: 443 }],
+  envs: [{ key: 'TZ', value: 'Europe/Paris' }],
+  volumes: [{ type: 'bind', source: '/srv/media', target: '/media', readOnly: false }],
+  networkNames: ['hsi-net'], labels: [{ key: 'hsi.catalog.id', value: 'jellyfin' }],
+  capAdd: [], capDrop: [], extraHosts: [], restartPolicy: 'unless-stopped',
+  hostname: null, user: null, command: null, cpuLimit: null, memoryLimit: null, pinnedUrl: 'https://media.example.com',
 }
 
 function testFreshRoundTrip() {
   const y = generateComposeYaml(base)
   const p = parseComposeYaml(y)
-  assert.deepEqual(p.services, ["jellyfin"])
+  assert.deepEqual(p.services, ['jellyfin'])
   assert.deepEqual(p.app, base) // defaults resolve identically
   assert.deepEqual(p.unknownFields, [])
   assert.match(y, /container_name: jellyfin/)
@@ -48,82 +48,82 @@ function testFreshRoundTrip() {
 
 function testUnknownFieldsAndCommentsSurviveEdit() {
   const existing = [
-    "# Managed by HSI - editable by hand, re-read on load.",
-    "services:",
-    "  jellyfin:",
-    "    image: jellyfin/jellyfin:10.0",
-    "    # my comment",
-    "    healthcheck:",
-    "      test: [\"CMD\", \"curl\", \"-f\", \"localhost:8096\"]",
-    "    container_name: jellyfin",
-    "networks:",
-    "  hsi-net:",
-    "    external: true",
-    "    name: hsi-net",
-  ].join("\n")
-  const y = generateComposeYaml({ ...base, image: "jellyfin/jellyfin:10.1" }, existing)
+    '# Managed by HSI - editable by hand, re-read on load.',
+    'services:',
+    '  jellyfin:',
+    '    image: jellyfin/jellyfin:10.0',
+    '    # my comment',
+    '    healthcheck:',
+    '      test: ["CMD", "curl", "-f", "localhost:8096"]',
+    '    container_name: jellyfin',
+    'networks:',
+    '  hsi-net:',
+    '    external: true',
+    '    name: hsi-net',
+  ].join('\n')
+  const y = generateComposeYaml({ ...base, image: 'jellyfin/jellyfin:10.1' }, existing)
   assert.match(y, /jellyfin\/jellyfin:10\.1/) // updated image
   assert.match(y, /healthcheck:/)          // unknown key kept
   assert.match(y, /# my comment/)          // comments kept
   assert.match(y, /external: true/)        // pre-existing network kept
   const p = parseComposeYaml(y)
-  assert.deepEqual(p.unknownFields, ["services.jellyfin.healthcheck"])
+  assert.deepEqual(p.unknownFields, ['services.jellyfin.healthcheck'])
 }
 
 function testMultiServiceIsNotApp() {
-  const y = generateComposeYaml(base).replace("container_name: jellyfin\n", "") +
-    "\n  second:\n    image: busybox\n"
+  const y = generateComposeYaml(base).replace('container_name: jellyfin\n', '') +
+    '\n  second:\n    image: busybox\n'
   const p = parseComposeYaml(y)
   assert.equal(p.app, null)
-  assert.deepEqual(p.services.sort(), ["jellyfin", "second"])
+  assert.deepEqual(p.services.sort(), ['jellyfin', 'second'])
 }
 
 function testInvalidComposeYamlIsRejected() {
-  assert.throws(() => parseComposeYaml("services: ["), /invalid yaml/i)
-  assert.throws(() => parseComposeYaml("services:\n  web: nope"), /mapping/i)
+  assert.throws(() => parseComposeYaml('services: ['), /invalid yaml/i)
+  assert.throws(() => parseComposeYaml('services:\n  web: nope'), /mapping/i)
 }
 
 function testPlaceVolumesRejected() {
-  assert.throws(() => generateComposeYaml({ ...base, volumes: [{ type: "place", source: "place-id", target: "/media", readOnly: false }] }),
+  assert.throws(() => generateComposeYaml({ ...base, volumes: [{ type: 'place', source: 'place-id', target: '/media', readOnly: false }] }),
     /place volumes must be resolved/)
 }
 
 function testEmptyValuesDeleteKeys() {
-  const y = generateComposeYaml({ ...base, restartPolicy: "no", networkNames: [], labels: [] })
+  const y = generateComposeYaml({ ...base, restartPolicy: 'no', networkNames: [], labels: [] })
   assert.doesNotMatch(y, /restart:/)
   assert.doesNotMatch(y, /networks:/)
 }
 
 function testStackNameRegex() {
-  assert.match("jellyfin", STACK_NAME_RE)
+  assert.match('jellyfin', STACK_NAME_RE)
   // Compose v2 lowercases project names, so mixed case can never match.
-  assert.doesNotMatch("Jellyfin", STACK_NAME_RE)
-  assert.doesNotMatch("../etc", STACK_NAME_RE)
-  assert.doesNotMatch("-lead", STACK_NAME_RE)
-  assert.doesNotMatch("a b", STACK_NAME_RE)
+  assert.doesNotMatch('Jellyfin', STACK_NAME_RE)
+  assert.doesNotMatch('../etc', STACK_NAME_RE)
+  assert.doesNotMatch('-lead', STACK_NAME_RE)
+  assert.doesNotMatch('a b', STACK_NAME_RE)
 }
 
 function testListFormEnvsAndLabelsRoundTrip() {
   const existing = [
-    "services:",
-    "  jellyfin:",
-    "    image: jellyfin/jellyfin:latest",
-    "    environment:",
-    "      - TZ=Europe/Paris",
-    "      - NO_PROXY=localhost,127.0.0.1",
-    "    labels:",
-    "      - hsi.catalog.id=jellyfin",
-    "      - com.example.tag=media",
-  ].join("\n")
+    'services:',
+    '  jellyfin:',
+    '    image: jellyfin/jellyfin:latest',
+    '    environment:',
+    '      - TZ=Europe/Paris',
+    '      - NO_PROXY=localhost,127.0.0.1',
+    '    labels:',
+    '      - hsi.catalog.id=jellyfin',
+    '      - com.example.tag=media',
+  ].join('\n')
   const p = parseComposeYaml(existing)
-  assert.ok(p.app, "list-form environment/labels must parse to an app")
+  assert.ok(p.app, 'list-form environment/labels must parse to an app')
   assert.deepEqual(p.app.envs, [
-    { key: "TZ", value: "Europe/Paris" },
-    { key: "NO_PROXY", value: "localhost,127.0.0.1" },
+    { key: 'TZ', value: 'Europe/Paris' },
+    { key: 'NO_PROXY', value: 'localhost,127.0.0.1' },
   ])
   assert.deepEqual(p.app.labels, [
-    { key: "hsi.catalog.id", value: "jellyfin" },
-    { key: "com.example.tag", value: "media" },
+    { key: 'hsi.catalog.id', value: 'jellyfin' },
+    { key: 'com.example.tag', value: 'media' },
   ])
   // Regenerate in place: the env/labels must survive as a map of the actual
   // values, not as mangled {"0": "TZ=..."} entries.
@@ -136,28 +136,28 @@ function testListFormEnvsAndLabelsRoundTrip() {
 }
 
 function testListEntryWithoutEqualsDowngradesToRawOnly() {
-  const y = "services:\n  jellyfin:\n    image: busybox\n    environment:\n      - BARE\n"
+  const y = 'services:\n  jellyfin:\n    image: busybox\n    environment:\n      - BARE\n'
   const p = parseComposeYaml(y)
   assert.equal(p.app, null)
 }
 
 function testUnknownXhsiKeysSurviveRegenerate() {
   const existing = [
-    "services:",
-    "  jellyfin:",
-    "    image: jellyfin/jellyfin:latest",
-    "    x-hsi:",
-    "      custom: keep",
-    "      pinnedUrl: https://old.example.com",
-  ].join("\n")
+    'services:',
+    '  jellyfin:',
+    '    image: jellyfin/jellyfin:latest',
+    '    x-hsi:',
+    '      custom: keep',
+    '      pinnedUrl: https://old.example.com',
+  ].join('\n')
   const p = parseComposeYaml(existing)
-  assert.ok(p.app, "x-hsi-only app must parse")
-  assert.equal(p.app.pinnedUrl, "https://old.example.com")
-  const y = generateComposeYaml({ ...p.app, pinnedUrl: "https://new.example.com" }, existing)
+  assert.ok(p.app, 'x-hsi-only app must parse')
+  assert.equal(p.app.pinnedUrl, 'https://old.example.com')
+  const y = generateComposeYaml({ ...p.app, pinnedUrl: 'https://new.example.com' }, existing)
   assert.match(y, /pinnedUrl: https:\/\/new\.example\.com/) // model value wins
   assert.match(y, /custom: keep/)                           // unknown sub-key preserved
   const p2 = parseComposeYaml(y)
-  assert.equal(p2.app?.pinnedUrl, "https://new.example.com")
+  assert.equal(p2.app?.pinnedUrl, 'https://new.example.com')
 }
 
 // Compose rejects a service that references an undeclared named volume
@@ -165,8 +165,8 @@ function testUnknownXhsiKeysSurviveRegenerate() {
 // name so apps migrated from `docker run -v name:/path` keep their data instead
 // of getting a new, empty "<project>_name" volume.
 const named: AppInput = {
-  ...base, name: "navidrome",
-  volumes: [{ type: "named", source: "navidrome_data", target: "/data", readOnly: false }],
+  ...base, name: 'navidrome',
+  volumes: [{ type: 'named', source: 'navidrome_data', target: '/data', readOnly: false }],
 }
 
 function topVolumes(y: string): Record<string, unknown> | undefined {
@@ -175,65 +175,65 @@ function topVolumes(y: string): Record<string, unknown> | undefined {
 
 function testNamedVolumesAreDeclared() {
   const y = generateComposeYaml(named)
-  assert.deepEqual(topVolumes(y), { navidrome_data: { name: "navidrome_data" } })
+  assert.deepEqual(topVolumes(y), { navidrome_data: { name: 'navidrome_data' } })
   const p = parseComposeYaml(y)
   assert.deepEqual(p.unknownFields, [])
   assert.deepEqual(p.app, named)
   // Fresh documents keep services last so hand-appended services stay valid.
-  assert.ok(y.indexOf("volumes:\n  navidrome_data") < y.indexOf("services:"))
+  assert.ok(y.indexOf('volumes:\n  navidrome_data') < y.indexOf('services:'))
 }
 
 function testUnusedGeneratedDeclarationIsRemoved() {
   const y1 = generateComposeYaml(named)
-  const y2 = generateComposeYaml({ ...named, volumes: [{ type: "bind", source: "/srv/music", target: "/music", readOnly: true }] }, y1)
+  const y2 = generateComposeYaml({ ...named, volumes: [{ type: 'bind', source: '/srv/music', target: '/music', readOnly: true }] }, y1)
   assert.equal(topVolumes(y2), undefined)
 }
 
 function testCustomVolumeDeclarationIsKept() {
   const existing = [
-    "services:",
-    "  navidrome:",
-    "    image: deluan/navidrome:0.53.3",
-    "    volumes:",
-    "      - navidrome_data:/data",
-    "volumes:",
-    "  navidrome_data:",
-    "    driver: local",
-    "  other:",
-    "    driver: local",
-  ].join("\n")
-  const y = generateComposeYaml({ ...named, image: "deluan/navidrome:0.53.3" }, existing)
-  assert.deepEqual(topVolumes(y), { navidrome_data: { driver: "local" }, other: { driver: "local" } })
-  assert.deepEqual(parseComposeYaml(y).unknownFields, ["volumes.navidrome_data", "volumes.other"])
+    'services:',
+    '  navidrome:',
+    '    image: deluan/navidrome:0.53.3',
+    '    volumes:',
+    '      - navidrome_data:/data',
+    'volumes:',
+    '  navidrome_data:',
+    '    driver: local',
+    '  other:',
+    '    driver: local',
+  ].join('\n')
+  const y = generateComposeYaml({ ...named, image: 'deluan/navidrome:0.53.3' }, existing)
+  assert.deepEqual(topVolumes(y), { navidrome_data: { driver: 'local' }, other: { driver: 'local' } })
+  assert.deepEqual(parseComposeYaml(y).unknownFields, ['volumes.navidrome_data', 'volumes.other'])
 }
 
 function testRelativeBindIsNotDeclared() {
-  const y = generateComposeYaml({ ...named, volumes: [{ type: "named", source: "./data", target: "/data", readOnly: false }] })
+  const y = generateComposeYaml({ ...named, volumes: [{ type: 'named', source: './data', target: '/data', readOnly: false }] })
   assert.equal(topVolumes(y), undefined)
 }
 
 function testRepairAddsMissingDeclarations() {
   const broken = [
-    "# Managed by HSI - editable by hand, re-read on load.",
-    "services:",
-    "  navidrome:",
-    "    image: deluan/navidrome:0.53.3",
-    "    # keep me",
-    "    volumes:",
-    "      - navidrome_data:/data",
-    "      - /srv/music:/music:ro",
-    "  sidecar:",
-    "    image: busybox",
-    "    volumes:",
-    "      - type: volume",
-    "        source: shared_cache",
-    "        target: /cache",
-  ].join("\n")
+    '# Managed by HSI - editable by hand, re-read on load.',
+    'services:',
+    '  navidrome:',
+    '    image: deluan/navidrome:0.53.3',
+    '    # keep me',
+    '    volumes:',
+    '      - navidrome_data:/data',
+    '      - /srv/music:/music:ro',
+    '  sidecar:',
+    '    image: busybox',
+    '    volumes:',
+    '      - type: volume',
+    '        source: shared_cache',
+    '        target: /cache',
+  ].join('\n')
   const fixed = repairNamedVolumeDeclarations(broken)
-  assert.ok(fixed, "a broken file must be repaired")
+  assert.ok(fixed, 'a broken file must be repaired')
   assert.deepEqual(topVolumes(fixed), {
-    navidrome_data: { name: "navidrome_data" },
-    shared_cache: { name: "shared_cache" },
+    navidrome_data: { name: 'navidrome_data' },
+    shared_cache: { name: 'shared_cache' },
   })
   assert.match(fixed, /# keep me/)
   assert.equal(repairNamedVolumeDeclarations(fixed), null) // idempotent
@@ -254,7 +254,6 @@ testUnusedGeneratedDeclarationIsRemoved()
 testCustomVolumeDeclarationIsKept()
 testRelativeBindIsNotDeclared()
 testRepairAddsMissingDeclarations()
-
 
 // composeBindSources: host paths bind-mounted by any service (volume guard, #3)
 {
@@ -277,37 +276,37 @@ volumes:
   named: {}
   pg: {}
 `
-  assert.deepEqual(composeBindSources(yaml).sort(), ["/mnt/data/conf", "/mnt/data/www"])
-  assert.deepEqual(composeBindSources("::: not yaml"), [])
-  assert.deepEqual(composeBindSources("services:\n  a:\n    image: x\n"), [])
+  assert.deepEqual(composeBindSources(yaml).sort(), ['/mnt/data/conf', '/mnt/data/www'])
+  assert.deepEqual(composeBindSources('::: not yaml'), [])
+  assert.deepEqual(composeBindSources('services:\n  a:\n    image: x\n'), [])
 }
 
 function testSidecarsKeepTheMainServiceEditable() {
-  const app: AppInput = { ...base, name: "paperless", networkNames: [], volumes: [] }
-  const y = withSidecars(generateComposeYaml(app), "paperless", [
-    { name: "redis", image: "redis:7.4-alpine", environment: {}, volumes: [{ source: "paperless-redis", target: "/data" }] },
-    { name: "db", image: "postgres:16-alpine", environment: { POSTGRES_PASSWORD: "s3cret" }, volumes: [], command: ["postgres", "-c", "max_connections=50"] },
+  const app: AppInput = { ...base, name: 'paperless', networkNames: [], volumes: [] }
+  const y = withSidecars(generateComposeYaml(app), 'paperless', [
+    { name: 'redis', image: 'redis:7.4-alpine', environment: {}, volumes: [{ source: 'paperless-redis', target: '/data' }] },
+    { name: 'db', image: 'postgres:16-alpine', environment: { POSTGRES_PASSWORD: 's3cret' }, volumes: [], command: ['postgres', '-c', 'max_connections=50'] },
   ])
   const doc = parseDocument(y).toJS() as any
-  assert.deepEqual(Object.keys(doc.services), ["paperless", "redis", "db"])
-  assert.deepEqual(doc.services.paperless.depends_on, ["redis", "db"])
-  assert.equal(doc.services.redis.container_name, "paperless-redis")
-  assert.deepEqual(doc.services.db.command, ["postgres", "-c", "max_connections=50"])
-  assert.deepEqual(doc.volumes, { "paperless-redis": { name: "paperless-redis" } })
+  assert.deepEqual(Object.keys(doc.services), ['paperless', 'redis', 'db'])
+  assert.deepEqual(doc.services.paperless.depends_on, ['redis', 'db'])
+  assert.equal(doc.services.redis.container_name, 'paperless-redis')
+  assert.deepEqual(doc.services.db.command, ['postgres', '-c', 'max_connections=50'])
+  assert.deepEqual(doc.volumes, { 'paperless-redis': { name: 'paperless-redis' } })
 
   // Without a name the file has no single service; with it the forms get the main one.
   assert.equal(parseComposeYaml(y).app, null)
-  const p = parseComposeYaml(y, "paperless")
+  const p = parseComposeYaml(y, 'paperless')
   assert.equal(p.app?.image, base.image)
-  assert.deepEqual(p.services, ["paperless", "redis", "db"])
-  assert.ok(p.unknownFields.includes("services.redis") && p.unknownFields.includes("services.db"))
+  assert.deepEqual(p.services, ['paperless', 'redis', 'db'])
+  assert.ok(p.unknownFields.includes('services.redis') && p.unknownFields.includes('services.db'))
 
   // Editing the main service in the forms leaves the sidecars as they are.
-  const edited = generateComposeYaml({ ...p.app!, envs: [{ key: "TZ", value: "UTC" }] }, y)
+  const edited = generateComposeYaml({ ...p.app!, envs: [{ key: 'TZ', value: 'UTC' }] }, y)
   const after = parseDocument(edited).toJS() as any
   assert.deepEqual(after.services.redis, doc.services.redis)
-  assert.deepEqual(after.services.paperless.depends_on, ["redis", "db"])
-  assert.throws(() => withSidecars(y, "paperless", [{ name: "paperless", image: "x:1", environment: {}, volumes: [] }]), /already exists/)
+  assert.deepEqual(after.services.paperless.depends_on, ['redis', 'db'])
+  assert.throws(() => withSidecars(y, 'paperless', [{ name: 'paperless', image: 'x:1', environment: {}, volumes: [] }]), /already exists/)
 }
 testSidecarsKeepTheMainServiceEditable()
 
@@ -326,12 +325,12 @@ volumes:
   shared:
     external: true
 `
-  assert.deepEqual(composeNamedVolumes(yaml, "web"), [
-    { key: "db", name: "web_db" },
-    { key: "cache", name: "my-cache" },
+  assert.deepEqual(composeNamedVolumes(yaml, 'web'), [
+    { key: 'db', name: 'web_db' },
+    { key: 'cache', name: 'my-cache' },
   ])
-  assert.deepEqual(composeNamedVolumes("services:\n  web:\n    image: nginx\n", "web"), [])
-  assert.deepEqual(composeNamedVolumes(": not yaml [", "web"), [])
+  assert.deepEqual(composeNamedVolumes('services:\n  web:\n    image: nginx\n', 'web'), [])
+  assert.deepEqual(composeNamedVolumes(': not yaml [', 'web'), [])
 }
 
-console.log("Compose package tests passed")
+console.log('Compose package tests passed')

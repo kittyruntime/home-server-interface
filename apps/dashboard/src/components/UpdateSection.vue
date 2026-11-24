@@ -159,7 +159,7 @@ usePoll(fetchStatus, 60_000)
       <!-- Last update result and the version it left behind -->
       <Card v-if="lastResultText(status.lastResult) || previousVersionText(status.rollbackTarget, status.current, formatDay)" class="block gap-0 py-0 overflow-hidden p-5 space-y-2">
         <p v-if="status.lastResult && lastResultText(status.lastResult)"
-           :class="['text-sm', status.lastResult.status === 'partial' ? 'text-warning' : lastResultIsProblem(status.lastResult) ? 'text-error' : 'text-base-content/80']">
+          :class="['text-sm', status.lastResult.status === 'partial' ? 'text-warning' : lastResultIsProblem(status.lastResult) ? 'text-error' : 'text-base-content/80']">
           {{ lastResultText(status.lastResult) }}
           <span class="text-xs text-base-content/70">{{ formatDateTime(status.lastResult.at) }}</span>
         </p>

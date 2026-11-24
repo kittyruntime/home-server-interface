@@ -1,5 +1,5 @@
-import type { ResolvedConnector, SmtpConfig } from "./notification-connectors"
-import { eventVars, interpolatePlain, renderWebhookRequest, type NotificationEvent, type WebhookRequest } from "./notifications"
+import type { ResolvedConnector, SmtpConfig } from './notification-connectors'
+import { eventVars, interpolatePlain, renderWebhookRequest, type NotificationEvent, type WebhookRequest } from './notifications'
 
 // One delivery attempt per call. Retries and backoff belong to the delivery
 // queue (notification-queue.ts), so a slow target never blocks a caller.
@@ -34,7 +34,7 @@ export function renderEmail(smtp: SmtpConfig, event: NotificationEvent): Rendere
     to: smtp.to,
     // Event fields come from disks, paths and remote hosts: never let them
     // start a new header line.
-    subject: interpolatePlain(smtp.subjectTemplate, vars).replace(/[\r\n]+/g, " ").trim(),
+    subject: interpolatePlain(smtp.subjectTemplate, vars).replace(/[\r\n]+/g, ' ').trim(),
     text: interpolatePlain(smtp.bodyTemplate, vars),
   }
 }
@@ -46,13 +46,13 @@ export interface MailSender {
 // nodemailer is loaded on the first email only: most servers never send one,
 // and it would otherwise sit in memory from the start.
 async function smtpSender(smtp: SmtpConfig): Promise<MailSender> {
-  const { default: nodemailer } = await import("nodemailer")
+  const { default: nodemailer } = await import('nodemailer')
   return nodemailer.createTransport({
     host: smtp.host,
     port: smtp.port,
-    secure: smtp.security === "tls",
-    requireTLS: smtp.security === "starttls",
-    ignoreTLS: smtp.security === "none",
+    secure: smtp.security === 'tls',
+    requireTLS: smtp.security === 'starttls',
+    ignoreTLS: smtp.security === 'none',
     auth: smtp.username ? { user: smtp.username, pass: smtp.password } : undefined,
     connectionTimeout: TIMEOUT_MS,
     greetingTimeout: TIMEOUT_MS,
@@ -72,19 +72,19 @@ export async function sendEmail(smtp: SmtpConfig, event: NotificationEvent, send
 // Secret values a transport error must never repeat: errors are shown in the
 // browser and stored in the delivery journal.
 function secretsOf(connector: ResolvedConnector): string[] {
-  if (connector.type === "smtp") return [connector.smtp.password]
-  const values = Object.entries(connector.headers).filter(([k]) => k.toLowerCase() !== "content-type").map(([, v]) => v)
-  let path = ""
+  if (connector.type === 'smtp') return [connector.smtp.password]
+  const values = Object.entries(connector.headers).filter(([k]) => k.toLowerCase() !== 'content-type').map(([, v]) => v)
+  let path = ''
   try {
     const u = new URL(connector.url)
     path = u.pathname + u.search
   } catch { /* unparsable URL: scrub it whole */ }
-  return [connector.url, path.length > 1 ? path : "", ...values]
+  return [connector.url, path.length > 1 ? path : '', ...values]
 }
 
 function scrub(message: string, secrets: string[]): string {
   let out = message
-  for (const s of secrets.filter(v => v.length >= 3).sort((a, b) => b.length - a.length)) out = out.split(s).join("••••••")
+  for (const s of secrets.filter(v => v.length >= 3).sort((a, b) => b.length - a.length)) out = out.split(s).join('••••••')
   return out
 }
 
@@ -94,7 +94,7 @@ export async function deliverResolved(
   deps: { fetchImpl?: typeof fetch; sender?: MailSender } = {},
 ): Promise<DeliveryResult> {
   let result: DeliveryResult
-  if (connector.type === "smtp") {
+  if (connector.type === 'smtp') {
     result = await sendEmail(connector.smtp, event, deps.sender)
   } else {
     const req = renderWebhookRequest(

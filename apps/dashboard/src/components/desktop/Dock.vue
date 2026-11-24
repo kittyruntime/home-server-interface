@@ -44,10 +44,10 @@ function onIconClick(id: string) {
       @click="$emit('openLaunchpad')"
     >
       <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-        <circle cx="8" cy="8" r="2.2"/>
-        <circle cx="16" cy="8" r="2.2"/>
-        <circle cx="8" cy="16" r="2.2"/>
-        <circle cx="16" cy="16" r="2.2"/>
+        <circle cx="8" cy="8" r="2.2" />
+        <circle cx="16" cy="8" r="2.2" />
+        <circle cx="8" cy="16" r="2.2" />
+        <circle cx="16" cy="16" r="2.2" />
       </svg>
       <span v-if="hasAlerts('storage.')"
         class="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-error" />

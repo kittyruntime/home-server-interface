@@ -21,10 +21,10 @@ export function useAuth() {
     return p.isAdmin === true || p.isUserManager === true
   })
   const mustChangePassword = computed(() =>
-    token.value ? parseJwt(token.value).mustChangePassword === true : false
+    token.value ? parseJwt(token.value).mustChangePassword === true : false,
   )
   const currentUserId = computed(() =>
-    token.value ? (parseJwt(token.value).userId as string | null) ?? null : null
+    token.value ? (parseJwt(token.value).userId as string | null) ?? null : null,
   )
 
   function hasCapability(capability: string) {

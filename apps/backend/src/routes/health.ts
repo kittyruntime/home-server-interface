@@ -1,7 +1,7 @@
-import type { FastifyInstance, FastifyRequest } from "fastify"
-import { prisma } from "@app/database"
-import { isNatsConnected } from "../nats"
-import { HSI_VERSION } from "../version"
+import type { FastifyInstance, FastifyRequest } from 'fastify'
+import { prisma } from '@app/database'
+import { isNatsConnected } from '../nats'
+import { HSI_VERSION } from '../version'
 
 const DB_TIMEOUT_MS = 2_000
 
@@ -11,7 +11,7 @@ export async function checkDatabase(query: () => Promise<unknown>, timeoutMs = D
   try {
     await Promise.race([
       query(),
-      new Promise((_, reject) => { timer = setTimeout(() => reject(new Error("timeout")), timeoutMs) }),
+      new Promise((_, reject) => { timer = setTimeout(() => reject(new Error('timeout')), timeoutMs) }),
     ])
     return true
   } catch {
@@ -43,13 +43,13 @@ const defaultProbes: HealthProbes = {
   db: shareProbe(() => checkDatabase(() => prisma.$queryRaw`SELECT 1`), DB_TIMEOUT_MS),
 }
 
-const LOOPBACK = new Set(["127.0.0.1", "::1", "::ffff:127.0.0.1"])
+const LOOPBACK = new Set(['127.0.0.1', '::1', '::ffff:127.0.0.1'])
 
 // A direct loopback caller (the update gate runs on the host): the socket peer, not
 // req.ip, and no forwarding header, so a request a local proxy forwards does not count.
 export function isLocalCaller(req: FastifyRequest): boolean {
   const h = req.headers
-  return LOOPBACK.has(req.socket.remoteAddress ?? "") && !h["x-forwarded-for"] && !h["x-real-ip"] && !h.forwarded
+  return LOOPBACK.has(req.socket.remoteAddress ?? '') && !h['x-forwarded-for'] && !h['x-real-ip'] && !h.forwarded
 }
 
 // The update health gate (root-worker) reads this exact shape: 200 only when
@@ -57,11 +57,11 @@ export function isLocalCaller(req: FastifyRequest): boolean {
 // version and the database state go to local callers only; others get the status.
 export async function healthRoutes(app: FastifyInstance, opts: Partial<HealthProbes> = {}) {
   const probes = { ...defaultProbes, ...opts }
-  app.get("/health", async (req, reply) => {
+  app.get('/health', async (req, reply) => {
     const nats = probes.nats()
     const db = await probes.db()
     const healthy = nats && db
-    const status = healthy ? "ok" : "degraded"
+    const status = healthy ? 'ok' : 'degraded'
     return reply.status(healthy ? 200 : 503)
       .send(isLocalCaller(req) ? { status, nats, db, version: HSI_VERSION } : { status, nats })
   })

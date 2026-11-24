@@ -1,9 +1,9 @@
-import { z } from "zod"
-import { isIP } from "node:net"
-import { randomUUID } from "node:crypto"
-import { TRPCError } from "@trpc/server"
-import { router, adminProcedure, protectedProcedure } from "../index"
-import { requestSync } from "../../nats"
+import { z } from 'zod'
+import { isIP } from 'node:net'
+import { randomUUID } from 'node:crypto'
+import { TRPCError } from '@trpc/server'
+import { router, adminProcedure, protectedProcedure } from '../index'
+import { requestSync } from '../../nats'
 import {
   resolveShareUsers,
   effectiveSmbName,
@@ -15,21 +15,21 @@ import {
   currentSmbSettings,
   syncShares,
   withShareLock,
-} from "../../services/sharing.service"
+} from '../../services/sharing.service'
 import {
   SHARE_OPS, applyShareChange, previewShareChange, timeMachineRefusal,
   type ShareChange, type ShareOp, type SharePlanDeps,
-} from "../../services/sharing-plan"
-import { planAuditMeta } from "../../services/storage-plan"
-import { getSmbSettings, liftBlock, listBlocks, smbServiceState } from "../../services/smb-events.service"
+} from '../../services/sharing-plan'
+import { planAuditMeta } from '../../services/storage-plan'
+import { getSmbSettings, liftBlock, listBlocks, smbServiceState } from '../../services/smb-events.service'
 import {
   groupSessions, listEvents, peopleConnected, peopleOnShare, reachableShares, repairNetworkPassword, viewerOf, visibleSessions,
   type SmbConnection, type SmbSession,
-} from "../../services/sharing-view.service"
-import { syncSystemPassword, verifyPassword } from "../../services/user.service"
-import { clientAllowed, parseNfsClients, suggestNfsClients } from "../../services/nfs"
-import { lanAddress, callerIp as viewerIp } from "../../services/lan-address"
-import type { Context } from "../context"
+} from '../../services/sharing-view.service'
+import { syncSystemPassword, verifyPassword } from '../../services/user.service'
+import { clientAllowed, parseNfsClients, suggestNfsClients } from '../../services/nfs'
+import { lanAddress, callerIp as viewerIp } from '../../services/lan-address'
+import type { Context } from '../context'
 
 type DirState = {
   path: string; exists: boolean; group: string; mode: string; setgid: boolean; groupWritable: boolean
@@ -40,7 +40,7 @@ const reSmbName = /^[A-Za-z0-9][A-Za-z0-9._-]{0,31}$/
 /** Who is connected right now, one line per person, share and machine; nobody when Samba is missing or not answering. */
 async function sessionsNow(): Promise<SmbSession[]> {
   try {
-    return groupSessions((await requestSync<{ connections: SmbConnection[] }>("root.sharing.status", {})).connections ?? [])
+    return groupSessions((await requestSync<{ connections: SmbConnection[] }>('root.sharing.status', {})).connections ?? [])
   } catch {
     return []
   }
@@ -51,7 +51,7 @@ type NfsState = { installed: boolean; active: boolean; clients: string[] }
 /** The NFS server's state and the machines with a mount now. */
 async function nfsNow(): Promise<NfsState> {
   try {
-    return await requestSync<NfsState>("root.sharing.nfs", {})
+    return await requestSync<NfsState>('root.sharing.nfs', {})
   } catch {
     return { installed: false, active: false, clients: [] }
   }
@@ -62,7 +62,7 @@ type SftpState = { installed: boolean; supported: boolean; active: boolean; port
 /** The SSH server's state for SFTP; `leftOut`: which of `users` cannot use it. */
 async function sftpNow(users: string[]): Promise<SftpState> {
   try {
-    return await requestSync<SftpState>("root.sharing.sftp", { users })
+    return await requestSync<SftpState>('root.sharing.sftp', { users })
   } catch {
     return { installed: false, supported: false, active: false, port: 22, sessions: [], leftOut: [] }
   }
@@ -71,7 +71,7 @@ async function sftpNow(users: string[]): Promise<SftpState> {
 /** Accounts with a Samba password, and the state of the given folders. */
 async function sambaFacts(paths: string[]): Promise<{ sambaUsers: Set<string>; dirs: Map<string, DirState> }> {
   try {
-    const d = await requestSync<{ sambaUsers: string[]; dirs: DirState[] }>("root.sharing.diag", { paths })
+    const d = await requestSync<{ sambaUsers: string[]; dirs: DirState[] }>('root.sharing.diag', { paths })
     return { sambaUsers: new Set(d.sambaUsers ?? []), dirs: new Map((d.dirs ?? []).map(x => [x.path, x])) }
   } catch {
     return { sambaUsers: new Set(), dirs: new Map() }
@@ -92,14 +92,14 @@ async function assertUniqueName(
     include: { place: { select: { name: true } } },
   })
   const taken = others.some(
-    (s) => effectiveSmbName(s, s.place.name).toLowerCase() === name.toLowerCase(),
+    s => effectiveSmbName(s, s.place.name).toLowerCase() === name.toLowerCase(),
   )
   if (taken)
-    throw new TRPCError({ code: "CONFLICT", message: `Share name "${name}" is already in use` })
+    throw new TRPCError({ code: 'CONFLICT', message: `Share name "${name}" is already in use` })
 }
 
 const zShareInputs = {
-  "share.create": z.object({
+  'share.create': z.object({
     placeId: z.string(),
     smbName: z.string().regex(reSmbName).optional(),
     readOnly: z.boolean().default(false),
@@ -109,11 +109,11 @@ const zShareInputs = {
     timeMachineMaxGb: z.number().int().min(1).max(1_000_000).nullable().default(null),
     smb: z.boolean().default(true),
     nfs: z.boolean().default(false),
-    nfsClients: z.string().max(600).default(""),
-    nfsWriteAs: z.string().max(64).default(""),
+    nfsClients: z.string().max(600).default(''),
+    nfsWriteAs: z.string().max(64).default(''),
     sftp: z.boolean().default(false),
   }),
-  "share.update": z.object({
+  'share.update': z.object({
     id: z.string(),
     enabled: z.boolean().optional(),
     readOnly: z.boolean().optional(),
@@ -128,12 +128,12 @@ const zShareInputs = {
     nfsWriteAs: z.string().max(64).optional(),
     sftp: z.boolean().optional(),
   }),
-  "share.remove": z.object({ id: z.string() }),
-  "smb.settings": z.object({
+  'share.remove': z.object({ id: z.string() }),
+  'smb.settings': z.object({
     netbiosName: z.string().regex(/^[A-Za-z0-9-]{0,15}$/).optional(),
     workgroup: z.string().regex(/^[A-Za-z0-9-]{0,15}$/).optional(),
-    minProtocol: z.enum(["SMB2", "SMB3"]).optional(),
-    encryption: z.enum(["off", "desired", "required"]).optional(),
+    minProtocol: z.enum(['SMB2', 'SMB3']).optional(),
+    encryption: z.enum(['off', 'desired', 'required']).optional(),
     discoveryWsd: z.boolean().optional(),
     discoveryMdns: z.boolean().optional(),
     autoBlock: z.boolean().optional(),
@@ -145,7 +145,7 @@ const zShareInputs = {
 
 function parseInput<T extends ShareOp>(op: T, input: unknown): z.infer<typeof zShareInputs[T]> {
   const r = zShareInputs[op].safeParse(input)
-  if (!r.success) throw new TRPCError({ code: "BAD_REQUEST", message: r.error.issues[0]?.message ?? "Invalid input" })
+  if (!r.success) throw new TRPCError({ code: 'BAD_REQUEST', message: r.error.issues[0]?.message ?? 'Invalid input' })
   return r.data as z.infer<typeof zShareInputs[T]>
 }
 
@@ -153,34 +153,34 @@ type Protocols = { smb: boolean; nfs: boolean; sftp: boolean; nfsClients: string
 
 /** A share is offered over at least one protocol, and its NFS part is sound.
  *  Returns the client list as it is stored. */
-async function checkProtocols(prisma: Context["prisma"], placeId: string, p: Protocols): Promise<string> {
-  if (!p.smb && !p.nfs && !p.sftp) throw new TRPCError({ code: "BAD_REQUEST", message: "Choose at least one way to share it (SMB, NFS or SFTP)" })
+async function checkProtocols(prisma: Context['prisma'], placeId: string, p: Protocols): Promise<string> {
+  if (!p.smb && !p.nfs && !p.sftp) throw new TRPCError({ code: 'BAD_REQUEST', message: 'Choose at least one way to share it (SMB, NFS or SFTP)' })
   if (!p.nfs) return p.nfsClients
   const parsed = parseNfsClients(p.nfsClients)
-  if ("error" in parsed) throw new TRPCError({ code: "BAD_REQUEST", message: parsed.error })
+  if ('error' in parsed) throw new TRPCError({ code: 'BAD_REQUEST', message: parsed.error })
   // A read-only share keeps its choice and simply exports read-only.
   if (p.nfsWriteAs) {
     const writers = new Set([...(await resolveShareUsers(prisma, placeId)).writeUsers, ...await adminLinuxUsers(prisma)])
-    if (!writers.has(p.nfsWriteAs)) throw new TRPCError({ code: "BAD_REQUEST", message: `${p.nfsWriteAs} cannot write to this place` })
+    if (!writers.has(p.nfsWriteAs)) throw new TRPCError({ code: 'BAD_REQUEST', message: `${p.nfsWriteAs} cannot write to this place` })
   }
-  return parsed.clients.join(" ")
+  return parsed.clients.join(' ')
 }
 
 async function assertTimeMachine(): Promise<void> {
   const refusal = timeMachineRefusal(await smbServiceState().catch(() => null))
-  if (refusal) throw new TRPCError({ code: "PRECONDITION_FAILED", message: refusal })
+  if (refusal) throw new TRPCError({ code: 'PRECONDITION_FAILED', message: refusal })
 }
 
 // Today's checks for a share change, the change as a plan sees it, and the
 // database write that follows a successful plan.
 async function prepare(ctx: Context, op: ShareOp, raw: unknown): Promise<{ name: string; change: ShareChange; commit: () => Promise<unknown> }> {
   const prisma = ctx.prisma
-  if (op === "share.create") {
+  if (op === 'share.create') {
     const input = parseInput(op, raw)
     const place = await prisma.place.findUnique({ where: { id: input.placeId } })
-    if (!place) throw new TRPCError({ code: "NOT_FOUND", message: "Place not found" })
+    if (!place) throw new TRPCError({ code: 'NOT_FOUND', message: 'Place not found' })
     if (await prisma.share.findUnique({ where: { placeId: input.placeId } }))
-      throw new TRPCError({ code: "CONFLICT", message: "This place is already shared" })
+      throw new TRPCError({ code: 'CONFLICT', message: 'This place is already shared' })
     const name = effectiveSmbName({ smbName: input.smbName ?? null }, place.name)
     await assertUniqueName(prisma, name)
     if (input.timeMachine && input.smb) await assertTimeMachine()
@@ -190,19 +190,19 @@ async function prepare(ctx: Context, op: ShareOp, raw: unknown): Promise<{ name:
       id: randomUUID(),
       placeId: input.placeId, smbName: input.smbName ?? null, readOnly: input.readOnly, guestOk: input.guestOk, hidden: input.hidden,
       timeMachine: input.timeMachine && input.smb, timeMachineMaxGb: input.timeMachineMaxGb,
-      smb: input.smb, nfs: input.nfs, nfsClients, nfsWriteAs: input.nfs ? input.nfsWriteAs : "", sftp: input.sftp,
+      smb: input.smb, nfs: input.nfs, nfsClients, nfsWriteAs: input.nfs ? input.nfsWriteAs : '', sftp: input.sftp,
     }
     return {
       name,
-      change: { kind: "create", row: { ...data, enabled: true, place: { name: place.name, path: place.path } } },
+      change: { kind: 'create', row: { ...data, enabled: true, place: { name: place.name, path: place.path } } },
       commit: () => prisma.share.create({ data }),
     }
   }
-  if (op === "smb.settings") {
+  if (op === 'smb.settings') {
     const patch = parseInput(op, raw)
     return {
-      name: "SMB",
-      change: { kind: "settings", patch },
+      name: 'SMB',
+      change: { kind: 'settings', patch },
       commit: async () => {
         await getSmbSettings(prisma)
         const s = await prisma.smbSettings.update({ where: { id: 1 }, data: patch })
@@ -213,22 +213,22 @@ async function prepare(ctx: Context, op: ShareOp, raw: unknown): Promise<{ name:
         const mdns = patch.discoveryMdns ?? (patch.netbiosName !== undefined && s.discoveryMdns ? true : undefined)
         if (wsd !== undefined || mdns !== undefined) {
           const timeMachine = (await desiredShareDefs(prisma)).filter(d => d.timeMachine && !d.unavailable).map(d => d.name).sort()
-          await requestSync("root.sharing.discovery", { wsd, mdns, name: s.netbiosName, timeMachine }).catch(() => {})
+          await requestSync('root.sharing.discovery', { wsd, mdns, name: s.netbiosName, timeMachine }).catch(() => {})
         }
       },
     }
   }
   const input = parseInput(op, raw)
   const share = await prisma.share.findUnique({ where: { id: input.id }, include: { place: { select: { name: true } } } })
-  if (!share) throw new TRPCError({ code: "NOT_FOUND", message: "Share not found" })
-  if (op === "share.remove") {
+  if (!share) throw new TRPCError({ code: 'NOT_FOUND', message: 'Share not found' })
+  if (op === 'share.remove') {
     return {
       name: effectiveSmbName(share, share.place.name),
-      change: { kind: "remove", id: share.id },
+      change: { kind: 'remove', id: share.id },
       commit: () => prisma.share.delete({ where: { id: share.id } }),
     }
   }
-  const u = input as z.infer<typeof zShareInputs["share.update"]>
+  const u = input as z.infer<typeof zShareInputs['share.update']>
   const patch = {
     ...(u.enabled !== undefined && { enabled: u.enabled }),
     ...(u.readOnly !== undefined && { readOnly: u.readOnly }),
@@ -252,18 +252,18 @@ async function prepare(ctx: Context, op: ShareOp, raw: unknown): Promise<{ name:
   if (u.smbName !== undefined) await assertUniqueName(prisma, name, share.id)
   return {
     name,
-    change: { kind: "update", id: share.id, patch },
+    change: { kind: 'update', id: share.id, patch },
     commit: () => prisma.share.update({ where: { id: share.id }, data: patch }),
   }
 }
 
 function planDeps(ctx: Context, change: ShareChange, commit: () => Promise<unknown>, timeout: number): SharePlanDeps {
   return {
-    smbdInstalled: () => requestSync<{ smbdInstalled: boolean }>("root.sharing.checkPrereqs", {}).then(r => r.smbdInstalled),
+    smbdInstalled: () => requestSync<{ smbdInstalled: boolean }>('root.sharing.checkPrereqs', {}).then(r => r.smbdInstalled),
     defs:   () => desiredShareDefs(ctx.prisma, change),
     nfs:    () => desiredNfsExports(ctx.prisma, change),
     sftp:   () => desiredSftpUsers(ctx.prisma, change),
-    smbSettings: () => currentSmbSettings(ctx.prisma, change.kind === "settings" ? change.patch : undefined),
+    smbSettings: () => currentSmbSettings(ctx.prisma, change.kind === 'settings' ? change.patch : undefined),
     worker: <T>(subject: string, payload: Record<string, unknown>) => requestSync<T>(subject, payload, timeout),
     commit,
     serialize: withShareLock,
@@ -296,14 +296,14 @@ export const sharingRouter = router({
   list: adminProcedure.query(async ({ ctx }) => {
     const shares = await ctx.prisma.share.findMany({
       include: { place: { select: { id: true, name: true, path: true } } },
-      orderBy: { createdAt: "asc" },
+      orderBy: { createdAt: 'asc' },
     })
     const [sessions, facts, adminLinux, nfs, sftp] = await Promise.all([
       sessionsNow(), sambaFacts([...new Set(shares.map(s => s.place.path))]), adminLinuxUsers(ctx.prisma),
       shares.some(s => s.nfs) ? nfsNow() : null, shares.some(s => s.sftp) ? sftpNow([]) : null,
     ])
     return Promise.all(
-      shares.map(async (s) => {
+      shares.map(async s => {
         const users = await resolveShareUsers(ctx.prisma, s.placeId)
         const name = effectiveSmbName(s, s.place.name)
         const dir = facts.dirs.get(s.place.path)
@@ -313,7 +313,7 @@ export const sharingRouter = router({
           hidden: s.hidden,
           connected: peopleOnShare({
             smb: s.smb ? sessions.filter(c => c.share === name) : [],
-            nfs: s.nfs && nfs ? nfs.clients.filter(ip => clientAllowed(ip, s.nfsClients.split(" ").filter(Boolean))) : [],
+            nfs: s.nfs && nfs ? nfs.clients.filter(ip => clientAllowed(ip, s.nfsClients.split(' ').filter(Boolean))) : [],
             sftp: s.sftp && sftp ? sftp.sessions.filter(u => users.validUsers.includes(u) || adminLinux.includes(u)) : [],
           }),
           problem: s.enabled && (users.excludedUsernames.length > 0 || (facts.sambaUsers.size > 0 && noPassword) || (dir !== undefined && !(dir.exists && dir.groupWritable && dir.setgid))),
@@ -350,16 +350,16 @@ export const sharingRouter = router({
   }),
 
   serviceAction: adminProcedure
-    .input(z.object({ action: z.enum(["start", "restart"]) }))
+    .input(z.object({ action: z.enum(['start', 'restart']) }))
     .mutation(async ({ ctx, input }) => {
       ctx.audit.target = `smbd ${input.action}`
-      await requestSync("root.sharing.serviceAction", { action: input.action }, 60_000)
+      await requestSync('root.sharing.serviceAction', { action: input.action }, 60_000)
       return { ok: true }
     }),
 
   detail: adminProcedure.input(z.object({ id: z.string() })).query(async ({ ctx, input }) => {
     const s = await ctx.prisma.share.findUnique({ where: { id: input.id }, include: { place: { select: { name: true, path: true } } } })
-    if (!s) throw new TRPCError({ code: "NOT_FOUND", message: "Share not found" })
+    if (!s) throw new TRPCError({ code: 'NOT_FOUND', message: 'Share not found' })
     const name = effectiveSmbName(s, s.place.name)
     const [users, adminLinux, facts, sessions, viewer] = await Promise.all([
       resolveShareUsers(ctx.prisma, s.placeId), adminLinuxUsers(ctx.prisma), sambaFacts([s.place.path]), sessionsNow(),
@@ -367,9 +367,9 @@ export const sharingRouter = router({
     ])
     const access = users.entries
       .filter(e => shareExclusionReason(e.linuxUsername) === null)
-      .map(e => ({ username: e.username, linuxUsername: e.linuxUsername!, level: (e.write && !s.readOnly ? "write" : "read") as "read" | "write", via: e.via as "user" | "group" | "admin" }))
+      .map(e => ({ username: e.username, linuxUsername: e.linuxUsername!, level: (e.write && !s.readOnly ? 'write' : 'read') as 'read' | 'write', via: e.via as 'user' | 'group' | 'admin' }))
     for (const a of adminLinux) {
-      if (!access.some(x => x.linuxUsername === a)) access.push({ username: a, linuxUsername: a, level: s.readOnly ? "read" : "write", via: "admin" })
+      if (!access.some(x => x.linuxUsername === a)) access.push({ username: a, linuxUsername: a, level: s.readOnly ? 'read' : 'write', via: 'admin' })
     }
     access.sort((a, b) => a.username.localeCompare(b.username))
     const dir = facts.dirs.get(s.place.path) ?? null
@@ -381,9 +381,9 @@ export const sharingRouter = router({
       sessions: st.sessions.filter(u => users.validUsers.includes(u) || adminLinux.includes(u)),
     })) : null
     const nfsPart = s.nfs ? await nfsNow().then(n => ({
-      clients: n.clients.filter(ip => clientAllowed(ip, s.nfsClients.split(" ").filter(Boolean))),
+      clients: n.clients.filter(ip => clientAllowed(ip, s.nfsClients.split(' ').filter(Boolean))),
       // The account new files belong to, unless it lost write access.
-      writeAs: !s.readOnly && s.nfsWriteAs && [...users.writeUsers, ...adminLinux].includes(s.nfsWriteAs) ? s.nfsWriteAs : "",
+      writeAs: !s.readOnly && s.nfsWriteAs && [...users.writeUsers, ...adminLinux].includes(s.nfsWriteAs) ? s.nfsWriteAs : '',
     })) : null
     const smbHere = sessions.filter(c => c.share === name)
     return {
@@ -402,7 +402,7 @@ export const sharingRouter = router({
       checks: {
         dirOk: dir === null ? null : dir.exists && dir.groupWritable && dir.setgid,
         dirExists: dir?.exists ?? null,
-        nobodyCanWrite: !s.readOnly && access.every(a => a.level === "read"),
+        nobodyCanWrite: !s.readOnly && access.every(a => a.level === 'read'),
         excluded: users.entries
           .map(e => ({ username: e.username, reason: shareExclusionReason(e.linuxUsername) }))
           .filter((e): e is { username: string; reason: string } => e.reason !== null),
@@ -416,17 +416,17 @@ export const sharingRouter = router({
     .input(z.object({ pids: z.array(z.string().regex(/^[0-9]+$/)).min(1).max(64) }))
     .mutation(async ({ ctx, input }) => {
       const pids = [...new Set(input.pids)]
-      ctx.audit.target = `pid ${pids.join(", ")}`
+      ctx.audit.target = `pid ${pids.join(', ')}`
       let ended = 0
       for (const pid of pids) {
         try {
-          await requestSync("root.sharing.disconnect", { pid })
+          await requestSync('root.sharing.disconnect', { pid })
           ended++
         } catch (e) {
-          if ((e as { code?: string }).code !== "NOT_A_SESSION") throw e
+          if ((e as { code?: string }).code !== 'NOT_A_SESSION') throw e
         }
       }
-      if (ended === 0) throw new TRPCError({ code: "NOT_FOUND", message: "This session has already ended" })
+      if (ended === 0) throw new TRPCError({ code: 'NOT_FOUND', message: 'This session has already ended' })
       return { ok: true }
     }),
 
@@ -439,7 +439,7 @@ export const sharingRouter = router({
   blocks: adminProcedure.query(({ ctx }) => listBlocks(ctx.prisma, callerIp(ctx))),
 
   unblock: adminProcedure
-    .input(z.object({ ip: z.string().max(64).refine(v => isIP(v) !== 0, "Not an address") }))
+    .input(z.object({ ip: z.string().max(64).refine(v => isIP(v) !== 0, 'Not an address') }))
     .mutation(async ({ ctx, input }) => {
       ctx.audit.target = input.ip
       await liftBlock(ctx.prisma, input.ip)
@@ -455,7 +455,7 @@ export const sharingRouter = router({
     .input(z.object({
       share: z.string().max(64).optional(),
       user: z.string().max(64).optional(),
-      result: z.enum(["ok", "refused"]).optional(),
+      result: z.enum(['ok', 'refused']).optional(),
       sinceMs: z.number().int().nonnegative().optional(),
       cursor: z.string().max(64).optional(),
       limit: z.number().int().min(1).max(100).default(50),

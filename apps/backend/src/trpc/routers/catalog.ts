@@ -1,26 +1,26 @@
-import { z } from "zod"
-import crypto from "node:crypto"
-import { TRPCError } from "@trpc/server"
-import { router, protectedProcedure, adminProcedure } from "../index"
-import { resolveSettingRefs } from "@app/app-catalog"
-import { catalogApps, catalogState, refreshCatalog } from "../../services/catalog-source"
-import { readCurrentVersion } from "./update"
-import { portDomainUrl, generateComposeYaml, withSidecars, type AppInput } from "@app/compose"
-import { publishJob, requestSync } from "../../nats"
-import { listStacks, readPreviousStack, removeStackDir, stackExists, writeStack } from "../../services/containerStacks"
-import { availableUpdate, splitImage } from "../../services/app-update"
-import { parseComposeYaml } from "@app/compose"
-import { resolvePlaceMounts } from "./container"
-import { assertDockerReady } from "../../services/docker-status"
-import { preparePlaceDir } from "../../services/sharing.service"
+import { z } from 'zod'
+import crypto from 'node:crypto'
+import { TRPCError } from '@trpc/server'
+import { router, protectedProcedure, adminProcedure } from '../index'
+import { resolveSettingRefs } from '@app/app-catalog'
+import { catalogApps, catalogState, refreshCatalog } from '../../services/catalog-source'
+import { readCurrentVersion } from './update'
+import { portDomainUrl, generateComposeYaml, withSidecars, type AppInput } from '@app/compose'
+import { publishJob, requestSync } from '../../nats'
+import { listStacks, readPreviousStack, removeStackDir, stackExists, writeStack } from '../../services/containerStacks'
+import { availableUpdate, splitImage } from '../../services/app-update'
+import { parseComposeYaml } from '@app/compose'
+import { resolvePlaceMounts } from './container'
+import { assertDockerReady } from '../../services/docker-status'
+import { preparePlaceDir } from '../../services/sharing.service'
 
 const zInstallVolume = z.object({
-  target: z.string().startsWith("/"),
-  source: z.discriminatedUnion("kind", [
-    z.object({ kind: z.literal("place"),    placeId: z.string() }),
-    z.object({ kind: z.literal("newPlace"), name: z.string().min(1), path: z.string().startsWith("/") }),
-    z.object({ kind: z.literal("bind"),     path: z.string().startsWith("/") }),
-    z.object({ kind: z.literal("named"),    name: z.string().min(1) }),
+  target: z.string().startsWith('/'),
+  source: z.discriminatedUnion('kind', [
+    z.object({ kind: z.literal('place'),    placeId: z.string() }),
+    z.object({ kind: z.literal('newPlace'), name: z.string().min(1), path: z.string().startsWith('/') }),
+    z.object({ kind: z.literal('bind'),     path: z.string().startsWith('/') }),
+    z.object({ kind: z.literal('named'),    name: z.string().min(1) }),
   ]),
 })
 
@@ -43,44 +43,44 @@ export const catalogRouter = router({
     const stacks = await listStacks()
     // The rollback offered after an update (#26): the image the kept file names.
     const previousImage = new Map<string, string>()
-    const fromCatalog = stacks.filter((s) => s.app?.labels.some((l) => l.key === "hsi.catalog.id"))
-    if (ctx.user.isAdmin) await Promise.all(fromCatalog.map(async (s) => {
+    const fromCatalog = stacks.filter(s => s.app?.labels.some(l => l.key === 'hsi.catalog.id'))
+    if (ctx.user.isAdmin) await Promise.all(fromCatalog.map(async s => {
       const prev = await readPreviousStack(s.name)
       let image: string | undefined
       try { image = prev ? parseComposeYaml(prev, s.name).app?.image : undefined } catch { /* unreadable: no rollback offered */ }
       if (image && image !== s.app?.image) previousImage.set(s.name, image)
     }))
-    return catalogApps().map((m) => {
-      const stack = stacks.find((s) =>
-        s.app?.labels.some((l) => l.key === "hsi.catalog.id" && l.value === m.id),
+    return catalogApps().map(m => {
+      const stack = stacks.find(s =>
+        s.app?.labels.some(l => l.key === 'hsi.catalog.id' && l.value === m.id),
       )
       // The web-UI port row (if any): carries both the mapped host port (fallback
       // URL) and its optional domain/HTTPS binding (the "Open" URL when set).
       const webRow = stack?.app && m.webUiPort != null
-        ? stack.app.ports.find((p) => p.containerPort === m.webUiPort) ?? null
+        ? stack.app.ports.find(p => p.containerPort === m.webUiPort) ?? null
         : null
       const installedApp = stack && stack.app
         ? {
-            id:      stack.name,
-            name:    stack.name,
-            status:  stack.status,
-            webPort: webRow?.hostPort ?? null,
-            webUrl:  webRow ? portDomainUrl(webRow) : null,
-            // Versions and images are for the admins who manage apps.
-            image:   ctx.user.isAdmin ? stack.app.image : null,
-            update:  ctx.user.isAdmin ? availableUpdate(stack.app.image, m.image) : null,
-            rollbackTo: previousImage.has(stack.name)
-              ? splitImage(previousImage.get(stack.name)!).tag ?? previousImage.get(stack.name)!
-              : null,
-          }
+          id:      stack.name,
+          name:    stack.name,
+          status:  stack.status,
+          webPort: webRow?.hostPort ?? null,
+          webUrl:  webRow ? portDomainUrl(webRow) : null,
+          // Versions and images are for the admins who manage apps.
+          image:   ctx.user.isAdmin ? stack.app.image : null,
+          update:  ctx.user.isAdmin ? availableUpdate(stack.app.image, m.image) : null,
+          rollbackTo: previousImage.has(stack.name)
+            ? splitImage(previousImage.get(stack.name)!).tag ?? previousImage.get(stack.name)!
+            : null,
+        }
         : null
       return { ...m, installed: !!stack, installedApp }
     })
   }),
 
   get: protectedProcedure.input(z.object({ id: z.string() })).query(({ input }) => {
-    const m = catalogApps().find((x) => x.id === input.id)
-    if (!m) throw new TRPCError({ code: "NOT_FOUND", message: "Unknown app" })
+    const m = catalogApps().find(x => x.id === input.id)
+    if (!m) throw new TRPCError({ code: 'NOT_FOUND', message: 'Unknown app' })
     return m
   }),
 
@@ -97,93 +97,93 @@ export const catalogRouter = router({
     }))
     .mutation(async ({ ctx, input }) => {
       await assertDockerReady()
-      const m = catalogApps().find((x) => x.id === input.id)
-      if (!m) throw new TRPCError({ code: "NOT_FOUND", message: "Unknown app" })
+      const m = catalogApps().find(x => x.id === input.id)
+      if (!m) throw new TRPCError({ code: 'NOT_FOUND', message: 'Unknown app' })
 
       // Fail fast on a name collision before doing any side effects (mkdirp,
       // Place rows) below.
       if (await stackExists(input.name)) {
-        throw new TRPCError({ code: "CONFLICT", message: "An app with this name already exists" })
+        throw new TRPCError({ code: 'CONFLICT', message: 'An app with this name already exists' })
       }
 
-      if (m.services.some((sc) => sc.name === input.name)) {
-        throw new TRPCError({ code: "BAD_REQUEST", message: `${input.name} is the name of one of this app's services; choose another name` })
+      if (m.services.some(sc => sc.name === input.name)) {
+        throw new TRPCError({ code: 'BAD_REQUEST', message: `${input.name} is the name of one of this app's services; choose another name` })
       }
 
       // Validate the submission only references the manifest's declared items.
-      const manifestTargets = new Set(m.volumes.map((v) => v.target))
+      const manifestTargets = new Set(m.volumes.map(v => v.target))
       for (const v of input.volumes) {
-        if (!manifestTargets.has(v.target)) throw new TRPCError({ code: "BAD_REQUEST", message: `Unexpected volume ${v.target}` })
+        if (!manifestTargets.has(v.target)) throw new TRPCError({ code: 'BAD_REQUEST', message: `Unexpected volume ${v.target}` })
       }
-      const manifestPorts = new Set(m.ports.map((p) => p.container))
+      const manifestPorts = new Set(m.ports.map(p => p.container))
       for (const p of input.ports) {
-        if (!manifestPorts.has(p.container)) throw new TRPCError({ code: "BAD_REQUEST", message: `Unexpected port ${p.container}` })
+        if (!manifestPorts.has(p.container)) throw new TRPCError({ code: 'BAD_REQUEST', message: `Unexpected port ${p.container}` })
       }
 
       // Fail fast on newPlace path collisions before any side effect, so a
       // duplicate path surfaces as a clean CONFLICT instead of an uncaught
       // Prisma P2002 (Place.path is unique) mid-way through resolution, which
       // would leave earlier newPlace dirs/rows orphaned.
-      const newPlacePaths = input.volumes.flatMap((v) => (v.source.kind === "newPlace" ? [v.source.path] : []))
+      const newPlacePaths = input.volumes.flatMap(v => (v.source.kind === 'newPlace' ? [v.source.path] : []))
       if (new Set(newPlacePaths).size !== newPlacePaths.length) {
-        throw new TRPCError({ code: "BAD_REQUEST", message: "Two volumes cannot create a new Place at the same path" })
+        throw new TRPCError({ code: 'BAD_REQUEST', message: 'Two volumes cannot create a new Place at the same path' })
       }
       if (newPlacePaths.length) {
         const clash = await ctx.prisma.place.findFirst({ where: { path: { in: newPlacePaths } } })
-        if (clash) throw new TRPCError({ code: "CONFLICT", message: `A Place already exists at ${clash.path}` })
+        if (clash) throw new TRPCError({ code: 'CONFLICT', message: `A Place already exists at ${clash.path}` })
       }
 
       // Resolve volumes → VolumeMount-shaped entries. "place" volumes keep the
       // Place id as `source` and get resolved to a real host bind path below
       // via resolvePlaceMounts before generating the compose file.
-      const submitted = new Map(input.volumes.map((v) => [v.target, v]))
-      const volumes: AppInput["volumes"] = await Promise.all(m.volumes.map(async (mv) => {
+      const submitted = new Map(input.volumes.map(v => [v.target, v]))
+      const volumes: AppInput['volumes'] = await Promise.all(m.volumes.map(async mv => {
         const s = submitted.get(mv.target)?.source
         const readOnly = mv.readOnlyDefault
-        if (!s) throw new TRPCError({ code: "BAD_REQUEST", message: `Missing volume ${mv.target}` })
-        if (s.kind === "place") {
+        if (!s) throw new TRPCError({ code: 'BAD_REQUEST', message: `Missing volume ${mv.target}` })
+        if (s.kind === 'place') {
           const place = await ctx.prisma.place.findUnique({ where: { id: s.placeId } })
-          if (!place) throw new TRPCError({ code: "NOT_FOUND", message: "Place not found" })
-          return { type: "place" as const, source: place.id, target: mv.target, readOnly }
+          if (!place) throw new TRPCError({ code: 'NOT_FOUND', message: 'Place not found' })
+          return { type: 'place' as const, source: place.id, target: mv.target, readOnly }
         }
-        if (s.kind === "newPlace") {
+        if (s.kind === 'newPlace') {
           // Creating a new Place (and mkdir-ing arbitrary host paths as root
           // via root.fs.mkdirp, which has NO path-containment check on the
           // worker side) is normally gated behind adminProcedure in place.ts
           // (`place.create` / `place.mkdir`). This mutation is admin-only, but
           // the check stays explicit for defence in depth.
           if (!ctx.user.isAdmin) {
-            throw new TRPCError({ code: "FORBIDDEN", message: "Only admins can create a new Place during install" })
+            throw new TRPCError({ code: 'FORBIDDEN', message: 'Only admins can create a new Place during install' })
           }
-          await requestSync("root.fs.mkdirp", { path: s.path }) // idempotent
+          await requestSync('root.fs.mkdirp', { path: s.path }) // idempotent
           const place = await ctx.prisma.place.create({ data: { name: s.name, path: s.path } })
           await preparePlaceDir(place.path)
-          return { type: "place" as const, source: place.id, target: mv.target, readOnly }
+          return { type: 'place' as const, source: place.id, target: mv.target, readOnly }
         }
-        if (s.kind === "bind") return { type: "bind" as const, source: s.path, target: mv.target, readOnly }
-        return { type: "named" as const, source: s.name, target: mv.target, readOnly }
+        if (s.kind === 'bind') return { type: 'bind' as const, source: s.path, target: mv.target, readOnly }
+        return { type: 'named' as const, source: s.name, target: mv.target, readOnly }
       }))
 
       // Env: manifest defaults, overlaid by submitted values; generate missing secrets.
-      const submittedEnv = new Map(input.env.map((e) => [e.key, e.value]))
-      const envs = m.env.map((me) => {
-        let value = submittedEnv.get(me.key) ?? me.default ?? ""
-        if (!value && me.secret) value = crypto.randomBytes(24).toString("base64url")
+      const submittedEnv = new Map(input.env.map(e => [e.key, e.value]))
+      const envs = m.env.map(me => {
+        let value = submittedEnv.get(me.key) ?? me.default ?? ''
+        if (!value && me.secret) value = crypto.randomBytes(24).toString('base64url')
         // Enforce `required` server-side too: don't rely solely on the wizard
         // disabling Install; a required env with no default/value would launch
         // the container mis-configured.
         if (!value && me.required) {
-          throw new TRPCError({ code: "BAD_REQUEST", message: `Missing required setting ${me.key}` })
+          throw new TRPCError({ code: 'BAD_REQUEST', message: `Missing required setting ${me.key}` })
         }
         return { key: me.key, value }
       })
 
       // Ports: manifest container ports + submitted host ports (default host = container).
-      const submittedPorts = new Map(input.ports.map((p) => [p.container, p.host]))
-      const ports = m.ports.map((mp) => ({
+      const submittedPorts = new Map(input.ports.map(p => [p.container, p.host]))
+      const ports = m.ports.map(mp => ({
         containerPort: mp.container,
         hostPort:      submittedPorts.get(mp.container) ?? mp.hostDefault ?? mp.container,
-        protocol:      mp.protocol as "tcp" | "udp",
+        protocol:      mp.protocol as 'tcp' | 'udp',
         tls:           false,
       }))
 
@@ -194,7 +194,7 @@ export const catalogRouter = router({
       // unset here (container.app.pin can set it later once the frontend knows
       // the URL).
       const webPort = m.webUiPort != null
-        ? ports.find((p) => p.containerPort === m.webUiPort)?.hostPort ?? m.webUiPort
+        ? ports.find(p => p.containerPort === m.webUiPort)?.hostPort ?? m.webUiPort
         : undefined
 
       // Build the AppInput, resolve "place" volumes to real host paths, then
@@ -206,7 +206,7 @@ export const catalogRouter = router({
         envs,
         volumes,
         networkNames:  [],
-        labels:        [{ key: "hsi.catalog.id", value: m.id }],
+        labels:        [{ key: 'hsi.catalog.id', value: m.id }],
         capAdd:        [],
         capDrop:       [],
         extraHosts:    [],
@@ -220,12 +220,12 @@ export const catalogRouter = router({
       const resolvedVolumes = await resolvePlaceMounts(ctx.prisma, config.volumes as any[])
       // Services the app needs beside it (database, cache): their volumes are
       // named after the app, their settings may quote the app's (#26).
-      const settings = new Map(envs.map((e) => [e.key, e.value]))
-      const yaml = withSidecars(generateComposeYaml({ ...config, volumes: resolvedVolumes as any[] }), input.name, m.services.map((sc) => ({
+      const settings = new Map(envs.map(e => [e.key, e.value]))
+      const yaml = withSidecars(generateComposeYaml({ ...config, volumes: resolvedVolumes as any[] }), input.name, m.services.map(sc => ({
         name:        sc.name,
         image:       sc.image,
         environment: Object.fromEntries(Object.entries(sc.env).map(([k, v]) => [k, resolveSettingRefs(v, settings)])),
-        volumes:     sc.volumes.map((v) => ({ source: `${input.name}-${v.name}`, target: v.target })),
+        volumes:     sc.volumes.map(v => ({ source: `${input.name}-${v.name}`, target: v.target })),
         command:     sc.command,
       })))
       await writeStack(input.name, yaml)
@@ -235,12 +235,12 @@ export const catalogRouter = router({
       // remove the half-created stack dir: an invalid compose.yaml left on
       // disk would break later compose ops and reappear on every stack scan.
       try {
-        await requestSync("root.container.composeValidate", { name: input.name }, 30_000)
+        await requestSync('root.container.composeValidate', { name: input.name }, 30_000)
       } catch (err) {
         await removeStackDir(input.name).catch(() => {})
         throw err
       }
-      const jobId = await publishJob("container.composeUp", { name: input.name }, ctx.user.userId)
+      const jobId = await publishJob('container.composeUp', { name: input.name }, ctx.user.userId)
 
       return { name: input.name, jobId, webPort }
     }),

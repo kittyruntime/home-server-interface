@@ -16,7 +16,6 @@ import { typeKey } from './registry'
 // it, or a server command), how often, who may see it, a value to keep as a
 // history and a rule that raises an alert.
 
-
 const props = defineProps<{ source?: EditableSource | null }>()
 const emit = defineEmits<{
   saved: [source: EditableSource, template: SourceTemplate | null, token: string | null]

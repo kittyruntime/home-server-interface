@@ -5,7 +5,6 @@ export default {
     settings: 'Réglages',
     apps: 'Applications',
     storage: 'Stockage',
-    appStore: 'App Store',
     monitor: 'Supervision',
     sharing: 'Partage',
   },

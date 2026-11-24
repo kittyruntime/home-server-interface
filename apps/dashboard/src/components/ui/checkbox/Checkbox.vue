@@ -1,19 +1,19 @@
 <script setup lang="ts">
-import type { HTMLAttributes } from "vue"
-import { ref } from "vue"
-import { cn } from "@/lib/utils"
-import { useCheckedModel } from "../checked-model"
+import type { HTMLAttributes } from 'vue'
+import { ref } from 'vue'
+import { cn } from '@/lib/utils'
+import { useCheckedModel } from '../checked-model'
 
 // The model is true, false or "indeterminate", which the native control shows
 // through its indeterminate property.
 const props = withDefaults(defineProps<{
-  modelValue?: boolean | "indeterminate"
-  defaultValue?: boolean | "indeterminate"
-  class?: HTMLAttributes["class"]
+  modelValue?: boolean | 'indeterminate'
+  defaultValue?: boolean | 'indeterminate'
+  class?: HTMLAttributes['class']
 }>(), { modelValue: undefined, defaultValue: undefined })
 
 const emits = defineEmits<{
-  "update:modelValue": [value: boolean | "indeterminate"]
+  'update:modelValue': [value: boolean | 'indeterminate']
 }>()
 
 const el = ref<HTMLInputElement | null>(null)

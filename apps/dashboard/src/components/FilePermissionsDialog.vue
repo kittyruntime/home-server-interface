@@ -105,53 +105,53 @@ async function save() {
     <template v-else>
       <div class="p-5 space-y-5">
 
-            <!-- Mode display -->
-            <div class="flex items-center gap-3">
-              <span class="font-figure text-lg text-base-content tracking-widest">{{ modeDisplay }}</span>
-              <span class="font-mono text-xs text-base-content/70 bg-base-200 px-2 py-0.5 rounded-sm">{{ serializeMode() }}</span>
-            </div>
+        <!-- Mode display -->
+        <div class="flex items-center gap-3">
+          <span class="font-figure text-lg text-base-content tracking-widest">{{ modeDisplay }}</span>
+          <span class="font-mono text-xs text-base-content/70 bg-base-200 px-2 py-0.5 rounded-sm">{{ serializeMode() }}</span>
+        </div>
 
-            <!-- Permission grid -->
-            <Table class="w-full text-sm">
-              <TableHeader>
-                <TableRow class="text-xs text-base-content/70 uppercase tracking-caps">
-                  <TableHead class="text-left font-medium pb-2 w-20"></TableHead>
-                  <TableHead class="text-center font-medium pb-2 w-16">{{ t('ui.settings.FilePermissionsDialog.read') }}</TableHead>
-                  <TableHead class="text-center font-medium pb-2 w-16">{{ t('ui.settings.FilePermissionsDialog.write') }}</TableHead>
-                  <TableHead class="text-center font-medium pb-2 w-16">{{ t('ui.settings.FilePermissionsDialog.execute') }}</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody class="divide-y divide-base-300">
-                <TableRow v-for="(label, key) in { owner: 'Owner', group: 'Group', other: 'Other' }" :key="key">
-                  <TableCell class="py-2.5 text-base-content/70 text-xs">{{ label }}</TableCell>
-                  <TableCell v-for="bit in (['r', 'w', 'x'] as const)" :key="bit" class="py-2.5 text-center">
-                    <Checkbox v-model="(bits[key as keyof typeof bits] as any)[bit]" :disabled="!isAdmin" />
-                  </TableCell>
-                </TableRow>
-              </TableBody>
-            </Table>
+        <!-- Permission grid -->
+        <Table class="w-full text-sm">
+          <TableHeader>
+            <TableRow class="text-xs text-base-content/70 uppercase tracking-caps">
+              <TableHead class="text-left font-medium pb-2 w-20" />
+              <TableHead class="text-center font-medium pb-2 w-16">{{ t('ui.settings.FilePermissionsDialog.read') }}</TableHead>
+              <TableHead class="text-center font-medium pb-2 w-16">{{ t('ui.settings.FilePermissionsDialog.write') }}</TableHead>
+              <TableHead class="text-center font-medium pb-2 w-16">{{ t('ui.settings.FilePermissionsDialog.execute') }}</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody class="divide-y divide-base-300">
+            <TableRow v-for="(label, key) in { owner: 'Owner', group: 'Group', other: 'Other' }" :key="key">
+              <TableCell class="py-2.5 text-base-content/70 text-xs">{{ label }}</TableCell>
+              <TableCell v-for="bit in (['r', 'w', 'x'] as const)" :key="bit" class="py-2.5 text-center">
+                <Checkbox v-model="(bits[key as keyof typeof bits] as any)[bit]" :disabled="!isAdmin" />
+              </TableCell>
+            </TableRow>
+          </TableBody>
+        </Table>
 
-            <!-- Owner / Group (admin only) -->
-            <div v-if="isAdmin" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label class="block text-xs text-base-content/70 mb-1">{{ t('ui.settings.FilePermissionsDialog.owner') }}</label>
-                <Input
-                  v-model="owner"
-                  class="w-full px-3 py-1.5 text-sm font-mono"
-                />
-              </div>
-              <div>
-                <label class="block text-xs text-base-content/70 mb-1">{{ t('ui.settings.FilePermissionsDialog.group') }}</label>
-                <Input
-                  v-model="group"
-                  class="w-full px-3 py-1.5 text-sm font-mono"
-                />
-              </div>
-            </div>
-            <div v-else class="flex gap-4 text-sm">
-              <div><span class="text-base-content/70 text-xs mr-1">{{ t('ui.settings.FilePermissionsDialog.owner') }}</span><span class="font-mono text-base-content/80">{{ owner }}</span></div>
-              <div><span class="text-base-content/70 text-xs mr-1">{{ t('ui.settings.FilePermissionsDialog.group') }}</span><span class="font-mono text-base-content/80">{{ group }}</span></div>
-            </div>
+        <!-- Owner / Group (admin only) -->
+        <div v-if="isAdmin" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs text-base-content/70 mb-1">{{ t('ui.settings.FilePermissionsDialog.owner') }}</label>
+            <Input
+              v-model="owner"
+              class="w-full px-3 py-1.5 text-sm font-mono"
+            />
+          </div>
+          <div>
+            <label class="block text-xs text-base-content/70 mb-1">{{ t('ui.settings.FilePermissionsDialog.group') }}</label>
+            <Input
+              v-model="group"
+              class="w-full px-3 py-1.5 text-sm font-mono"
+            />
+          </div>
+        </div>
+        <div v-else class="flex gap-4 text-sm">
+          <div><span class="text-base-content/70 text-xs mr-1">{{ t('ui.settings.FilePermissionsDialog.owner') }}</span><span class="font-mono text-base-content/80">{{ owner }}</span></div>
+          <div><span class="text-base-content/70 text-xs mr-1">{{ t('ui.settings.FilePermissionsDialog.group') }}</span><span class="font-mono text-base-content/80">{{ group }}</span></div>
+        </div>
 
       </div>
     </template>

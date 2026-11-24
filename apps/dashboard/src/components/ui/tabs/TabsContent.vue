@@ -1,19 +1,19 @@
 <script setup lang="ts">
-import type { HTMLAttributes } from "vue"
-import type { PrimitiveProps } from "../Primitive.vue"
-import { computed, inject } from "vue"
-import { cn } from "@/lib/utils"
-import Primitive from "../Primitive.vue"
-import { makeId, tabsKey } from "./context"
+import type { HTMLAttributes } from 'vue'
+import type { PrimitiveProps } from '../Primitive.vue'
+import { computed, inject } from 'vue'
+import { cn } from '@/lib/utils'
+import Primitive from '../Primitive.vue'
+import { makeId, tabsKey } from './context'
 
 interface TabsContentProps extends PrimitiveProps {
   value: string
   /** Keep the panel mounted, hidden, while inactive. */
   forceMount?: boolean
-  class?: HTMLAttributes["class"]
+  class?: HTMLAttributes['class']
 }
 
-const props = withDefaults(defineProps<TabsContentProps>(), { forceMount: false, as: "div" })
+const props = withDefaults(defineProps<TabsContentProps>(), { forceMount: false, as: 'div' })
 
 const ctx = inject(tabsKey)!
 const active = computed(() => ctx.model.value === props.value)

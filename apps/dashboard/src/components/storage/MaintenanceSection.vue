@@ -12,8 +12,6 @@ import { dateFormat } from '../../lib/intl-cache'
 
 const { t } = useI18n()
 
-
-
 /* Scheduled disk checks. The schedule is stored on the server and run hourly by
    a systemd timer (hsi-maintenance.timer), so it keeps running when the
    dashboard or the backend is down. Failed self-tests and RAID mismatches raise

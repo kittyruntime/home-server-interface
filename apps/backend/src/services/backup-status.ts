@@ -1,13 +1,13 @@
-import { prisma } from "@app/database"
-import { requestSync } from "../nats"
-import { log } from "../utils/log"
+import { prisma } from '@app/database'
+import { requestSync } from '../nats'
+import { log } from '../utils/log'
 
 // Shapes of the root-worker's root.backup.* replies (apps/root-worker/backup_nats.go).
 export interface RunRecord {
   runId?: string
   start: string
   end?: string
-  status: "running" | "success" | "failed"
+  status: 'running' | 'success' | 'failed'
   snapshotId?: string
   consistent?: boolean
   added?: number
@@ -21,7 +21,7 @@ export interface RunRecord {
 export interface BackupPlanStatus {
   id: string
   name: string
-  type: "sync" | "versions"
+  type: 'sync' | 'versions'
   enabled: boolean
   schedule: { every: string; minute: number; hour: number; weekday: number }
   sync?: Record<string, unknown>
@@ -40,7 +40,7 @@ export interface BackupPlanStatus {
 export interface BackupRepositoryStatus {
   id: string
   name: string
-  type: "local" | "sftp" | "s3" | "rest"
+  type: 'local' | 'sftp' | 's3' | 'rest'
   path?: string
   host?: string
   user?: string
@@ -75,48 +75,48 @@ export interface SnapshotInfo {
 
 export interface SnapshotEntry { name: string; path: string; type: string; size: number; mtime: string }
 
-export interface BackupFinding { target: string; severity: "warning" | "critical"; message: string }
+export interface BackupFinding { target: string; severity: 'warning' | 'critical'; message: string }
 
 /** A run or check the worker recorded as stopped before its end (a shutdown, a stop of its unit). */
-const isInterrupted = (error: string) => error === "interrupted" || error.startsWith("interrupted;")
+const isInterrupted = (error: string) => error === 'interrupted' || error.startsWith('interrupted;')
 
 export function backupFindings(s: BackupStatus): BackupFinding[] {
   const out: BackupFinding[] = []
   for (const p of s.plans) {
-    if (p.last?.status !== "failed") continue
-    const error = p.last.error ?? "unknown error"
+    if (p.last?.status !== 'failed') continue
+    const error = p.last.error ?? 'unknown error'
     out.push({
       target: `plan:${p.id}`,
       // An app that stayed down is an outage, not just a missed backup. A run stopped
       // by a shutdown is a missed backup.
-      severity: error.includes("did not start again") ? "critical" : "warning",
+      severity: error.includes('did not start again') ? 'critical' : 'warning',
       message: isInterrupted(error) ? `Backup "${p.name}" was interrupted: ${error}` : `Backup "${p.name}" failed: ${error}`,
     })
   }
   for (const r of s.repositories) {
-    if (r.lastCheck?.status !== "failed") continue
+    if (r.lastCheck?.status !== 'failed') continue
     // A check stopped by a shutdown found nothing wrong: no corruption alert.
-    if (isInterrupted(r.lastCheck.error ?? "")) continue
-    out.push({ target: `repository:${r.id}`, severity: "critical", message: `Integrity check of "${r.name}" failed: ${r.lastCheck.error ?? "unknown error"}` })
+    if (isInterrupted(r.lastCheck.error ?? '')) continue
+    out.push({ target: `repository:${r.id}`, severity: 'critical', message: `Integrity check of "${r.name}" failed: ${r.lastCheck.error ?? 'unknown error'}` })
   }
-  if (!s.engine.installed && s.plans.some(p => p.type === "versions")) {
-    out.push({ target: "engine", severity: "warning", message: "The backup engine (restic) is not installed: run the installer again" })
+  if (!s.engine.installed && s.plans.some(p => p.type === 'versions')) {
+    out.push({ target: 'engine', severity: 'warning', message: 'The backup engine (restic) is not installed: run the installer again' })
   }
   const skipped = s.migrationSkipped ?? []
   if (skipped.length) {
-    const list = skipped.map(p => `${p.name || "unnamed"} (${p.error})`).join(", ")
-    out.push({ target: "migration", severity: "warning", message: `Former backup plans were not migrated, create them again on the Backups page: ${list}` })
+    const list = skipped.map(p => `${p.name || 'unnamed'} (${p.error})`).join(', ')
+    out.push({ target: 'migration', severity: 'warning', message: `Former backup plans were not migrated, create them again on the Backups page: ${list}` })
   }
   return out
 }
 
 /** Every target backupFindings can raise, so a cleared alert is detected. */
 export function backupTargets(s: BackupStatus): string[] {
-  return ["engine", "migration", ...s.plans.map(p => `plan:${p.id}`), ...s.repositories.map(r => `repository:${r.id}`)]
+  return ['engine', 'migration', ...s.plans.map(p => `plan:${p.id}`), ...s.repositories.map(r => `repository:${r.id}`)]
 }
 
 /** Dotted like every other alert source: the Alerts filter and notification rules match on "backup.". */
-export const BACKUP_ALERT_SOURCE = "backup.status"
+export const BACKUP_ALERT_SOURCE = 'backup.status'
 
 const MIGRATION_DELAYS_MS = [1000, 2000, 4000, 8000, 16000]
 const MIGRATION_RETRY_MS = 30_000
@@ -143,18 +143,18 @@ export async function migrateRsyncPlans(deps: MigrationDeps = defaultMigrationDe
   let waited = 0
   for (let attempt = 0; ; attempt++) {
     try {
-      const status = await deps.request("root.backup.status", {}, 15_000) as BackupStatus
+      const status = await deps.request('root.backup.status', {}, 15_000) as BackupStatus
       if (status.configExists) return
       const rows = await deps.rows()
       if (rows.length === 0) return
-      const res = await deps.request("root.backup.migrate", { plans: rows }, 60_000) as { migrated: number; skipped: Array<{ name: string; error: string }> }
-      log.info({ migrated: res.migrated }, "backup: migrated the former rsync plans")
-      for (const s of res.skipped) log.warn({ plan: s.name, error: s.error }, "backup: a former rsync plan was not migrated")
+      const res = await deps.request('root.backup.migrate', { plans: rows }, 60_000) as { migrated: number; skipped: Array<{ name: string; error: string }> }
+      log.info({ migrated: res.migrated }, 'backup: migrated the former rsync plans')
+      for (const s of res.skipped) log.warn({ plan: s.name, error: s.error }, 'backup: a former rsync plan was not migrated')
       return
     } catch (e) {
       const delay = MIGRATION_DELAYS_MS[attempt] ?? MIGRATION_RETRY_MS
       if (waited + delay > MIGRATION_GIVE_UP_MS) {
-        log.error({ err: e }, "backup: migration of the former rsync plans failed, giving up")
+        log.error({ err: e }, 'backup: migration of the former rsync plans failed, giving up')
         return
       }
       await deps.sleep(delay)

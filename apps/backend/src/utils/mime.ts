@@ -1,23 +1,23 @@
 const MIME_BY_EXT: Record<string, string> = {
   // Images
-  png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg", gif: "image/gif",
-  webp: "image/webp", svg: "image/svg+xml", bmp: "image/bmp", ico: "image/x-icon",
-  avif: "image/avif",
+  png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif',
+  webp: 'image/webp', svg: 'image/svg+xml', bmp: 'image/bmp', ico: 'image/x-icon',
+  avif: 'image/avif',
   // Video
-  mp4: "video/mp4", webm: "video/webm", ogv: "video/ogg", mov: "video/quicktime",
-  mkv: "video/x-matroska", avi: "video/x-msvideo",
+  mp4: 'video/mp4', webm: 'video/webm', ogv: 'video/ogg', mov: 'video/quicktime',
+  mkv: 'video/x-matroska', avi: 'video/x-msvideo',
   // Audio
-  mp3: "audio/mpeg", wav: "audio/wav", oga: "audio/ogg", ogg: "audio/ogg",
-  flac: "audio/flac", m4a: "audio/mp4", aac: "audio/aac",
+  mp3: 'audio/mpeg', wav: 'audio/wav', oga: 'audio/ogg', ogg: 'audio/ogg',
+  flac: 'audio/flac', m4a: 'audio/mp4', aac: 'audio/aac',
   // Text / code (best-effort; browsers don't need this to be exact for our use)
-  txt: "text/plain", md: "text/markdown", json: "application/json",
-  html: "text/html", css: "text/css", js: "text/javascript",
-  pdf: "application/pdf",
+  txt: 'text/plain', md: 'text/markdown', json: 'application/json',
+  html: 'text/html', css: 'text/css', js: 'text/javascript',
+  pdf: 'application/pdf',
 }
 
 export function guessMime(filename: string): string {
-  const ext = filename.includes(".") ? filename.split(".").pop()!.toLowerCase() : ""
-  return MIME_BY_EXT[ext] ?? "application/octet-stream"
+  const ext = filename.includes('.') ? filename.split('.').pop()!.toLowerCase() : ''
+  return MIME_BY_EXT[ext] ?? 'application/octet-stream'
 }
 
 // Whitelist of MIME types it's safe to serve with Content-Disposition: inline
@@ -34,9 +34,9 @@ export function guessMime(filename: string): string {
 // viewer, Firefox's pdf.js), which never runs as a document of this origin.
 // The sandbox CSP sent with every inline response still applies: Chrome
 // shows a PDF under it, top level and framed.
-const INLINE_UNSAFE = new Set(["image/svg+xml", "text/html", "application/xhtml+xml", "application/xml", "text/xml"])
+const INLINE_UNSAFE = new Set(['image/svg+xml', 'text/html', 'application/xhtml+xml', 'application/xml', 'text/xml'])
 
 export function isInlineSafe(mime: string): boolean {
   if (INLINE_UNSAFE.has(mime)) return false
-  return mime === "application/pdf" || mime.startsWith("image/") || mime.startsWith("video/") || mime.startsWith("audio/")
+  return mime === 'application/pdf' || mime.startsWith('image/') || mime.startsWith('video/') || mime.startsWith('audio/')
 }

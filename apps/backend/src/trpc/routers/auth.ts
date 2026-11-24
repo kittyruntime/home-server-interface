@@ -1,11 +1,11 @@
-import { z } from "zod"
-import { TRPCError } from "@trpc/server"
-import { router, publicProcedure, protectedProcedure } from "../index"
-import { blacklistToken } from "../auth"
-import { loginUser } from "../../services/auth.service"
+import { z } from 'zod'
+import { TRPCError } from '@trpc/server'
+import { router, publicProcedure, protectedProcedure } from '../index'
+import { blacklistToken } from '../auth'
+import { loginUser } from '../../services/auth.service'
 import {
   assertNotThrottled, recordLoginFailure, clearLoginFailures,
-} from "../../services/login-throttle"
+} from '../../services/login-throttle'
 
 export const authRouter = router({
   login: publicProcedure
@@ -14,7 +14,7 @@ export const authRouter = router({
       password: z.string().min(1).max(128),
     }))
     .mutation(async ({ ctx, input }) => {
-      const ip = ctx.req.ip ?? ctx.req.headers["x-forwarded-for"]?.toString()
+      const ip = ctx.req.ip ?? ctx.req.headers['x-forwarded-for']?.toString()
       const throttleKeys = [
         `user:${input.username.toLowerCase()}`,
         ...(ip ? [`ip:${ip}`] : []),
@@ -30,15 +30,15 @@ export const authRouter = router({
         const result = await loginUser(ctx.prisma, input.username, input.password)
         clearLoginFailures(throttleKeys)
         void ctx.prisma.auditLog.create({
-          data: { userId, action: "auth.login", target: input.username, ip, success: true },
+          data: { userId, action: 'auth.login', target: input.username, ip, success: true },
         }).catch(() => {})
         return result
       } catch (err) {
-        if (err instanceof TRPCError && err.code === "UNAUTHORIZED") {
+        if (err instanceof TRPCError && err.code === 'UNAUTHORIZED') {
           recordLoginFailure(throttleKeys)
         }
         void ctx.prisma.auditLog.create({
-          data: { userId, action: "auth.login", target: input.username, ip, success: false },
+          data: { userId, action: 'auth.login', target: input.username, ip, success: false },
         }).catch(() => {})
         throw err
       }

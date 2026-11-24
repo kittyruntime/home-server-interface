@@ -1,5 +1,5 @@
-import type { AppManifest } from "@app/app-catalog"
-import { catalogApps } from "./catalog-source"
+import type { AppManifest } from '@app/app-catalog'
+import { catalogApps } from './catalog-source'
 
 // App updates (#26): an app installed from the App Store keeps its catalog id
 // in the `hsi.catalog.id` label. When the catalog shipped with HSI pins a newer
@@ -10,16 +10,16 @@ export interface ImageUpdate { from: string; to: string; image: string }
 
 /** Splits an image reference into repository and tag (a registry port is not a tag). */
 export function splitImage(ref: string): { repo: string; tag: string | null } {
-  if (ref.includes("@")) return { repo: ref.slice(0, ref.indexOf("@")), tag: null }
-  const slash = ref.lastIndexOf("/")
-  const colon = ref.lastIndexOf(":")
+  if (ref.includes('@')) return { repo: ref.slice(0, ref.indexOf('@')), tag: null }
+  const slash = ref.lastIndexOf('/')
+  const colon = ref.lastIndexOf(':')
   if (colon > slash) return { repo: ref.slice(0, colon), tag: ref.slice(colon + 1) }
   return { repo: ref, tag: null }
 }
 
 /** Docker Hub names: `docker.io/library/nginx` and `nginx` are the same image. */
 function normalRepo(repo: string): string {
-  return repo.replace(/^(?:index\.)?docker\.io\//, "").replace(/^library\//, "")
+  return repo.replace(/^(?:index\.)?docker\.io\//, '').replace(/^library\//, '')
 }
 
 function numbers(s: string): number[] {
@@ -42,10 +42,10 @@ function compareNumbers(x: number[], y: number[]): number {
  */
 export function compareTags(a: string, b: string): number | null {
   const parse = (t: string) => {
-    const m = t.replace(/^v/i, "").match(/^(\d+(?:\.\d+)*)(.*)$/)
+    const m = t.replace(/^v/i, '').match(/^(\d+(?:\.\d+)*)(.*)$/)
     if (!m) return null
-    const suffix = m[2]!.replace(/[0-9a-f]{7,40}/g, "")
-    return { core: m[1]!.split(".").map(Number), variant: suffix.replace(/\d+/g, "#"), revision: numbers(suffix) }
+    const suffix = m[2]!.replace(/[0-9a-f]{7,40}/g, '')
+    return { core: m[1]!.split('.').map(Number), variant: suffix.replace(/\d+/g, '#'), revision: numbers(suffix) }
   }
   const x = parse(a), y = parse(b)
   if (!x || !y || x.variant !== y.variant) return null
@@ -65,8 +65,8 @@ export function availableUpdate(installed: string, catalog: string): ImageUpdate
 
 /** Replaces the one `image:` line naming `from`; anything else in the file (quotes, a comment) is kept as it is. */
 export function replaceImage(yaml: string, from: string, to: string): string {
-  const escaped = from.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
-  const line = new RegExp(`^([ \\t]*image:[ \\t]*["']?)${escaped}(["']?(?:[ \\t]+#.*)?[ \\t]*)$`, "gm")
+  const escaped = from.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const line = new RegExp(`^([ \\t]*image:[ \\t]*["']?)${escaped}(["']?(?:[ \\t]+#.*)?[ \\t]*)$`, 'gm')
   const found = yaml.match(line)?.length ?? 0
   if (found !== 1) {
     throw new Error(found === 0
@@ -78,7 +78,7 @@ export function replaceImage(yaml: string, from: string, to: string): string {
 
 /** The catalog app an installed app came from, from its labels. */
 export function catalogEntry(labels: Array<{ key: string; value: string }>, catalog: AppManifest[] = catalogApps()): AppManifest | undefined {
-  const id = labels.find(l => l.key === "hsi.catalog.id")?.value
+  const id = labels.find(l => l.key === 'hsi.catalog.id')?.value
   return id ? catalog.find(m => m.id === id) : undefined
 }
 

@@ -17,7 +17,6 @@ import { Textarea } from '@/components/ui/textarea'
 
 const { t } = useI18n()
 
-
 type Status = Awaited<ReturnType<typeof trpc.backup.status.query>>
 
 const props = defineProps<{ plan: Status['plans'][number] | null; repositories: Status['repositories'] }>()
@@ -73,17 +72,17 @@ async function save() {
     <fieldset v-if="!plan">
       <legend class="sr-only">{{ $t('ui.backups.PlanForm.planType') }}</legend>
       <RadioGroup v-model="form.type" class="grid gap-2 sm:grid-cols-2">
-      <label
-        v-for="t in ([['versions', 'Versions', 'Encrypted snapshots in a repository: go back to an earlier date.'], ['sync', 'Sync', 'A mirror copy with rsync: a deletion is copied too.']] as const)"
-        :key="t[0]"
-        :class="['flex cursor-pointer items-start gap-2 rounded-lg border px-3 py-2.5', form.type === t[0] ? 'border-primary' : 'border-base-300']"
-      >
-        <RadioGroupItem :value="t[0]" class="mt-0.5" />
-        <span>
-          <span class="block text-sm text-base-content">{{ t[1] }}</span>
-          <span class="block text-2xs text-base-content/70">{{ t[2] }}</span>
-        </span>
-      </label>
+        <label
+          v-for="t in ([['versions', 'Versions', 'Encrypted snapshots in a repository: go back to an earlier date.'], ['sync', 'Sync', 'A mirror copy with rsync: a deletion is copied too.']] as const)"
+          :key="t[0]"
+          :class="['flex cursor-pointer items-start gap-2 rounded-lg border px-3 py-2.5', form.type === t[0] ? 'border-primary' : 'border-base-300']"
+        >
+          <RadioGroupItem :value="t[0]" class="mt-0.5" />
+          <span>
+            <span class="block text-sm text-base-content">{{ t[1] }}</span>
+            <span class="block text-2xs text-base-content/70">{{ t[2] }}</span>
+          </span>
+        </label>
       </RadioGroup>
     </fieldset>
 

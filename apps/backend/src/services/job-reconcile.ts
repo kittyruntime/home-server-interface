@@ -1,14 +1,14 @@
-import { prisma } from "@app/database"
-import { announceJobEnded, consumerState } from "../nats"
-import { notifyTaskEnd } from "./task-notifications"
-import { log } from "../utils/log"
+import { prisma } from '@app/database'
+import { announceJobEnded, consumerState } from '../nats'
+import { notifyTaskEnd } from './task-notifications'
+import { log } from '../utils/log'
 
 // A backend restart no longer fails the jobs in flight: the worker keeps
 // running them and reports their end. A job is only given up once the worker
 // holds no message at all (none waiting, none being worked on): then nothing
 // will ever report it.
 
-export const LOST_JOB_ERROR = "The worker no longer has this job (it was restarted)"
+export const LOST_JOB_ERROR = 'The worker no longer has this job (it was restarted)'
 const RECONCILE_EVERY_MS = 60_000
 
 export function staleJobIds(
@@ -31,15 +31,15 @@ export interface ReconcileDeps {
 }
 
 const defaultDeps: ReconcileDeps = {
-  unfinished: () => prisma.job.findMany({ where: { status: { in: ["pending", "running"] } }, select: { id: true, createdAt: true } }),
+  unfinished: () => prisma.job.findMany({ where: { status: { in: ['pending', 'running'] } }, select: { id: true, createdAt: true } }),
   consumer: consumerState,
   async fail(ids, error) {
     const now = new Date()
     const failed: string[] = []
     for (const id of ids) {
       const { count } = await prisma.job.updateMany({
-        where: { id, status: { in: ["pending", "running"] } },
-        data: { status: "failed", error, finishedAt: now },
+        where: { id, status: { in: ['pending', 'running'] } },
+        data: { status: 'failed', error, finishedAt: now },
       })
       if (count > 0) failed.push(id)
     }
@@ -60,12 +60,12 @@ export async function reconcileJobs(deps: ReconcileDeps = defaultDeps): Promise<
   if (ids.length === 0) return 0
   const failed = await deps.fail(ids, LOST_JOB_ERROR)
   for (const id of failed) deps.ended(id)
-  if (failed.length > 0) log.warn({ count: failed.length }, "jobs: gave up jobs the worker no longer has")
+  if (failed.length > 0) log.warn({ count: failed.length }, 'jobs: gave up jobs the worker no longer has')
   return failed.length
 }
 
 export function startJobReconcile(): void {
-  const run = () => { void reconcileJobs().catch(err => log.warn({ err }, "jobs: reconcile failed")) }
+  const run = () => { void reconcileJobs().catch(err => log.warn({ err }, 'jobs: reconcile failed')) }
   run()
   setInterval(run, RECONCILE_EVERY_MS).unref()
 }

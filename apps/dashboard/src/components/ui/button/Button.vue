@@ -1,37 +1,37 @@
 <script setup lang="ts">
-import type { PrimitiveProps } from "../Primitive.vue"
-import type { HTMLAttributes } from "vue"
-import type { ButtonVariants } from "."
-import { computed, useAttrs } from "vue"
-import { cn } from "@/lib/utils"
-import Primitive from "../Primitive.vue"
-import Tip from "../Tip.vue"
-import { buttonVariants } from "."
+import type { PrimitiveProps } from '../Primitive.vue'
+import type { HTMLAttributes } from 'vue'
+import type { ButtonVariants } from '.'
+import { computed, useAttrs } from 'vue'
+import { cn } from '@/lib/utils'
+import Primitive from '../Primitive.vue'
+import Tip from '../Tip.vue'
+import { buttonVariants } from '.'
 
 defineOptions({ inheritAttrs: false })
 
 interface Props extends PrimitiveProps {
-  variant?: ButtonVariants["variant"]
-  size?: ButtonVariants["size"]
-  class?: HTMLAttributes["class"]
+  variant?: ButtonVariants['variant']
+  size?: ButtonVariants['size']
+  class?: HTMLAttributes['class']
   /** Tooltip text. An icon-only button still needs its own aria-label, and a
       disabled one shows no tooltip: wrap it in <Tip wrap> for that. */
   tooltip?: string
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  as: "button",
+  as: 'button',
 })
 
 const attrs = useAttrs()
 const bindings = computed(() => ({
   ...attrs,
-  "data-slot": "button",
-  "data-variant": props.variant,
-  "data-size": props.size,
-  "as": props.as,
-  "asChild": props.asChild,
-  "class": cn(buttonVariants({ variant: props.variant, size: props.size }), props.class),
+  'data-slot': 'button',
+  'data-variant': props.variant,
+  'data-size': props.size,
+  'as': props.as,
+  'asChild': props.asChild,
+  'class': cn(buttonVariants({ variant: props.variant, size: props.size }), props.class),
 }))
 </script>
 

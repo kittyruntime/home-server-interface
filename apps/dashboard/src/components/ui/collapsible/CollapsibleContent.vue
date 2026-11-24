@@ -1,15 +1,15 @@
 <script setup lang="ts">
-import type { PrimitiveProps } from "../Primitive.vue"
-import { inject } from "vue"
-import Primitive from "../Primitive.vue"
-import { collapsibleKey } from "./context"
+import type { PrimitiveProps } from '../Primitive.vue'
+import { inject } from 'vue'
+import Primitive from '../Primitive.vue'
+import { collapsibleKey } from './context'
 
 interface CollapsibleContentProps extends PrimitiveProps {
   /** Keep the content mounted, hidden, while closed. */
   forceMount?: boolean
 }
 
-const props = withDefaults(defineProps<CollapsibleContentProps>(), { forceMount: false, as: "div" })
+const props = withDefaults(defineProps<CollapsibleContentProps>(), { forceMount: false, as: 'div' })
 const ctx = inject(collapsibleKey)!
 </script>
 

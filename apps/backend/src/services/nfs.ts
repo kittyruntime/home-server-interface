@@ -1,4 +1,4 @@
-import { isIP } from "node:net"
+import { isIP } from 'node:net'
 
 // NFS has no sign-in: an export trusts the client addresses listed on the
 // share. These are checked here as the admin types them, and again by the
@@ -7,7 +7,7 @@ import { isIP } from "node:net"
 export const MAX_NFS_CLIENTS = 16
 
 function normalize(entry: string): string | null {
-  const [addr, prefix, extra] = entry.split("/")
+  const [addr, prefix, extra] = entry.split('/')
   if (extra !== undefined) return null
   const family = isIP(addr)
   if (family === 0) return null
@@ -21,7 +21,7 @@ function normalize(entry: string): string | null {
 /** The client list of a share, or why it is refused. Commas or spaces separate entries. */
 export function parseNfsClients(raw: string): { clients: string[] } | { error: string } {
   const entries = raw.split(/[\s,]+/).filter(Boolean)
-  if (entries.length === 0) return { error: "List at least one address or network allowed to mount it" }
+  if (entries.length === 0) return { error: 'List at least one address or network allowed to mount it' }
   if (entries.length > MAX_NFS_CLIENTS) return { error: `At most ${MAX_NFS_CLIENTS} addresses or networks` }
   const clients: string[] = []
   for (const e of entries) {
@@ -33,18 +33,18 @@ export function parseNfsClients(raw: string): { clients: string[] } | { error: s
 }
 
 function v4ToInt(ip: string): number {
-  return ip.split(".").reduce((acc, p) => acc * 256 + Number(p), 0)
+  return ip.split('.').reduce((acc, p) => acc * 256 + Number(p), 0)
 }
 
 function plainV4(ip: string): string {
-  return ip.startsWith("::ffff:") && isIP(ip.slice(7)) === 4 ? ip.slice(7) : ip
+  return ip.startsWith('::ffff:') && isIP(ip.slice(7)) === 4 ? ip.slice(7) : ip
 }
 
 /** Whether a client address is one of the allowed entries (IPv6 networks: exact address only). */
 export function clientAllowed(ip: string, allowed: string[]): boolean {
   const addr = plainV4(ip.toLowerCase())
   return allowed.some(a => {
-    const [net, prefix] = a.split("/")
+    const [net, prefix] = a.split('/')
     if (prefix === undefined) return net === addr
     if (isIP(net) !== 4 || isIP(addr) !== 4) return false
     const bits = Number(prefix)
@@ -55,10 +55,10 @@ export function clientAllowed(ip: string, allowed: string[]): boolean {
 
 /** The admin's own /24 when they sit on a private IPv4 network, else "". */
 export function suggestNfsClients(callerIp: string | undefined): string {
-  if (!callerIp) return ""
+  if (!callerIp) return ''
   const ip = plainV4(callerIp)
-  if (isIP(ip) !== 4) return ""
-  const [a, b, c] = ip.split(".").map(Number)
+  if (isIP(ip) !== 4) return ''
+  const [a, b, c] = ip.split('.').map(Number)
   const isPrivate = a === 10 || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168)
-  return isPrivate ? `${a}.${b}.${c}.0/24` : ""
+  return isPrivate ? `${a}.${b}.${c}.0/24` : ''
 }

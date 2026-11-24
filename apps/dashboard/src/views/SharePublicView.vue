@@ -47,9 +47,7 @@ function zipUrl() {
 async function loadInfo() {
   loading.value = true
   loadError.value = ''
-  try { info.value = await trpc.shareLink.info.query({ token, accessToken: accessToken.value ?? undefined }) }
-  catch { loadError.value = t('uis.views.SharePublicView.somethingWentWrongPleaseTry') }
-  finally { loading.value = false }
+  try { info.value = await trpc.shareLink.info.query({ token, accessToken: accessToken.value ?? undefined }) } catch { loadError.value = t('uis.views.SharePublicView.somethingWentWrongPleaseTry') } finally { loading.value = false }
 }
 
 async function submitPassword() {
@@ -96,8 +94,8 @@ onMounted(async () => {
         <p class="text-sm text-base-content/70 mt-1">
           {{ info.state === 'expired' ? 'This link has expired.'
             : info.state === 'exhausted' ? 'This link has reached its download limit.'
-            : info.state === 'disabled' ? 'This link has been revoked.'
-            : 'This link does not exist.' }}
+              : info.state === 'disabled' ? 'This link has been revoked.'
+                : 'This link does not exist.' }}
         </p>
       </div>
 

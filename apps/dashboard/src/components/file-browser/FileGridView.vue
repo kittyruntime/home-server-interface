@@ -12,7 +12,6 @@ import { EyeIcon, PencilIcon } from '@lucide/vue'
 import LoadingSpinner from '../ui/LoadingSpinner.vue'
 import type { Transfer } from '../../lib/uploads'
 
-
 type Entry = { name: string; path: string; type: 'dir' | 'file'; size: number | null; mtime: string }
 
 const props = defineProps<{
@@ -27,17 +26,17 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  dragStart: [entry: Entry, event: DragEvent]
-  dropInto: [dir: string, paths: string[], action: DropAction]
-  cardClick: [entry: Entry, event: MouseEvent]
-  cardDblClick: [entry: Entry]
-  selectEntry: [entry: Entry, event: MouseEvent]
-  contextmenu: [entry: Entry, event: MouseEvent]
-  startRename: [entry: Entry]
-  commitRename: []
-  cancelRename: []
+  'dragStart': [entry: Entry, event: DragEvent]
+  'dropInto': [dir: string, paths: string[], action: DropAction]
+  'cardClick': [entry: Entry, event: MouseEvent]
+  'cardDblClick': [entry: Entry]
+  'selectEntry': [entry: Entry, event: MouseEvent]
+  'contextmenu': [entry: Entry, event: MouseEvent]
+  'startRename': [entry: Entry]
+  'commitRename': []
+  'cancelRename': []
   'update:renameValue': [value: string]
-  openFile: [entry: Entry]
+  'openFile': [entry: Entry]
 }>()
 
 // A double click on the row opens; a click on the name of the item already
@@ -66,7 +65,6 @@ function onNameClick(entry: Entry, e: MouseEvent) {
 
 // Folders take items dragged onto them (moved there).
 const folderDrop = useFolderDrop((dir, paths, action) => emit('dropInto', dir, paths, action))
-
 
 </script>
 

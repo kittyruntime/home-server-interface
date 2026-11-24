@@ -77,9 +77,9 @@ defineExpose({ open })
     <div v-if="wiz.step < 4" class="flex items-center gap-0 border-b border-base-300">
       <div v-for="(label, i) in [t('ui.storage.DeviceFormatWizard.stepWarning'), t('ui.storage.DeviceFormatWizard.filesystem'), t('ui.storage.DeviceFormatWizard.stepConfirm')]" :key="i"
         :class="['flex-1 py-2.5 text-center text-2xs font-semibold transition-colors',
-          wiz.step === i + 1 ? 'text-primary border-b-2 border-primary'
-          : wiz.step > i + 1  ? 'text-base-content/70'
-          : 'text-base-content/35']"
+                 wiz.step === i + 1 ? 'text-primary border-b-2 border-primary'
+                 : wiz.step > i + 1 ? 'text-base-content/70'
+                   : 'text-base-content/35']"
       >{{ i + 1 }}. {{ label }}</div>
     </div>
 
@@ -116,15 +116,15 @@ defineExpose({ open })
         <label
           v-for="fs in FS_OPTIONS" :key="fs.id"
           :class="['flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-colors',
-            wiz.fstype === fs.id
-              ? 'border-primary bg-primary/5'
-              : 'border-base-300 hover:border-base-300']"
+                   wiz.fstype === fs.id
+                     ? 'border-primary bg-primary/5'
+                     : 'border-base-300 hover:border-base-300']"
           @click="wiz.fstype = fs.id"
         >
           <div class="mt-0.5">
             <div :class="['w-4 h-4 rounded-full border-2 flex items-center justify-center transition-colors',
-              wiz.fstype === fs.id ? 'border-primary' : 'border-base-300']">
-              <div v-if="wiz.fstype === fs.id" class="w-2 h-2 rounded-full bg-primary"/>
+                          wiz.fstype === fs.id ? 'border-primary' : 'border-base-300']">
+              <div v-if="wiz.fstype === fs.id" class="w-2 h-2 rounded-full bg-primary" />
             </div>
           </div>
           <div class="flex-1 min-w-0">

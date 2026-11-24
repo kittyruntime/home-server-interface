@@ -199,7 +199,6 @@ function openFormat(dev: BlockDev) { formatWiz.value?.open(dev) }
 function openMount(dev: BlockDev)  { mountDlg.value?.open(dev) }
 function openUmount(dev: BlockDev) { umountDlg.value?.open(dev) }
 
-
 const shown = computed(() => props.only ? lvmVGs.value.filter(x => x.name === props.only) : lvmVGs.value)
 </script>
 
@@ -245,7 +244,7 @@ const shown = computed(() => props.only ? lvmVGs.value.filter(x => x.name === pr
         class="gap-0 py-0 shadow-none overflow-hidden flex flex-row"
         :class="isSystemVg(vg.name) ? 'border-warning/20' : 'border-base-300'">
         <!-- Left stripe -->
-        <div class="w-0.5 shrink-0" :class="isSystemVg(vg.name) ? 'bg-warning/60' : 'bg-secondary/50'"/>
+        <div class="w-0.5 shrink-0" :class="isSystemVg(vg.name) ? 'bg-warning/60' : 'bg-secondary/50'" />
         <div class="flex-1 min-w-0">
           <!-- VG header -->
           <div class="flex items-center gap-3 px-4 py-3">
@@ -309,7 +308,7 @@ const shown = computed(() => props.only ? lvmVGs.value.filter(x => x.name === pr
             <div v-for="lv in lvmLVs.filter(l => l.vgName === vg.name)" :key="lv.name"
               class="group/lv flex items-center gap-3 px-4 py-2.5 hover:bg-base-200/30 transition-colors">
               <div class="w-1.5 h-1.5 rounded-full shrink-0"
-                :class="lv2bd(lv).isSystem ? 'bg-warning/70' : lv2bd(lv).mountpoint ? 'bg-success/70' : 'bg-secondary/40'"/>
+                :class="lv2bd(lv).isSystem ? 'bg-warning/70' : lv2bd(lv).mountpoint ? 'bg-success/70' : 'bg-secondary/40'" />
               <div class="flex-1 min-w-0">
                 <div class="flex items-center gap-1.5 flex-wrap">
                   <span class="font-mono text-xs text-base-content/80">{{ lv.path }}</span>
@@ -346,8 +345,8 @@ const shown = computed(() => props.only ? lvmVGs.value.filter(x => x.name === pr
     </div>
 
     <!-- Shared device dialogs (format / mount / unmount) -->
-    <DeviceFormatWizard  ref="formatWiz" @done="refresh" @mount="d => mountDlg?.open(d)" />
-    <DeviceMountDialog   ref="mountDlg"  @done="refresh" />
+    <DeviceFormatWizard ref="formatWiz" @done="refresh" @mount="d => mountDlg?.open(d)" />
+    <DeviceMountDialog ref="mountDlg" @done="refresh" />
     <DeviceUnmountDialog ref="umountDlg" @done="refresh" />
 
     <!-- ════════════════════════════════════════════════════════════════════ -->
@@ -355,112 +354,112 @@ const shown = computed(() => props.only ? lvmVGs.value.filter(x => x.name === pr
     <!-- ════════════════════════════════════════════════════════════════════ -->
     <Modal :label="t('ui.storage.LvmSection.createVolumeGroup2')" v-if="lvmWiz" panel-class="w-full max-w-md" :show-close="false" :prevent-close="!!lvmWiz.busy" @close="lvmWiz = null">
 
-          <!-- Step indicator -->
-          <div class="flex items-center border-b border-base-300">
-            <div v-for="(label, i) in [t('ui.storage.LvmSection.stepSelectDevices'), t('ui.storage.LvmSection.stepConfigure'), t('ui.storage.LvmSection.stepConfirm')]" :key="i"
-              :class="['flex-1 py-2.5 text-center text-2xs font-semibold transition-colors',
-                lvmWiz.step === i + 1 ? 'text-secondary border-b-2 border-secondary'
-                : lvmWiz.step > i + 1  ? 'text-base-content/70'
-                : 'text-base-content/35']"
-            >{{ i + 1 }}. {{ label }}</div>
-          </div>
+      <!-- Step indicator -->
+      <div class="flex items-center border-b border-base-300">
+        <div v-for="(label, i) in [t('ui.storage.LvmSection.stepSelectDevices'), t('ui.storage.LvmSection.stepConfigure'), t('ui.storage.LvmSection.stepConfirm')]" :key="i"
+          :class="['flex-1 py-2.5 text-center text-2xs font-semibold transition-colors',
+                   lvmWiz.step === i + 1 ? 'text-secondary border-b-2 border-secondary'
+                   : lvmWiz.step > i + 1 ? 'text-base-content/70'
+                     : 'text-base-content/35']"
+        >{{ i + 1 }}. {{ label }}</div>
+      </div>
 
-          <!-- Step 1: Select devices -->
-          <div v-if="lvmWiz.step === 1" class="p-5 space-y-3">
-            <p class="text-sm text-base-content/80">
-              {{ t('ui.storage.LvmSection.selectOneOrMoreDevices') }}
-            </p>
-            <Alert variant="warning" class="flex items-start gap-2 px-3 py-2 text-2xs text-warning" role="note">
-              <TriangleAlertIcon class="w-3.5 h-3.5 mt-0.5 shrink-0" aria-hidden="true" />
-              {{ t('ui.storage.LvmSection.allDataOnTheSelected') }}
-            </Alert>
-            <div v-if="eligibleForLvm.length === 0" class="py-6 text-center text-sm text-base-content/70">
-              {{ t('ui.storage.LvmSection.noEligibleDevicesAvailable') }}<br>
-              <span class="text-xs">{{ t('ui.storage.LvmSection.devicesMustBeUnmountedNot') }}</span>
+      <!-- Step 1: Select devices -->
+      <div v-if="lvmWiz.step === 1" class="p-5 space-y-3">
+        <p class="text-sm text-base-content/80">
+          {{ t('ui.storage.LvmSection.selectOneOrMoreDevices') }}
+        </p>
+        <Alert variant="warning" class="flex items-start gap-2 px-3 py-2 text-2xs text-warning" role="note">
+          <TriangleAlertIcon class="w-3.5 h-3.5 mt-0.5 shrink-0" aria-hidden="true" />
+          {{ t('ui.storage.LvmSection.allDataOnTheSelected') }}
+        </Alert>
+        <div v-if="eligibleForLvm.length === 0" class="py-6 text-center text-sm text-base-content/70">
+          {{ t('ui.storage.LvmSection.noEligibleDevicesAvailable') }}<br>
+          <span class="text-xs">{{ t('ui.storage.LvmSection.devicesMustBeUnmountedNot') }}</span>
+        </div>
+        <div v-else class="space-y-1.5 max-h-52 overflow-y-auto pr-1">
+          <label v-for="dev in eligibleForLvm" :key="dev.name"
+            :class="['flex items-center gap-3 p-2.5 rounded-lg border cursor-pointer transition-colors',
+                     lvmWiz.pvDevs.includes(dev.name)
+                       ? 'border-secondary bg-secondary/5'
+                       : 'border-base-300 hover:border-base-300']"
+            @click="toggleLvmDev(dev.name)">
+            <div :class="['w-4 h-4 rounded border-2 flex items-center justify-center flex-shrink-0 transition-colors',
+                          lvmWiz.pvDevs.includes(dev.name) ? 'border-secondary bg-secondary' : 'border-base-300']">
+              <CheckIcon v-if="lvmWiz.pvDevs.includes(dev.name)" class="w-2.5 h-2.5 text-white" aria-hidden="true" />
             </div>
-            <div v-else class="space-y-1.5 max-h-52 overflow-y-auto pr-1">
-              <label v-for="dev in eligibleForLvm" :key="dev.name"
-                :class="['flex items-center gap-3 p-2.5 rounded-lg border cursor-pointer transition-colors',
-                  lvmWiz.pvDevs.includes(dev.name)
-                    ? 'border-secondary bg-secondary/5'
-                    : 'border-base-300 hover:border-base-300']"
-                @click="toggleLvmDev(dev.name)">
-                <div :class="['w-4 h-4 rounded border-2 flex items-center justify-center flex-shrink-0 transition-colors',
-                  lvmWiz.pvDevs.includes(dev.name) ? 'border-secondary bg-secondary' : 'border-base-300']">
-                  <CheckIcon v-if="lvmWiz.pvDevs.includes(dev.name)" class="w-2.5 h-2.5 text-white" aria-hidden="true" />
-                </div>
-                <div class="flex-1 min-w-0">
-                  <span class="font-mono text-sm text-base-content">/dev/{{ dev.name }}</span>
-                  <span v-if="dev.type === 'md'" class="ml-2 text-2xs px-1.5 py-0.5 rounded-sm bg-primary/10 text-primary">RAID</span>
-                  <span v-else-if="dev.model" class="text-xs text-base-content/70 ml-2">{{ dev.model }}</span>
-                </div>
-                <span class="text-xs text-base-content/70 shrink-0">{{ fmtBytes(dev.size) }}</span>
-              </label>
+            <div class="flex-1 min-w-0">
+              <span class="font-mono text-sm text-base-content">/dev/{{ dev.name }}</span>
+              <span v-if="dev.type === 'md'" class="ml-2 text-2xs px-1.5 py-0.5 rounded-sm bg-primary/10 text-primary">RAID</span>
+              <span v-else-if="dev.model" class="text-xs text-base-content/70 ml-2">{{ dev.model }}</span>
             </div>
-            <div class="flex gap-2 pt-1">
-              <Button variant="outline" @click="lvmWiz = null" class="flex-1 justify-center">{{ t('ui.storage.LvmSection.cancel') }}</Button>
-              <Button @click="lvmWiz.step = 2" :disabled="lvmWiz.pvDevs.length === 0"
-                class="flex-1 justify-center">
-                {{ t('ui.storage.LvmSection.next') }}
-              </Button>
-            </div>
-          </div>
+            <span class="text-xs text-base-content/70 shrink-0">{{ fmtBytes(dev.size) }}</span>
+          </label>
+        </div>
+        <div class="flex gap-2 pt-1">
+          <Button variant="outline" @click="lvmWiz = null" class="flex-1 justify-center">{{ t('ui.storage.LvmSection.cancel') }}</Button>
+          <Button @click="lvmWiz.step = 2" :disabled="lvmWiz.pvDevs.length === 0"
+            class="flex-1 justify-center">
+            {{ t('ui.storage.LvmSection.next') }}
+          </Button>
+        </div>
+      </div>
 
-          <!-- Step 2: Configure VG + LV -->
-          <div v-else-if="lvmWiz.step === 2" class="p-5 space-y-4">
-            <p class="text-sm text-base-content/80">{{ t('ui.storage.LvmSection.nameTheVolumeGroupAnd') }}</p>
-            <div>
-              <label class="block text-xs font-medium text-base-content/80 mb-1.5">{{ t('ui.storage.LvmSection.volumeGroupName') }}</label>
-              <Input v-model="lvmWiz.vgName" type="text" laceholder="vg0"
-                class="w-full px-3 py-2 text-sm font-mono"/>
-              <p class="text-2xs text-base-content/70 mt-1">{{ t('ui.storage.LvmSection.lettersDigitsUnderscoresHyphensMust') }}</p>
-            </div>
-            <div>
-              <label class="block text-xs font-medium text-base-content/80 mb-1.5">{{ t('ui.storage.LvmSection.firstLogicalVolumeName') }}</label>
-              <Input v-model="lvmWiz.lvName" type="text" laceholder="lv0"
-                class="w-full px-3 py-2 text-sm font-mono"/>
-            </div>
-            <div>
-              <label class="block text-xs font-medium text-base-content/80 mb-1.5">
-                {{ t('ui.storage.LvmSection.sizeGb') }} <span class="text-base-content/70 font-normal">{{ t('ui.storage.LvmSection.leave0ToUseAll') }}</span>
-              </label>
-              <Input v-model.number="lvmWiz.lvSizeGB" type="number" min="0" placeholder="0"
-                class="w-full px-3 py-2 text-sm font-mono"/>
-            </div>
-            <div class="flex gap-2 pt-1">
-              <Button variant="outline" @click="lvmWiz.step = 1" class="flex-1 justify-center">{{ t('ui.storage.LvmSection.back') }}</Button>
-              <Button @click="lvmWiz.step = 3" :disabled="!lvmWiz.vgName || !lvmWiz.lvName"
-                class="flex-1 justify-center">
-                {{ t('ui.storage.LvmSection.next') }}
-              </Button>
-            </div>
-          </div>
+      <!-- Step 2: Configure VG + LV -->
+      <div v-else-if="lvmWiz.step === 2" class="p-5 space-y-4">
+        <p class="text-sm text-base-content/80">{{ t('ui.storage.LvmSection.nameTheVolumeGroupAnd') }}</p>
+        <div>
+          <label class="block text-xs font-medium text-base-content/80 mb-1.5">{{ t('ui.storage.LvmSection.volumeGroupName') }}</label>
+          <Input v-model="lvmWiz.vgName" type="text" laceholder="vg0"
+            class="w-full px-3 py-2 text-sm font-mono" />
+          <p class="text-2xs text-base-content/70 mt-1">{{ t('ui.storage.LvmSection.lettersDigitsUnderscoresHyphensMust') }}</p>
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-base-content/80 mb-1.5">{{ t('ui.storage.LvmSection.firstLogicalVolumeName') }}</label>
+          <Input v-model="lvmWiz.lvName" type="text" laceholder="lv0"
+            class="w-full px-3 py-2 text-sm font-mono" />
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-base-content/80 mb-1.5">
+            {{ t('ui.storage.LvmSection.sizeGb') }} <span class="text-base-content/70 font-normal">{{ t('ui.storage.LvmSection.leave0ToUseAll') }}</span>
+          </label>
+          <Input v-model.number="lvmWiz.lvSizeGB" type="number" min="0" placeholder="0"
+            class="w-full px-3 py-2 text-sm font-mono" />
+        </div>
+        <div class="flex gap-2 pt-1">
+          <Button variant="outline" @click="lvmWiz.step = 1" class="flex-1 justify-center">{{ t('ui.storage.LvmSection.back') }}</Button>
+          <Button @click="lvmWiz.step = 3" :disabled="!lvmWiz.vgName || !lvmWiz.lvName"
+            class="flex-1 justify-center">
+            {{ t('ui.storage.LvmSection.next') }}
+          </Button>
+        </div>
+      </div>
 
-          <!-- Step 3: Confirm -->
-          <div v-else-if="lvmWiz.step === 3" class="p-5 space-y-4">
-            <Alert variant="warning" class="flex items-start gap-3 p-4" role="note">
-              <TriangleAlertIcon class="w-5 h-5 text-warning mt-0.5 shrink-0" aria-hidden="true" />
-              <div>
-                <div class="font-semibold text-warning text-sm mb-1">{{ t('ui.storage.LvmSection.allDataOnSelectedDevices') }}</div>
-                <div class="text-xs text-warning">{{ t('ui.storage.LvmSection.lvmWillOverwriteTheBeginning') }}</div>
-              </div>
-            </Alert>
-            <div class="space-y-1 text-xs text-base-content/70">
-              <div class="flex gap-2"><span class="w-20 text-base-content/80">{{ t('ui.storage.LvmSection.devices') }}</span><span class="font-mono">{{ lvmWiz.pvDevs.join(', ') }}</span></div>
-              <div class="flex gap-2"><span class="w-20 text-base-content/80">{{ t('ui.storage.LvmSection.vgName') }}</span><span class="font-mono">{{ lvmWiz.vgName }}</span></div>
-              <div class="flex gap-2"><span class="w-20 text-base-content/80">{{ t('ui.storage.LvmSection.lvName') }}</span><span class="font-mono">{{ lvmWiz.lvName }}</span></div>
-              <div class="flex gap-2"><span class="w-20 text-base-content/80">{{ t('ui.storage.LvmSection.lvSize') }}</span><span>{{ lvmWiz.lvSizeGB > 0 ? lvmWiz.lvSizeGB + ' GB' : t('ui.storage.LvmSection.allFreeSpace') }}</span></div>
-            </div>
-            <p v-if="lvmWiz.err" role="alert" class="px-1 status-text text-error"><span class="status-tag">[ERR]</span> {{ lvmWiz.err }}</p>
-            <div class="flex gap-2">
-              <Button variant="outline" @click="lvmWiz.step = 2" :disabled="lvmWiz.busy" class="flex-1 justify-center">{{ t('ui.storage.LvmSection.back') }}</Button>
-              <Button @click="doCreateLvm" :disabled="lvmWiz.busy"
-                class="flex-1 justify-center">
-                <span v-if="lvmWiz.busy">{{ t('ui.storage.LvmSection.creating') }}</span>
-                <span v-else>{{ t('ui.storage.LvmSection.createVolumeGroup2') }}</span>
-              </Button>
-            </div>
+      <!-- Step 3: Confirm -->
+      <div v-else-if="lvmWiz.step === 3" class="p-5 space-y-4">
+        <Alert variant="warning" class="flex items-start gap-3 p-4" role="note">
+          <TriangleAlertIcon class="w-5 h-5 text-warning mt-0.5 shrink-0" aria-hidden="true" />
+          <div>
+            <div class="font-semibold text-warning text-sm mb-1">{{ t('ui.storage.LvmSection.allDataOnSelectedDevices') }}</div>
+            <div class="text-xs text-warning">{{ t('ui.storage.LvmSection.lvmWillOverwriteTheBeginning') }}</div>
           </div>
+        </Alert>
+        <div class="space-y-1 text-xs text-base-content/70">
+          <div class="flex gap-2"><span class="w-20 text-base-content/80">{{ t('ui.storage.LvmSection.devices') }}</span><span class="font-mono">{{ lvmWiz.pvDevs.join(', ') }}</span></div>
+          <div class="flex gap-2"><span class="w-20 text-base-content/80">{{ t('ui.storage.LvmSection.vgName') }}</span><span class="font-mono">{{ lvmWiz.vgName }}</span></div>
+          <div class="flex gap-2"><span class="w-20 text-base-content/80">{{ t('ui.storage.LvmSection.lvName') }}</span><span class="font-mono">{{ lvmWiz.lvName }}</span></div>
+          <div class="flex gap-2"><span class="w-20 text-base-content/80">{{ t('ui.storage.LvmSection.lvSize') }}</span><span>{{ lvmWiz.lvSizeGB > 0 ? lvmWiz.lvSizeGB + ' GB' : t('ui.storage.LvmSection.allFreeSpace') }}</span></div>
+        </div>
+        <p v-if="lvmWiz.err" role="alert" class="px-1 status-text text-error"><span class="status-tag">[ERR]</span> {{ lvmWiz.err }}</p>
+        <div class="flex gap-2">
+          <Button variant="outline" @click="lvmWiz.step = 2" :disabled="lvmWiz.busy" class="flex-1 justify-center">{{ t('ui.storage.LvmSection.back') }}</Button>
+          <Button @click="doCreateLvm" :disabled="lvmWiz.busy"
+            class="flex-1 justify-center">
+            <span v-if="lvmWiz.busy">{{ t('ui.storage.LvmSection.creating') }}</span>
+            <span v-else>{{ t('ui.storage.LvmSection.createVolumeGroup2') }}</span>
+          </Button>
+        </div>
+      </div>
 
     </Modal>
 
@@ -468,33 +467,33 @@ const shown = computed(() => props.only ? lvmVGs.value.filter(x => x.name === pr
     <!-- ADD LV DIALOG                                                        -->
     <!-- ════════════════════════════════════════════════════════════════════ -->
     <Modal :label="t('ui.storage.LvmSection.addLogicalVolume')" v-if="addLvDlg" panel-class="w-full max-w-sm" :show-close="false" :prevent-close="!!addLvDlg.busy" @close="addLvDlg = null">
-          <div class="px-5 py-4 border-b border-base-300">
-            <h3 class="font-semibold text-base-content">{{ t('ui.storage.LvmSection.addLogicalVolume') }}</h3>
-            <p class="text-xs text-base-content/70 mt-0.5">VG <span class="text-secondary">{{ addLvDlg.vg.name }}</span> {{ t('uip.storage.LvmSection.free', { p0: fmtBytes(addLvDlg.vg.free) }) }}</p>
-          </div>
-          <div class="p-5 space-y-4">
-            <div>
-              <label class="block text-xs font-medium text-base-content/80 mb-1.5">{{ t('ui.storage.LvmSection.logicalVolumeName') }}</label>
-              <Input v-model="addLvDlg.lvName" type="text" laceholder="lv0"
-                class="w-full px-3 py-2 text-sm font-mono"/>
-            </div>
-            <div>
-              <label class="block text-xs font-medium text-base-content/80 mb-1.5">
-                {{ t('ui.storage.LvmSection.sizeGb') }} <span class="text-base-content/70 font-normal">{{ t('ui.storage.LvmSection.n0AllRemainingFreeSpace') }}</span>
-              </label>
-              <Input v-model.number="addLvDlg.lvSizeGB" type="number" min="0" placeholder="0"
-                class="w-full px-3 py-2 text-sm font-mono"/>
-            </div>
-            <p v-if="addLvDlg.err" role="alert" class="status-text text-error"><span class="status-tag">[ERR]</span> {{ addLvDlg.err }}</p>
-            <div class="flex gap-2 pt-1">
-              <Button variant="outline" @click="addLvDlg = null" class="flex-1 justify-center">{{ t('ui.storage.LvmSection.cancel') }}</Button>
-              <Button @click="doAddLv" :disabled="!addLvDlg.lvName || addLvDlg.busy"
-                class="flex-1 justify-center">
-                <span v-if="addLvDlg.busy">{{ t('ui.storage.LvmSection.creating') }}</span>
-                <span v-else>{{ t('ui.storage.LvmSection.createLogicalVolume') }}</span>
-              </Button>
-            </div>
-          </div>
+      <div class="px-5 py-4 border-b border-base-300">
+        <h3 class="font-semibold text-base-content">{{ t('ui.storage.LvmSection.addLogicalVolume') }}</h3>
+        <p class="text-xs text-base-content/70 mt-0.5">VG <span class="text-secondary">{{ addLvDlg.vg.name }}</span> {{ t('uip.storage.LvmSection.free', { p0: fmtBytes(addLvDlg.vg.free) }) }}</p>
+      </div>
+      <div class="p-5 space-y-4">
+        <div>
+          <label class="block text-xs font-medium text-base-content/80 mb-1.5">{{ t('ui.storage.LvmSection.logicalVolumeName') }}</label>
+          <Input v-model="addLvDlg.lvName" type="text" laceholder="lv0"
+            class="w-full px-3 py-2 text-sm font-mono" />
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-base-content/80 mb-1.5">
+            {{ t('ui.storage.LvmSection.sizeGb') }} <span class="text-base-content/70 font-normal">{{ t('ui.storage.LvmSection.n0AllRemainingFreeSpace') }}</span>
+          </label>
+          <Input v-model.number="addLvDlg.lvSizeGB" type="number" min="0" placeholder="0"
+            class="w-full px-3 py-2 text-sm font-mono" />
+        </div>
+        <p v-if="addLvDlg.err" role="alert" class="status-text text-error"><span class="status-tag">[ERR]</span> {{ addLvDlg.err }}</p>
+        <div class="flex gap-2 pt-1">
+          <Button variant="outline" @click="addLvDlg = null" class="flex-1 justify-center">{{ t('ui.storage.LvmSection.cancel') }}</Button>
+          <Button @click="doAddLv" :disabled="!addLvDlg.lvName || addLvDlg.busy"
+            class="flex-1 justify-center">
+            <span v-if="addLvDlg.busy">{{ t('ui.storage.LvmSection.creating') }}</span>
+            <span v-else>{{ t('ui.storage.LvmSection.createLogicalVolume') }}</span>
+          </Button>
+        </div>
+      </div>
     </Modal>
 
     <!-- Remove LV -->

@@ -72,7 +72,7 @@ async function reset() {
             type="color"
             class="w-8 h-8 rounded-lg border border-base-300 cursor-pointer"
             @change="pickColor(customColor)"
-          />
+          >
         </div>
       </div>
 
@@ -84,7 +84,7 @@ async function reset() {
         >
           {{ t('ui.desktop.WallpaperPicker.uploadImage') }}
         </Button>
-        <input ref="fileInput" type="file" accept="image/png,image/jpeg,image/webp" class="hidden" @change="onFileChange" />
+        <input ref="fileInput" type="file" accept="image/png,image/jpeg,image/webp" class="hidden" @change="onFileChange">
       </div>
 
       <p v-if="error" class="status-text text-primary text-xs">[ERR] {{ error }}</p>

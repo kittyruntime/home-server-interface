@@ -51,8 +51,7 @@ async function removeBoard() {
 
 async function run(fn: () => Promise<void>, ok: string) {
   result.value = null
-  try { await fn(); result.value = { ok: true, text: ok } }
-  catch (e) { result.value = { ok: false, text: (e as Error).message } }
+  try { await fn(); result.value = { ok: true, text: ok } } catch (e) { result.value = { ok: false, text: (e as Error).message } }
 }
 
 async function publish() {

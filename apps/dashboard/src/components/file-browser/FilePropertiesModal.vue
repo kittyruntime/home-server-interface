@@ -92,7 +92,7 @@ const location = computed(() => {
 
 const diskUsed = computed(() => diskInfo.value ? diskInfo.value.total - diskInfo.value.free : 0)
 const diskUsedPct = computed(() =>
-  diskInfo.value && diskInfo.value.total > 0 ? (diskUsed.value / diskInfo.value.total) * 100 : 0
+  diskInfo.value && diskInfo.value.total > 0 ? (diskUsed.value / diskInfo.value.total) * 100 : 0,
 )
 
 // ── helpers ───────────────────────────────────────────────────────────────────
@@ -102,7 +102,6 @@ function fmtBytes(n: number): string {
   if (n < 1024 ** 3) return `${(n / 1024 ** 2).toFixed(1)} MB`
   return `${(n / 1024 ** 3).toFixed(2)} GB`
 }
-
 
 // ── load ──────────────────────────────────────────────────────────────────────
 onMounted(async () => {

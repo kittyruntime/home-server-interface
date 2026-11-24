@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import type { HTMLAttributes } from "vue"
-import { computed, provide, ref } from "vue"
-import { cn } from "@/lib/utils"
-import { getRange, paginationKey } from "./context"
+import type { HTMLAttributes } from 'vue'
+import { computed, provide, ref } from 'vue'
+import { cn } from '@/lib/utils'
+import { getRange, paginationKey } from './context'
 
 const props = withDefaults(defineProps<{
   page?: number
@@ -12,7 +12,7 @@ const props = withDefaults(defineProps<{
   siblingCount?: number
   showEdges?: boolean
   disabled?: boolean
-  class?: HTMLAttributes["class"]
+  class?: HTMLAttributes['class']
 }>(), {
   page: undefined,
   defaultPage: 1,
@@ -22,14 +22,14 @@ const props = withDefaults(defineProps<{
 })
 
 const emits = defineEmits<{
-  "update:page": [page: number]
+  'update:page': [page: number]
 }>()
 
 const local = ref(props.defaultPage)
 const page = computed(() => props.page ?? local.value)
 const pageCount = computed(() => Math.max(1, Math.ceil(props.total / props.itemsPerPage)))
 const items = computed(() => getRange(page.value, pageCount.value, props.siblingCount, props.showEdges)
-  .map(value => typeof value === "number" ? { type: "page" as const, value } : { type: "ellipsis" as const }))
+  .map(value => typeof value === 'number' ? { type: 'page' as const, value } : { type: 'ellipsis' as const }))
 
 provide(paginationKey, {
   page,
@@ -41,7 +41,7 @@ provide(paginationKey, {
     if (clamped === page.value)
       return
     local.value = clamped
-    emits("update:page", clamped)
+    emits('update:page', clamped)
   },
 })
 </script>

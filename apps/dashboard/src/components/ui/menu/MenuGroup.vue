@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { provideMenuGroup, useMenuContext } from "@/lib/use-menu"
-import { menuSlot } from "./styles"
+import { provideMenuGroup, useMenuContext } from '@/lib/use-menu'
+import { menuSlot } from './styles'
 
 defineOptions({ inheritAttrs: false })
 const ctx = useMenuContext()

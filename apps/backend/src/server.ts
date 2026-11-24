@@ -1,41 +1,41 @@
-import { buildApp, connectNats, startEventSubscriber } from "./app"
-import { startJobReconcile } from "./services/job-reconcile"
-import { startMetricsSampler } from "./services/metrics-sampler"
-import { startAuditRetention } from "./services/audit-retention"
-import { startAlertSampler } from "./services/alert-sampler"
-import { startVolumeUsageSampler } from "./services/volume-usage"
-import { startWidgetSources } from "./services/widget-sources"
-import { startTrashPurge } from "./services/trash"
-import { startCatalogRefresh } from "./services/catalog-source"
-import { startVolumeGuard } from "./services/volume-guard"
-import { syncSharesBestEffort } from "./services/sharing.service"
-import { startSmbJournal } from "./services/smb-events.service"
-import { startTelemetry } from "./services/telemetry"
-import { migrateRsyncPlans } from "./services/backup-status"
-import { startTlsWatch } from "./services/tls-watch"
-import { dispatchEvent, ensureDefaultRule } from "./services/notifications"
-import { migrateNotificationStorage } from "./services/notification-connectors"
-import { startDeliveryQueue } from "./services/notification-queue"
-import { startUpdateWatch } from "./services/update-watch"
-import { updateStateDir, readCurrentVersion } from "./trpc/routers/update"
-import { log } from "./utils/log"
-import type { Server as HttpsServer } from "node:https"
-import { requestSync } from "./nats"
-import { prisma } from "@app/database"
-import { readTlsConfig, servesHttps, trustProxyFn, tlsDir } from "./services/tls-config"
-import { certificateLostEvent, resolveCertificate, startHttps, watchCertificate, type Certificate, type CertificateLoss } from "./services/tls-server"
+import { buildApp, connectNats, startEventSubscriber } from './app'
+import { startJobReconcile } from './services/job-reconcile'
+import { startMetricsSampler } from './services/metrics-sampler'
+import { startAuditRetention } from './services/audit-retention'
+import { startAlertSampler } from './services/alert-sampler'
+import { startVolumeUsageSampler } from './services/volume-usage'
+import { startWidgetSources } from './services/widget-sources'
+import { startTrashPurge } from './services/trash'
+import { startCatalogRefresh } from './services/catalog-source'
+import { startVolumeGuard } from './services/volume-guard'
+import { syncSharesBestEffort } from './services/sharing.service'
+import { startSmbJournal } from './services/smb-events.service'
+import { startTelemetry } from './services/telemetry'
+import { migrateRsyncPlans } from './services/backup-status'
+import { startTlsWatch } from './services/tls-watch'
+import { dispatchEvent, ensureDefaultRule } from './services/notifications'
+import { migrateNotificationStorage } from './services/notification-connectors'
+import { startDeliveryQueue } from './services/notification-queue'
+import { startUpdateWatch } from './services/update-watch'
+import { updateStateDir, readCurrentVersion } from './trpc/routers/update'
+import { log } from './utils/log'
+import type { Server as HttpsServer } from 'node:https'
+import { requestSync } from './nats'
+import { prisma } from '@app/database'
+import { readTlsConfig, servesHttps, trustProxyFn, tlsDir } from './services/tls-config'
+import { certificateLostEvent, resolveCertificate, startHttps, watchCertificate, type Certificate, type CertificateLoss } from './services/tls-server'
 
 // Crashes go through the logger too, so the log file stays one JSON line per event.
-process.on("uncaughtException", (err) => {
-  log.fatal({ err }, "uncaught exception")
+process.on('uncaughtException', err => {
+  log.fatal({ err }, 'uncaught exception')
   process.exit(1)
 })
-process.on("unhandledRejection", (reason) => {
-  log.error({ err: reason }, "unhandled promise rejection")
+process.on('unhandledRejection', reason => {
+  log.error({ err: reason }, 'unhandled promise rejection')
 })
 
 function backendPort(): number {
-  const raw = process.env.BACKEND_PORT ?? "9001"
+  const raw = process.env.BACKEND_PORT ?? '9001'
   const port = Number(raw)
   if (!Number.isInteger(port) || port < 1 || port > 65_535) {
     throw new Error(`Invalid BACKEND_PORT: ${raw}`)
@@ -44,7 +44,7 @@ function backendPort(): number {
 }
 
 const start = async () => {
-  if (process.env.HSI_SMOKE_TEST === "1") {
+  if (process.env.HSI_SMOKE_TEST === '1') {
     const app = buildApp()
     try {
       await app.ready()
@@ -92,7 +92,7 @@ const start = async () => {
     startJobReconcile()
     startSmbJournal(prisma, () => syncSharesBestEffort(prisma), log)
     void startEventSubscriber(app.log).catch(err => {
-      app.log.error(err, "nats: event subscriber fatal error")
+      app.log.error(err, 'nats: event subscriber fatal error')
       process.exit(1)
     })
 
@@ -101,12 +101,12 @@ const start = async () => {
       const server = app.server as unknown as HttpsServer
       await startHttps(app, server, tlsCfg, tlsDir(), app.log)
       watchCertificate(server, tlsDir(), app.log)
-      app.log.info({ port: tlsCfg.port, standardPorts: tlsCfg.standardPorts }, "tls: serving HTTPS")
+      app.log.info({ port: tlsCfg.port, standardPorts: tlsCfg.standardPorts }, 'tls: serving HTTPS')
     } else {
-      await app.listen({ port: tlsCfg.port, host: "0.0.0.0" })
+      await app.listen({ port: tlsCfg.port, host: '0.0.0.0' })
     }
   } catch (err) {
-    log.error({ err }, "backend failed to start")
+    log.error({ err }, 'backend failed to start')
     process.exit(1)
   }
 }

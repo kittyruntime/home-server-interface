@@ -59,7 +59,7 @@ function resetPreview() {
   if (t && token.value) {
     void fetch('/system/config-restore/cancel', {
       method: 'POST',
-      headers: { Authorization: `Bearer ${token.value}`, 'Content-Type': 'application/json' },
+      headers: { 'Authorization': `Bearer ${token.value}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({ token: t }),
     }).catch(() => {})
   }
@@ -75,7 +75,7 @@ async function checkBackup() {
     const response = await fetch('/system/config-restore/preview', {
       method: 'POST',
       headers: {
-        Authorization: `Bearer ${token.value}`,
+        'Authorization': `Bearer ${token.value}`,
         'Content-Type': 'application/vnd.hsi.config-backup',
         'X-HSI-Backup-Password': encodePassword(restorePassword.value),
       },
@@ -107,7 +107,7 @@ async function restoreBackup() {
   try {
     const response = await fetch('/system/config-restore/apply', {
       method: 'POST',
-      headers: { Authorization: `Bearer ${token.value}`, 'Content-Type': 'application/json' },
+      headers: { 'Authorization': `Bearer ${token.value}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({ token: p.token }),
     })
     if (!response.ok) {
@@ -145,57 +145,57 @@ function pollRestoreRestart() {
 </script>
 
 <template>
-    <div class="rounded-xl border bg-base-100 text-base-content shadow-sm overflow-hidden mt-5 overflow-hidden border-error/20">
-      <div class="border-b border-base-300 p-5">
-        <p class="text-sm font-medium text-base-content">{{ t('ui.backups.RestoreForm.restoreConfiguration') }}</p>
-        <p class="mt-1 text-xs leading-5 text-base-content/70">{{ t('ui.backups.RestoreForm.validateAndRestoreAnHsi') }}</p>
-      </div>
-      <div v-if="followUps && showFollowUps" class="border-b border-base-300 bg-primary/5 p-5 space-y-2">
-        <p class="text-sm font-medium text-base-content">{{ t('ui.backups.RestoreForm.theConfigurationWasRestoredLeft') }}</p>
-        <ul class="space-y-1.5">
-          <li v-for="f in FOLLOW_UPS" :key="f.href" class="flex flex-wrap items-center justify-between gap-2 text-xs text-base-content/80">
-            <span>{{ f.text }}</span><Button as="a" variant="outline" size="xs" :href="f.href" class="shrink-0">{{ f.label }}</Button>
-          </li>
-        </ul>
-        <div class="flex justify-end"><Button variant="ghost" size="xs" type="button" @click="dismissFollowUps">{{ t('ui.backups.RestoreForm.done') }}</Button></div>
-      </div>
-      <form class="space-y-4 p-5" @submit.prevent="preview ? restoreBackup() : checkBackup()">
-        <Alert variant="destructive" class="block p-3 text-xs leading-5 text-base-content/80" role="note">
-          {{ t('ui.backups.RestoreForm.restoringReplacesAccountsPermissionsShar') }}
-        </Alert>
-        <label class="block">
-          <span class="mb-1.5 block text-xs font-medium text-base-content/80">{{ t('ui.backups.RestoreForm.backupFile') }}</span>
-          <Input type="file" accept=".hsibak,application/vnd.hsi.config-backup" class="text-xs" required @change="selectRestoreFile($event); resetPreview()" />
-        </label>
-        <label class="block">
-          <span class="mb-1.5 block text-xs font-medium text-base-content/80">{{ t('ui.backups.RestoreForm.backupPassword') }}</span>
-          <Input v-model="restorePassword" type="password" @input="resetPreview" autocomplete="current-password" minlength="16" maxlength="1024" :placeholder="t('ui.backups.RestoreForm.passwordUsedDuringExport')" required />
-        </label>
-        <div v-if="restoreStep" class="flex items-center gap-2 text-xs text-primary">
-          <LoadingSpinner />
-          <span>{{ restoreStep === 'checking' ? 'Checking the backup…' : restoreStep === 'uploading' ? 'Restoring…' : restoreStep === 'restarting' ? 'Restarting HSI…' : 'Waiting for HSI to come back online…' }}</span>
-        </div>
-        <div v-if="preview" class="space-y-2 rounded-lg border border-base-300 p-3 text-xs">
-          <p class="font-medium text-base-content">{{ backupLine(preview.backup, preview.format) }}</p>
-          <p class="text-base-content/80">{{ contentsLine(preview.contents) }}</p>
-          <p v-for="c in preview.conflicts" :key="c.kind + c.name" role="alert" class="status-text text-error">
-            <span class="status-tag">[ERR]</span> {{ t('uip.backups.RestoreForm.onTheServer', { p0: c.detail }) }} <code class="font-mono">{{ c.command }}</code>
-          </p>
-          <p v-for="(w, i) in preview.warnings" :key="i" class="status-text text-warning"><span class="status-tag">[WARN]</span> {{ w }}</p>
-          <p v-if="preview.conflicts.length" class="text-base-content/70">{{ t('ui.backups.RestoreForm.resolveTheConflictsThenCheck') }}</p>
-        </div>
-        <p v-if="restoreError" role="alert" class="status-text text-error"><span class="status-tag">[ERR]</span> {{ restoreError }}</p>
-        <div class="flex justify-end">
-          <Button variant="outline" size="sm" v-if="!preview" :disabled="!restoreFile || restorePassword.length < 16 || restoring">
-            <BusyLabel :busy="restoring" busy-label="Checking">{{ t('ui.backups.RestoreForm.checkTheBackup') }}</BusyLabel>
-          </Button>
-          <template v-else>
-            <Button variant="ghost" size="sm" type="button" :disabled="restoring" @click="resetPreview">{{ t('ui.backups.RestoreForm.cancel') }}</Button>
-            <Button variant="destructive" size="sm" class="ml-2" :disabled="restoring || preview.conflicts.length > 0">
-              <BusyLabel :busy="restoring" busy-label="Restoring">{{ t('ui.backups.RestoreForm.restore') }}</BusyLabel>
-            </Button>
-          </template>
-        </div>
-      </form>
+  <div class="rounded-xl border bg-base-100 text-base-content shadow-sm overflow-hidden mt-5 overflow-hidden border-error/20">
+    <div class="border-b border-base-300 p-5">
+      <p class="text-sm font-medium text-base-content">{{ t('ui.backups.RestoreForm.restoreConfiguration') }}</p>
+      <p class="mt-1 text-xs leading-5 text-base-content/70">{{ t('ui.backups.RestoreForm.validateAndRestoreAnHsi') }}</p>
     </div>
+    <div v-if="followUps && showFollowUps" class="border-b border-base-300 bg-primary/5 p-5 space-y-2">
+      <p class="text-sm font-medium text-base-content">{{ t('ui.backups.RestoreForm.theConfigurationWasRestoredLeft') }}</p>
+      <ul class="space-y-1.5">
+        <li v-for="f in FOLLOW_UPS" :key="f.href" class="flex flex-wrap items-center justify-between gap-2 text-xs text-base-content/80">
+          <span>{{ f.text }}</span><Button as="a" variant="outline" size="xs" :href="f.href" class="shrink-0">{{ f.label }}</Button>
+        </li>
+      </ul>
+      <div class="flex justify-end"><Button variant="ghost" size="xs" type="button" @click="dismissFollowUps">{{ t('ui.backups.RestoreForm.done') }}</Button></div>
+    </div>
+    <form class="space-y-4 p-5" @submit.prevent="preview ? restoreBackup() : checkBackup()">
+      <Alert variant="destructive" class="block p-3 text-xs leading-5 text-base-content/80" role="note">
+        {{ t('ui.backups.RestoreForm.restoringReplacesAccountsPermissionsShar') }}
+      </Alert>
+      <label class="block">
+        <span class="mb-1.5 block text-xs font-medium text-base-content/80">{{ t('ui.backups.RestoreForm.backupFile') }}</span>
+        <Input type="file" accept=".hsibak,application/vnd.hsi.config-backup" class="text-xs" required @change="selectRestoreFile($event); resetPreview()" />
+      </label>
+      <label class="block">
+        <span class="mb-1.5 block text-xs font-medium text-base-content/80">{{ t('ui.backups.RestoreForm.backupPassword') }}</span>
+        <Input v-model="restorePassword" type="password" @input="resetPreview" autocomplete="current-password" minlength="16" maxlength="1024" :placeholder="t('ui.backups.RestoreForm.passwordUsedDuringExport')" required />
+      </label>
+      <div v-if="restoreStep" class="flex items-center gap-2 text-xs text-primary">
+        <LoadingSpinner />
+        <span>{{ restoreStep === 'checking' ? 'Checking the backup…' : restoreStep === 'uploading' ? 'Restoring…' : restoreStep === 'restarting' ? 'Restarting HSI…' : 'Waiting for HSI to come back online…' }}</span>
+      </div>
+      <div v-if="preview" class="space-y-2 rounded-lg border border-base-300 p-3 text-xs">
+        <p class="font-medium text-base-content">{{ backupLine(preview.backup, preview.format) }}</p>
+        <p class="text-base-content/80">{{ contentsLine(preview.contents) }}</p>
+        <p v-for="c in preview.conflicts" :key="c.kind + c.name" role="alert" class="status-text text-error">
+          <span class="status-tag">[ERR]</span> {{ t('uip.backups.RestoreForm.onTheServer', { p0: c.detail }) }} <code class="font-mono">{{ c.command }}</code>
+        </p>
+        <p v-for="(w, i) in preview.warnings" :key="i" class="status-text text-warning"><span class="status-tag">[WARN]</span> {{ w }}</p>
+        <p v-if="preview.conflicts.length" class="text-base-content/70">{{ t('ui.backups.RestoreForm.resolveTheConflictsThenCheck') }}</p>
+      </div>
+      <p v-if="restoreError" role="alert" class="status-text text-error"><span class="status-tag">[ERR]</span> {{ restoreError }}</p>
+      <div class="flex justify-end">
+        <Button variant="outline" size="sm" v-if="!preview" :disabled="!restoreFile || restorePassword.length < 16 || restoring">
+          <BusyLabel :busy="restoring" busy-label="Checking">{{ t('ui.backups.RestoreForm.checkTheBackup') }}</BusyLabel>
+        </Button>
+        <template v-else>
+          <Button variant="ghost" size="sm" type="button" :disabled="restoring" @click="resetPreview">{{ t('ui.backups.RestoreForm.cancel') }}</Button>
+          <Button variant="destructive" size="sm" class="ml-2" :disabled="restoring || preview.conflicts.length > 0">
+            <BusyLabel :busy="restoring" busy-label="Restoring">{{ t('ui.backups.RestoreForm.restore') }}</BusyLabel>
+          </Button>
+        </template>
+      </div>
+    </form>
+  </div>
 </template>

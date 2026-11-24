@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import type { PrimitiveProps } from "../Primitive.vue"
-import { inject } from "vue"
-import Primitive from "../Primitive.vue"
-import { collapsibleKey } from "./context"
+import type { PrimitiveProps } from '../Primitive.vue'
+import { inject } from 'vue'
+import Primitive from '../Primitive.vue'
+import { collapsibleKey } from './context'
 
-const props = withDefaults(defineProps<PrimitiveProps>(), { as: "button" })
+const props = withDefaults(defineProps<PrimitiveProps>(), { as: 'button' })
 const ctx = inject(collapsibleKey)!
 </script>
 

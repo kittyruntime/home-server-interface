@@ -18,8 +18,7 @@ async function readDisks(): Promise<SmartResult[]> {
   const res = await trpc.storage.blockDevices.query() as { devices: Array<{ name: string; type: string }> }
   const out: SmartResult[] = []
   for (const d of (res.devices ?? []).filter(d => d.type === 'disk')) {
-    try { out.push(await trpc.storage.smartInfo.query({ device: d.name, noWake: true }) as SmartResult) }
-    catch { out.push({ device: d.name, available: false, rotationRate: 0, healthPassed: false, temperature: 0, powerOnHours: 0, powerCycles: 0, attributes: [] }) }
+    try { out.push(await trpc.storage.smartInfo.query({ device: d.name, noWake: true }) as SmartResult) } catch { out.push({ device: d.name, available: false, rotationRate: 0, healthPassed: false, temperature: 0, powerOnHours: 0, powerCycles: 0, attributes: [] }) }
   }
   return out
 }

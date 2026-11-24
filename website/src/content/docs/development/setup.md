@@ -105,17 +105,15 @@ served by Vite instead.
 ## Build & verify
 
 ```bash
-pnpm verify  # lint + typecheck + backend/Go tests + production builds
+pnpm verify  # lint + knip + typecheck + backend/Go tests + production builds
 ```
 
 Run individual gates with `pnpm lint`, `pnpm typecheck`, `pnpm test`, or
 `pnpm build` (`pnpm lint:fix` applies safe ESLint fixes).
 
-CI enforces ESLint, TypeScript/Vue typechecks, backend security tests, Go tests,
-`gofmt`, `go vet`, i18n checks, and production builds. The ESLint config
-(`eslint.config.js`) uses the correctness-focused rules only (Vue `flat/essential`
-+ typescript-eslint recommended) and deliberately leaves template formatting to the
-editor.
+CI enforces ESLint (correctness and [code style](/home-server-interface/development/code-style/)), knip (no
+dead files, exports or dependencies), TypeScript/Vue typechecks, backend
+security tests, Go tests, `gofmt`, `go vet`, i18n checks, and production builds.
 
 The same canonical backend build is used by local development, CI, source
 installation, and release packaging.

@@ -17,7 +17,6 @@ import { formatDay } from '../../lib/format-date'
 import LoadingSpinner from '../ui/LoadingSpinner.vue'
 import type { Transfer } from '../../lib/uploads'
 
-
 type Entry = { name: string; path: string; type: 'dir' | 'file'; size: number | null; mtime: string }
 
 const props = defineProps<{
@@ -38,20 +37,20 @@ const props = defineProps<{
 const shown = (c: Column) => (props.columns ?? ['size', 'modified']).includes(c)
 
 const emit = defineEmits<{
-  dragStart: [entry: Entry, event: DragEvent]
-  dropInto: [dir: string, paths: string[], action: DropAction]
-  rowClick: [entry: Entry, event: MouseEvent]
-  rowDblClick: [entry: Entry]
-  selectEntry: [entry: Entry, event: MouseEvent]
-  contextmenu: [entry: Entry, event: MouseEvent]
-  startRename: [entry: Entry]
-  commitRename: []
-  cancelRename: []
+  'dragStart': [entry: Entry, event: DragEvent]
+  'dropInto': [dir: string, paths: string[], action: DropAction]
+  'rowClick': [entry: Entry, event: MouseEvent]
+  'rowDblClick': [entry: Entry]
+  'selectEntry': [entry: Entry, event: MouseEvent]
+  'contextmenu': [entry: Entry, event: MouseEvent]
+  'startRename': [entry: Entry]
+  'commitRename': []
+  'cancelRename': []
   'update:renameValue': [value: string]
-  selectAll: []
-  clearSelection: []
-  openFile: [entry: Entry]
-  setSort: [field: SortField]
+  'selectAll': []
+  'clearSelection': []
+  'openFile': [entry: Entry]
+  'setSort': [field: SortField]
 }>()
 
 // A double click on the row opens; a click on the name of the item already
@@ -79,7 +78,6 @@ function onNameClick(entry: Entry, e: MouseEvent) {
 // Folders take items dragged onto them (moved there).
 const folderDrop = useFolderDrop((dir, paths, action) => emit('dropInto', dir, paths, action))
 
-
 function formatSize(bytes: number | null): string {
   if (bytes === null) return '-'
   if (bytes === 0)    return '0 B'
@@ -88,7 +86,6 @@ function formatSize(bytes: number | null): string {
   if (bytes < 1024 ** 3) return (bytes / 1024 ** 2).toFixed(1) + ' MB'
   return (bytes / 1024 ** 3).toFixed(2) + ' GB'
 }
-
 
 function fileExt(name: string): string {
   return extensionOf(name).toUpperCase()
@@ -125,8 +122,8 @@ function fileExt(name: string): string {
       @click.stop="pendingPaths?.includes(entry.path) ? undefined : emit('rowClick', entry, $event)"
       @contextmenu="pendingPaths?.includes(entry.path) ? ($event.preventDefault(), $event.stopPropagation()) : emit('contextmenu', entry, $event)"
       :class="['relative flex items-center gap-2.5 px-3 py-2.5 min-w-0 transition-colors select-none [-webkit-touch-callout:none] touch-manipulation',
-        pendingPaths?.includes(entry.path) ? 'opacity-40 pointer-events-none' : '',
-        selected.has(entry.path) && !pendingPaths?.includes(entry.path) ? 'bg-primary/10' : 'active:bg-base-200']"
+               pendingPaths?.includes(entry.path) ? 'opacity-40 pointer-events-none' : '',
+               selected.has(entry.path) && !pendingPaths?.includes(entry.path) ? 'bg-primary/10' : 'active:bg-base-200']"
     >
       <div
         @click.stop="emit('selectEntry', entry, $event)"
@@ -181,13 +178,13 @@ function fileExt(name: string): string {
           <Checkbox
             :model-value="selected.size > 0 && selected.size < entries.length ? 'indeterminate' : selected.size === entries.length && entries.length > 0"
             :aria-label="$t('ui.files.FileListView.selectAll')"
-           
+
             @click.stop
             @update:model-value="selected.size > 0 ? emit('clearSelection') : emit('selectAll')"
           />
         </TableHead>
         <TableHead class="px-3 py-2.5 font-medium">
-          <SortableHeader :active="sortField === 'name'" :dir="sortDir ?? 'asc'"  @click="emit('setSort', 'name')">{{ $t('ui.files.FileListView.name') }}</SortableHeader>
+          <SortableHeader :active="sortField === 'name'" :dir="sortDir ?? 'asc'" @click="emit('setSort', 'name')">{{ $t('ui.files.FileListView.name') }}</SortableHeader>
         </TableHead>
         <TableHead v-if="shown('size')" class="px-3 py-2.5 font-medium text-right">
           <SortableHeader :active="sortField === 'size'" :dir="sortDir ?? 'asc'" class="ml-auto" @click="emit('setSort', 'size')">{{ $t('ui.files.FileListView.size') }}</SortableHeader>
@@ -261,11 +258,11 @@ function fileExt(name: string): string {
         @contextmenu="pendingPaths?.includes(entry.path) ? ($event.preventDefault(), $event.stopPropagation()) : emit('contextmenu', entry, $event)"
         @mousedown.shift.prevent
         :class="['group transition-colors [-webkit-touch-callout:none]',
-          pendingPaths?.includes(entry.path)
-            ? 'opacity-40 pointer-events-none'
-            : entry.type === 'dir' ? 'cursor-pointer hover:bg-base-200' : 'cursor-default hover:bg-base-200',
-          selected.has(entry.path) && !pendingPaths?.includes(entry.path) ? 'bg-primary/10' : '',
-          folderDrop.over.value === entry.path ? 'bg-primary/15 outline-2 -outline-offset-2 outline-primary' : '']"
+                 pendingPaths?.includes(entry.path)
+                   ? 'opacity-40 pointer-events-none'
+                   : entry.type === 'dir' ? 'cursor-pointer hover:bg-base-200' : 'cursor-default hover:bg-base-200',
+                 selected.has(entry.path) && !pendingPaths?.includes(entry.path) ? 'bg-primary/10' : '',
+                 folderDrop.over.value === entry.path ? 'bg-primary/15 outline-2 -outline-offset-2 outline-primary' : '']"
       >
         <!-- Checkbox -->
         <TableCell class="pl-3 pr-1 py-2.5 w-7" @click.stop>
@@ -302,9 +299,9 @@ function fileExt(name: string): string {
                 @click="onNameClick(entry, $event)"
                 :title="entry.name"
                 :class="['transition-colors truncate select-none',
-                  entry.type === 'dir'
-                    ? 'text-base-content hover:text-primary'
-                    : 'text-base-content/80 hover:text-base-content']">
+                         entry.type === 'dir'
+                           ? 'text-base-content hover:text-primary'
+                           : 'text-base-content/80 hover:text-base-content']">
                 {{ entry.name }}
               </span>
               <span v-if="entry.type === 'file' && fileExt(entry.name)" class="text-base-content/70 text-2xs font-mono shrink-0">

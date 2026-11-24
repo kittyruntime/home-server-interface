@@ -1,21 +1,21 @@
-import { prisma } from "@app/database"
-import { decryptSecret, encryptSecret } from "./secrets"
+import { prisma } from '@app/database'
+import { decryptSecret, encryptSecret } from './secrets'
 
 // The built-in assistant's settings: which model it talks to, with which key,
 // and who may use it. A single row, set by an administrator. The API key is
 // encrypted at rest and never leaves the server.
 
 export const ASSISTANT_PROVIDERS = {
-  openrouter: { baseUrl: "https://openrouter.ai/api/v1", needsKey: true },
-  openai: { baseUrl: "https://api.openai.com/v1", needsKey: true },
-  anthropic: { baseUrl: "https://api.anthropic.com/v1", needsKey: true },
-  mistral: { baseUrl: "https://api.mistral.ai/v1", needsKey: true },
-  ollama: { baseUrl: "http://127.0.0.1:11434/v1", needsKey: false },
-  custom: { baseUrl: "", needsKey: false },
+  openrouter: { baseUrl: 'https://openrouter.ai/api/v1', needsKey: true },
+  openai: { baseUrl: 'https://api.openai.com/v1', needsKey: true },
+  anthropic: { baseUrl: 'https://api.anthropic.com/v1', needsKey: true },
+  mistral: { baseUrl: 'https://api.mistral.ai/v1', needsKey: true },
+  ollama: { baseUrl: 'http://127.0.0.1:11434/v1', needsKey: false },
+  custom: { baseUrl: '', needsKey: false },
 } as const
 export type AssistantProvider = keyof typeof ASSISTANT_PROVIDERS
 
-export type AssistantAccess = "admins" | "everyone"
+export type AssistantAccess = 'admins' | 'everyone'
 
 export interface AssistantConfig {
   enabled: boolean
@@ -34,7 +34,7 @@ type Row = {
 }
 
 function fromRow(row: Row | null): AssistantConfig {
-  const provider = (row?.provider ?? "openrouter") in ASSISTANT_PROVIDERS ? (row?.provider ?? "openrouter") as AssistantProvider : "custom"
+  const provider = (row?.provider ?? 'openrouter') in ASSISTANT_PROVIDERS ? (row?.provider ?? 'openrouter') as AssistantProvider : 'custom'
   let apiKey: string | null = null
   if (row?.apiKey) {
     try { apiKey = decryptSecret(row.apiKey) } catch { apiKey = null }
@@ -44,8 +44,8 @@ function fromRow(row: Row | null): AssistantConfig {
     provider,
     baseUrl: row?.baseUrl ?? ASSISTANT_PROVIDERS.openrouter.baseUrl,
     apiKey,
-    model: row?.model ?? "",
-    access: row?.access === "everyone" ? "everyone" : "admins",
+    model: row?.model ?? '',
+    access: row?.access === 'everyone' ? 'everyone' : 'admins',
     readOnly: row?.readOnly ?? false,
     dailyTokenLimit: row?.dailyTokenLimit ?? null,
   }
@@ -88,7 +88,7 @@ export interface AssistantSettingsInput {
 export async function saveAssistantSettings(input: AssistantSettingsInput) {
   const apiKey = input.apiKey === undefined ? undefined : input.apiKey === null ? null : encryptSecret(input.apiKey)
   const data = {
-    enabled: input.enabled, provider: input.provider, baseUrl: input.baseUrl.replace(/\/+$/, ""),
+    enabled: input.enabled, provider: input.provider, baseUrl: input.baseUrl.replace(/\/+$/, ''),
     model: input.model, access: input.access, readOnly: input.readOnly, dailyTokenLimit: input.dailyTokenLimit,
     ...(apiKey !== undefined && { apiKey }),
   }
@@ -103,7 +103,7 @@ export function assistantReady(config: AssistantConfig): boolean {
 
 /** Whether this account may use the assistant. */
 export function assistantAllowed(config: AssistantConfig, user: { isAdmin: boolean }): boolean {
-  return assistantReady(config) && (config.access === "everyone" || user.isAdmin)
+  return assistantReady(config) && (config.access === 'everyone' || user.isAdmin)
 }
 
 /** Today, as the daily limit counts it (UTC). */

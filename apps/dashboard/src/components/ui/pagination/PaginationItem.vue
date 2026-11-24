@@ -1,18 +1,18 @@
 <script setup lang="ts">
-import type { HTMLAttributes } from "vue"
-import type { ButtonVariants } from "@/components/ui/button"
-import { computed, inject } from "vue"
-import { cn } from "@/lib/utils"
-import { buttonVariants } from "@/components/ui/button"
-import { paginationKey } from "./context"
+import type { HTMLAttributes } from 'vue'
+import type { ButtonVariants } from '@/components/ui/button'
+import { computed, inject } from 'vue'
+import { cn } from '@/lib/utils'
+import { buttonVariants } from '@/components/ui/button'
+import { paginationKey } from './context'
 
 const props = withDefaults(defineProps<{
   value: number
-  size?: ButtonVariants["size"]
-  class?: HTMLAttributes["class"]
+  size?: ButtonVariants['size']
+  class?: HTMLAttributes['class']
   isActive?: boolean
 }>(), {
-  size: "icon",
+  size: 'icon',
 })
 
 const pagination = inject(paginationKey)

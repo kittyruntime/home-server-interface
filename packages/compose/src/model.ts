@@ -1,11 +1,11 @@
-import { z } from "zod"
+import { z } from 'zod'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 export interface PortMapping {
   hostPort:      number
   containerPort: number
-  protocol:      "tcp" | "udp"
+  protocol:      'tcp' | 'udp'
   // Optional access binding (HSI-side metadata, never passed to `docker run`):
   // records that this published port is reached at a real URL, e.g. behind the
   // user's own reverse proxy. Drives the "Open" action's URL.
@@ -20,7 +20,7 @@ export interface EnvVar {
 }
 
 export interface VolumeMount {
-  type:     "bind" | "named" | "place"
+  type:     'bind' | 'named' | 'place'
   source:   string
   target:   string
   readOnly: boolean
@@ -36,7 +36,7 @@ export interface LabelEntry {
 export const zPortMapping = z.object({
   hostPort:      z.number().int().min(1).max(65535),
   containerPort: z.number().int().min(1).max(65535),
-  protocol:      z.enum(["tcp", "udp"]).default("tcp"),
+  protocol:      z.enum(['tcp', 'udp']).default('tcp'),
   // Optional access binding: records that this port is reached at a real URL
   // (behind the user's own reverse proxy / tunnel). HSI-side metadata only.
   domain:        z.string().min(1).max(253).optional(),
@@ -50,9 +50,9 @@ export const zEnvVar = z.object({
 })
 
 export const zVolumeMount = z.object({
-  type:     z.enum(["bind", "named", "place"]),
+  type:     z.enum(['bind', 'named', 'place']),
   source:   z.string().min(1),
-  target:   z.string().startsWith("/"),
+  target:   z.string().startsWith('/'),
   readOnly: z.boolean().default(false),
 })
 
@@ -66,11 +66,11 @@ export const zAppIcon = z.string().regex(/^[a-z0-9-]{1,40}$/)
 export const zPinnedUrl = z.string().url().refine(value => {
   try {
     const protocol = new URL(value).protocol
-    return protocol === "http:" || protocol === "https:"
+    return protocol === 'http:' || protocol === 'https:'
   } catch {
     return false
   }
-}, "Pinned URL must use HTTP or HTTPS")
+}, 'Pinned URL must use HTTP or HTTPS')
 
 export const zAppInput = z.object({
   // Lowercase only: Docker Compose v2 lowercases project names, so a
@@ -85,7 +85,7 @@ export const zAppInput = z.object({
   capAdd:        z.array(z.string()).default([]),
   capDrop:       z.array(z.string()).default([]),
   extraHosts:    z.array(z.string().regex(/^[^:]+:[^:]+$/)).default([]),
-  restartPolicy: z.enum(["no", "always", "unless-stopped", "on-failure"]).default("no"),
+  restartPolicy: z.enum(['no', 'always', 'unless-stopped', 'on-failure']).default('no'),
   hostname:      z.string().max(63).nullable().optional(),
   user:          z.string().nullable().optional(),
   command:       z.string().nullable().optional(),
@@ -106,7 +106,7 @@ export const STACK_NAME_RE = /^[a-z0-9][a-z0-9._-]{0,63}$/
 /** A port's access binding -> absolute URL, or null when no domain is set. */
 export function portDomainUrl(p: PortMapping): string | null {
   if (!p.domain) return null
-  const scheme = p.tls ? "https" : "http"
+  const scheme = p.tls ? 'https' : 'http'
   const def    = p.tls ? 443 : 80
   const ep     = p.publicPort ?? def
   return ep === def ? `${scheme}://${p.domain}` : `${scheme}://${p.domain}:${ep}`

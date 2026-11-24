@@ -1,9 +1,9 @@
-import type { ComputedRef, InjectionKey, Ref } from "vue"
+import type { ComputedRef, InjectionKey, Ref } from 'vue'
 
 export interface TabsContext {
   baseId: string
-  orientation: ComputedRef<"horizontal" | "vertical">
-  activationMode: ComputedRef<"automatic" | "manual">
+  orientation: ComputedRef<'horizontal' | 'vertical'>
+  activationMode: ComputedRef<'automatic' | 'manual'>
   /** Value of the selected tab, undefined when none. */
   model: ComputedRef<string | undefined>
   select: (value: string) => void
@@ -16,10 +16,10 @@ export interface TabsContext {
   refresh: () => void
 }
 
-export const tabsKey: InjectionKey<TabsContext> = Symbol("tabs")
+export const tabsKey: InjectionKey<TabsContext> = Symbol('tabs')
 
 /** Stable ids so aria-controls and aria-labelledby stay pairs. The value is encoded: an id holds no space. */
-export function makeId(baseId: string, kind: "trigger" | "content", value: string) {
+export function makeId(baseId: string, kind: 'trigger' | 'content', value: string) {
   return `${baseId}-${kind}-${encodeURIComponent(value)}`
 }
 

@@ -1,4 +1,4 @@
-import type { InjectionKey, Ref } from "vue"
+import type { InjectionKey, Ref } from 'vue'
 
 export interface PopoverContext {
   open: Ref<boolean>
@@ -10,4 +10,4 @@ export interface PopoverContext {
   toggle: () => void
 }
 
-export const popoverKey: InjectionKey<PopoverContext> = Symbol("popover")
+export const popoverKey: InjectionKey<PopoverContext> = Symbol('popover')

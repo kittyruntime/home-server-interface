@@ -93,7 +93,7 @@ async function load() {
 
   name.value = props.appId
 
-  ports.value = m.ports.map((p) => ({
+  ports.value = m.ports.map(p => ({
     container: p.container,
     protocol:  p.protocol,
     label:     p.label,
@@ -104,8 +104,8 @@ async function load() {
   }))
 
   envRows.value = m.env
-    .filter((e) => !!e.prompt)
-    .map((e) => ({
+    .filter(e => !!e.prompt)
+    .map(e => ({
       key:      e.key,
       label:    e.prompt ?? e.key,
       secret:   e.secret,
@@ -114,7 +114,7 @@ async function load() {
       shown:    false,
     }))
 
-  volumeRows.value = m.volumes.map((v) => {
+  volumeRows.value = m.volumes.map(v => {
     const base = basename(v.target)
     return {
       target:       v.target,
@@ -143,11 +143,11 @@ onMounted(load)
 const nameValid = computed(() => /^[a-z0-9][a-z0-9._-]{0,63}$/.test(name.value))
 
 const envValid = computed(() =>
-  envRows.value.every((e) => !e.required || e.value.trim() !== '')
+  envRows.value.every(e => !e.required || e.value.trim() !== ''),
 )
 
 const portsValid = computed(() =>
-  ports.value.every((p) => Number.isInteger(p.host) && p.host >= 1 && p.host <= 65535)
+  ports.value.every(p => Number.isInteger(p.host) && p.host >= 1 && p.host <= 65535),
 )
 
 // Non-blocking "host port already in use" warnings, keyed by `${container}-${protocol}`,
@@ -157,7 +157,7 @@ const portWarnings = ref<Record<string, string>>({})
 const portSuggestions = ref<Record<string, number>>({})
 let portTimer: ReturnType<typeof setTimeout> | undefined
 watch(
-  () => ports.value.map((p) => `${p.container}/${p.protocol}=${p.host}`).join(','),
+  () => ports.value.map(p => `${p.container}/${p.protocol}=${p.host}`).join(','),
   () => {
     if (portTimer) clearTimeout(portTimer)
     portTimer = setTimeout(checkPorts, 400)
@@ -166,7 +166,7 @@ watch(
 async function checkPorts() {
   const next: Record<string, string> = {}
   const suggest: Record<string, number> = {}
-  await Promise.all(ports.value.map(async (p) => {
+  await Promise.all(ports.value.map(async p => {
     if (!Number.isInteger(p.host) || p.host < 1 || p.host > 65535) return
     const key = `${p.container}-${p.protocol}`
     try {
@@ -196,18 +196,18 @@ function generate(e: EnvRow) {
 }
 
 const volumesValid = computed(() =>
-  volumeRows.value.every((v) => {
+  volumeRows.value.every(v => {
     if (v.mode === 'place')    return !!v.placeId
     if (v.mode === 'newPlace') return v.newPlaceName.trim() !== '' && v.newPlacePath.trim().startsWith('/')
     if (v.mode === 'bind')     return v.bindPath.trim().startsWith('/')
     return v.namedName.trim() !== '' // named
-  })
+  }),
 )
 
 const canInstall = computed(() =>
   !!manifest.value &&
   nameValid.value && envValid.value && portsValid.value && volumesValid.value &&
-  !installing.value
+  !installing.value,
 )
 
 async function install() {
@@ -227,11 +227,11 @@ async function install() {
     const payload: InstallInput = {
       id:      props.appId,
       name:    name.value,
-      ports:   ports.value.map((p) => ({
+      ports:   ports.value.map(p => ({
         container: p.container, host: p.host,
         ...(p.web && p.domain.trim() ? { domain: p.domain.trim(), tls: p.tls } : {}),
       })),
-      env:     envRows.value.map((e) => ({ key: e.key, value: e.value })),
+      env:     envRows.value.map(e => ({ key: e.key, value: e.value })),
       volumes,
     }
 

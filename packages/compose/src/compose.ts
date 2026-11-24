@@ -1,24 +1,24 @@
-import { parse, parseDocument, isMap, type YAMLMap } from "yaml"
-import { zAppInput, zAppIcon, zPinnedUrl, type AppInput, type PortMapping, type EnvVar, type VolumeMount, type LabelEntry } from "./model.js"
+import { parse, parseDocument, isMap, type YAMLMap } from 'yaml'
+import { zAppInput, zAppIcon, zPinnedUrl, type AppInput, type PortMapping, type EnvVar, type VolumeMount, type LabelEntry } from './model.js'
 
-const HEADER = "# Managed by HSI - editable by hand, re-read on load.\n"
+const HEADER = '# Managed by HSI - editable by hand, re-read on load.\n'
 
 // Managed keys under services.<name>: everything the forms represent. Anything
 // else inside the service (or other top-level sections) is "unknown" and must
 // survive a generate-in-place untouched.
 const MANAGED_SERVICE_KEYS = [
-  "container_name", "image", "ports", "environment", "volumes", "networks",
-  "labels", "cap_add", "cap_drop", "extra_hosts", "restart", "hostname",
-  "user", "command", "cpus", "mem_limit", "x-hsi",
+  'container_name', 'image', 'ports', 'environment', 'volumes', 'networks',
+  'labels', 'cap_add', 'cap_drop', 'extra_hosts', 'restart', 'hostname',
+  'user', 'command', 'cpus', 'mem_limit', 'x-hsi',
 ] as const
 
 function portStr(p: PortMapping): string {
-  const proto = p.protocol === "udp" ? "/udp" : ""
+  const proto = p.protocol === 'udp' ? '/udp' : ''
   return `${p.hostPort}:${p.containerPort}${proto}`
 }
 
 function volumeStr(v: VolumeMount): string {
-  return `${v.source}:${v.target}${v.readOnly ? ":ro" : ""}`
+  return `${v.source}:${v.target}${v.readOnly ? ':ro' : ''}`
 }
 
 function ensureMap(doc: any, path: string[]): YAMLMap {
@@ -29,11 +29,11 @@ function ensureMap(doc: any, path: string[]): YAMLMap {
 }
 
 function ensureService(doc: any, name: string): YAMLMap {
-  const services = ensureMap(doc, ["services"])
-  const node = doc.getIn(["services", name], true)
+  const services = ensureMap(doc, ['services'])
+  const node = doc.getIn(['services', name], true)
   if (isMap(node)) return node
   services.set(name, doc.createNode({}))
-  return doc.getIn(["services", name], true)
+  return doc.getIn(['services', name], true)
 }
 
 // environment/labels accept both map form ({KEY: "v"}) and list form
@@ -41,15 +41,15 @@ function ensureService(doc: any, name: string): YAMLMap {
 // an empty key, which fails zAppInput (key min length 1) and downgrades the
 // parse to raw-only instead of silently mangling the entry.
 function kvEntries(raw: unknown): Array<[string, string]> {
-  if (!raw || typeof raw !== "object") return []
+  if (!raw || typeof raw !== 'object') return []
   if (Array.isArray(raw)) {
     return raw.map(e => {
       const s = String(e)
-      const i = s.indexOf("=")
-      return i === -1 ? ["", s] : [s.slice(0, i), s.slice(i + 1)]
+      const i = s.indexOf('=')
+      return i === -1 ? ['', s] : [s.slice(0, i), s.slice(i + 1)]
     })
   }
-  return Object.entries(raw as Record<string, unknown>).map(([k, v]) => [k, String(v ?? "")])
+  return Object.entries(raw as Record<string, unknown>).map(([k, v]) => [k, String(v ?? '')])
 }
 
 // A Docker named volume (as opposed to a bind path like /srv or ./data).
@@ -61,9 +61,9 @@ function namedVolumeRefs(json: Record<string, any>): string[] {
   const refs = new Set<string>()
   for (const svc of Object.values(json.services ?? {}) as any[]) {
     for (const v of Array.isArray(svc?.volumes) ? svc.volumes : []) {
-      const source = typeof v === "string" ? v.split(":")[0]
-        : v && typeof v === "object" && (v.type ?? "volume") === "volume" ? v.source : undefined
-      if (typeof source === "string" && NAMED_VOLUME_RE.test(source)) refs.add(source)
+      const source = typeof v === 'string' ? v.split(':')[0]
+        : v && typeof v === 'object' && (v.type ?? 'volume') === 'volume' ? v.source : undefined
+      if (typeof source === 'string' && NAMED_VOLUME_RE.test(source)) refs.add(source)
     }
   }
   return [...refs]
@@ -73,10 +73,10 @@ function namedVolumeRefs(json: Record<string, any>): string[] {
 // does not prefix it with the project name (apps migrated from `docker run -v
 // name:/path` keep using their existing volume and data).
 function isGeneratedDeclaration(key: string, value: unknown): boolean {
-  if (!value || typeof value !== "object" || Array.isArray(value)) return false
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false
   const entries = Object.entries(value as Record<string, unknown>)
   const [only] = entries
-  return entries.length === 1 && only !== undefined && only[0] === "name" && only[1] === key
+  return entries.length === 1 && only !== undefined && only[0] === 'name' && only[1] === key
 }
 
 // Compose rejects a project whose services reference an undeclared named
@@ -86,18 +86,18 @@ function isGeneratedDeclaration(key: string, value: unknown): boolean {
 function syncVolumeDeclarations(doc: any) {
   const json = (doc.toJS() ?? {}) as Record<string, any>
   const refs = namedVolumeRefs(json)
-  const declared = (json.volumes && typeof json.volumes === "object") ? json.volumes as Record<string, unknown> : {}
+  const declared = (json.volumes && typeof json.volumes === 'object') ? json.volumes as Record<string, unknown> : {}
 
   const missing = refs.filter(r => !(r in declared))
   if (missing.length) {
-    let vols = doc.getIn(["volumes"], true)
+    let vols = doc.getIn(['volumes'], true)
     if (!isMap(vols)) {
-      doc.setIn(["volumes"], doc.createNode({}))
-      vols = doc.getIn(["volumes"], true)
+      doc.setIn(['volumes'], doc.createNode({}))
+      vols = doc.getIn(['volumes'], true)
       // Keep services last in the document (see applyModel).
       const items = doc.contents.items as Array<{ key: any }>
-      const volIdx = items.findIndex(p => String(p.key?.value ?? p.key) === "volumes")
-      const svcIdx = items.findIndex(p => String(p.key?.value ?? p.key) === "services")
+      const volIdx = items.findIndex(p => String(p.key?.value ?? p.key) === 'volumes')
+      const svcIdx = items.findIndex(p => String(p.key?.value ?? p.key) === 'services')
       if (svcIdx !== -1 && volIdx > svcIdx) {
         const [moved] = items.splice(volIdx, 1)
         if (moved) items.splice(svcIdx, 0, moved)
@@ -107,14 +107,14 @@ function syncVolumeDeclarations(doc: any) {
   }
 
   for (const [key, value] of Object.entries(declared)) {
-    if (!refs.includes(key) && isGeneratedDeclaration(key, value)) doc.deleteIn(["volumes", key])
+    if (!refs.includes(key) && isGeneratedDeclaration(key, value)) doc.deleteIn(['volumes', key])
   }
-  const vols = doc.getIn(["volumes"], true)
-  if (isMap(vols) && vols.items.length === 0) doc.delete("volumes")
+  const vols = doc.getIn(['volumes'], true)
+  if (isMap(vols) && vols.items.length === 0) doc.delete('volumes')
 }
 
 function setOrDelete(map: YAMLMap, key: string, value: unknown) {
-  if (value === undefined || value === null || value === "" ||
+  if (value === undefined || value === null || value === '' ||
       (Array.isArray(value) && value.length === 0)) { map.delete(key); return }
   map.set(key, value)
 }
@@ -123,7 +123,7 @@ function applyModel(doc: any, name: string, input: AppInput) {
   // Top-level networks come first so that a fresh document ends with the
   // services section, keeping hand-appended services structurally valid.
   if (input.networkNames.length) {
-    const nets = ensureMap(doc, ["networks"])
+    const nets = ensureMap(doc, ['networks'])
     for (const n of input.networkNames) {
       if (!nets.hasIn([n])) nets.setIn([n], { external: true, name: n })
     }
@@ -133,41 +133,41 @@ function applyModel(doc: any, name: string, input: AppInput) {
   // x-hsi is a managed key, but its sub-keys are HSI metadata the forms do not
   // all represent: carry unknown sub-keys over from the existing file. The
   // model stays authoritative for the managed pinnedUrl/icon/ports sub-keys.
-  const prevXhsiNode = svc.getIn(["x-hsi"], true)
+  const prevXhsiNode = svc.getIn(['x-hsi'], true)
   const prevXhsi = isMap(prevXhsiNode) ? prevXhsiNode.toJSON() as Record<string, unknown> : null
   for (const k of MANAGED_SERVICE_KEYS) svc.deleteIn([k])
-  setOrDelete(svc, "image", input.image)
-  setOrDelete(svc, "ports", input.ports.map(portStr))
-  if (input.envs.length) setOrDelete(svc, "environment", Object.fromEntries(input.envs.map(e => [e.key, e.value])))
-  setOrDelete(svc, "volumes", input.volumes.map(volumeStr))
-  if (input.networkNames.length) setOrDelete(svc, "networks", input.networkNames)
-  if (input.labels.length) setOrDelete(svc, "labels", Object.fromEntries(input.labels.map(l => [l.key, l.value])))
-  setOrDelete(svc, "cap_add", input.capAdd.length ? input.capAdd : undefined)
-  setOrDelete(svc, "cap_drop", input.capDrop.length ? input.capDrop : undefined)
+  setOrDelete(svc, 'image', input.image)
+  setOrDelete(svc, 'ports', input.ports.map(portStr))
+  if (input.envs.length) setOrDelete(svc, 'environment', Object.fromEntries(input.envs.map(e => [e.key, e.value])))
+  setOrDelete(svc, 'volumes', input.volumes.map(volumeStr))
+  if (input.networkNames.length) setOrDelete(svc, 'networks', input.networkNames)
+  if (input.labels.length) setOrDelete(svc, 'labels', Object.fromEntries(input.labels.map(l => [l.key, l.value])))
+  setOrDelete(svc, 'cap_add', input.capAdd.length ? input.capAdd : undefined)
+  setOrDelete(svc, 'cap_drop', input.capDrop.length ? input.capDrop : undefined)
   if (input.extraHosts.length) {
-    setOrDelete(svc, "extra_hosts", Object.fromEntries(input.extraHosts.map(h => {
-      const i = h.indexOf(":"); return [h.slice(0, i), h.slice(i + 1)]
+    setOrDelete(svc, 'extra_hosts', Object.fromEntries(input.extraHosts.map(h => {
+      const i = h.indexOf(':'); return [h.slice(0, i), h.slice(i + 1)]
     })))
   }
-  if (input.restartPolicy && input.restartPolicy !== "no") setOrDelete(svc, "restart", input.restartPolicy)
-  setOrDelete(svc, "hostname", input.hostname || undefined)
-  setOrDelete(svc, "user", input.user || undefined)
-  setOrDelete(svc, "command", input.command || undefined)
-  setOrDelete(svc, "cpus", input.cpuLimit ?? undefined)
-  setOrDelete(svc, "mem_limit", input.memoryLimit || undefined)
+  if (input.restartPolicy && input.restartPolicy !== 'no') setOrDelete(svc, 'restart', input.restartPolicy)
+  setOrDelete(svc, 'hostname', input.hostname || undefined)
+  setOrDelete(svc, 'user', input.user || undefined)
+  setOrDelete(svc, 'command', input.command || undefined)
+  setOrDelete(svc, 'cpus', input.cpuLimit ?? undefined)
+  setOrDelete(svc, 'mem_limit', input.memoryLimit || undefined)
 
   const domainPorts = input.ports.filter(p => p.domain)
   const xhsi: Record<string, unknown> = {}
   for (const [k, v] of Object.entries(prevXhsi ?? {})) {
-    if (k !== "pinnedUrl" && k !== "icon" && k !== "ports") xhsi[k] = v
+    if (k !== 'pinnedUrl' && k !== 'icon' && k !== 'ports') xhsi[k] = v
   }
   if (input.pinnedUrl) xhsi.pinnedUrl = input.pinnedUrl
   if (input.icon) xhsi.icon = input.icon
   if (domainPorts.length) xhsi.ports = domainPorts.map(p => ({
     containerPort: p.containerPort, domain: p.domain, tls: p.tls, publicPort: p.publicPort ?? null,
   }))
-  if (Object.keys(xhsi).length) setOrDelete(svc, "x-hsi", xhsi)
-  setOrDelete(svc, "container_name", name)
+  if (Object.keys(xhsi).length) setOrDelete(svc, 'x-hsi', xhsi)
+  setOrDelete(svc, 'container_name', name)
   syncVolumeDeclarations(doc)
 }
 
@@ -179,8 +179,8 @@ export interface ParsedCompose {
 }
 
 export function generateComposeYaml(input: AppInput, existing?: string): string {
-  if (input.volumes.some(v => v.type === "place")) {
-    throw new Error("place volumes must be resolved to bind paths before generation")
+  if (input.volumes.some(v => v.type === 'place')) {
+    throw new Error('place volumes must be resolved to bind paths before generation')
   }
   const doc = parseDocument(existing ?? HEADER)
   applyModel(doc as any, input.name, input)
@@ -205,20 +205,20 @@ export interface Sidecar {
 export function withSidecars(content: string, main: string, sidecars: Sidecar[]): string {
   if (!sidecars.length) return content
   const doc = parseDocument(content)
-  const services = ensureMap(doc, ["services"])
+  const services = ensureMap(doc, ['services'])
   for (const sc of sidecars) {
     if (sc.name === main || services.has(sc.name)) throw new Error(`Service ${sc.name} already exists`)
     const svc: Record<string, unknown> = {
       container_name: `${main}-${sc.name}`,
       image:          sc.image,
-      restart:        "unless-stopped",
+      restart:        'unless-stopped',
     }
     if (Object.keys(sc.environment).length) svc.environment = sc.environment
     if (sc.volumes.length) svc.volumes = sc.volumes.map(v => `${v.source}:${v.target}`)
     if (sc.command?.length) svc.command = sc.command
     services.set(sc.name, doc.createNode(svc))
   }
-  ensureService(doc, main).set("depends_on", doc.createNode(sidecars.map(sc => sc.name)))
+  ensureService(doc, main).set('depends_on', doc.createNode(sidecars.map(sc => sc.name)))
   syncVolumeDeclarations(doc)
   return String(doc)
 }
@@ -244,14 +244,14 @@ export function repairNamedVolumeDeclarations(content: string): string | null {
 export function parseComposeYaml(content: string, main?: string): ParsedCompose {
   const doc = parseDocument(content)
   if (doc.errors.length > 0) {
-    throw new Error(`Invalid YAML: ${doc.errors[0]?.message ?? "parse error"}`)
+    throw new Error(`Invalid YAML: ${doc.errors[0]?.message ?? 'parse error'}`)
   }
   const json = (doc.toJS() ?? {}) as Record<string, any>
-  if (json.services !== undefined && (!json.services || typeof json.services !== "object" || Array.isArray(json.services))) {
-    throw new Error("The services field must be a mapping")
+  if (json.services !== undefined && (!json.services || typeof json.services !== 'object' || Array.isArray(json.services))) {
+    throw new Error('The services field must be a mapping')
   }
   for (const [name, service] of Object.entries(json.services ?? {})) {
-    if (!service || typeof service !== "object" || Array.isArray(service)) {
+    if (!service || typeof service !== 'object' || Array.isArray(service)) {
       throw new Error(`Service ${name} must be a mapping`)
     }
   }
@@ -263,7 +263,7 @@ export function parseComposeYaml(content: string, main?: string): ParsedCompose 
 
   for (const [k] of Object.entries(json)) {
     // volumes/networks are checked key by key below.
-    if (k === "services" || k === "networks" || k === "volumes") continue
+    if (k === 'services' || k === 'networks' || k === 'volumes') continue
     unknownFields.push(k)
   }
   if (svc) for (const name of services) if (name !== svcName) unknownFields.push(`services.${name}`)
@@ -285,31 +285,31 @@ export function parseComposeYaml(content: string, main?: string): ParsedCompose 
   let app: AppInput | null = null
   if (svc) {
     const ports: PortMapping[] = (Array.isArray(svc.ports) ? svc.ports : []).map((s: string) => {
-      const [pc, proto = "tcp"] = s.split("/")
-      const [host, cont] = (pc ?? "").split(":")
-      return { hostPort: Number(host), containerPort: Number(cont), protocol: proto as "tcp" | "udp" }
+      const [pc, proto = 'tcp'] = s.split('/')
+      const [host, cont] = (pc ?? '').split(':')
+      return { hostPort: Number(host), containerPort: Number(cont), protocol: proto as 'tcp' | 'udp' }
     })
     const envs: EnvVar[] = kvEntries(svc.environment).map(([key, value]) => ({ key, value }))
     const volumes: VolumeMount[] = (Array.isArray(svc.volumes) ? svc.volumes : []).map((s: string) => {
-      const [source, target, mode] = s.split(":")
-      return { type: (source ?? "").startsWith("/") ? "bind" : "named", source: source ?? "", target: target ?? "", readOnly: mode === "ro" }
+      const [source, target, mode] = s.split(':')
+      return { type: (source ?? '').startsWith('/') ? 'bind' : 'named', source: source ?? '', target: target ?? '', readOnly: mode === 'ro' }
     })
     const labels: LabelEntry[] = kvEntries(svc.labels).map(([key, value]) => ({ key, value }))
     const extraHosts: string[] = Object.entries(svc.extra_hosts ?? {}).map(([h, ip]) => `${h}:${ip}`)
-    const domainMeta: any[] = svc["x-hsi"]?.ports ?? []
+    const domainMeta: any[] = svc['x-hsi']?.ports ?? []
     for (const dp of domainMeta) {
       const p = ports.find(p => p.containerPort === dp.containerPort)
       if (p && dp.domain) { p.domain = dp.domain; p.tls = !!dp.tls; p.publicPort = dp.publicPort ?? undefined }
     }
-    const rawPinnedUrl = svc["x-hsi"]?.pinnedUrl
+    const rawPinnedUrl = svc['x-hsi']?.pinnedUrl
     const safePinnedUrl = zPinnedUrl.safeParse(rawPinnedUrl)
-    const icon = zAppIcon.safeParse(svc["x-hsi"]?.icon)
+    const icon = zAppIcon.safeParse(svc['x-hsi']?.icon)
     const candidate = {
-      name: svcName, image: svc.image ?? "",
+      name: svcName, image: svc.image ?? '',
       ports, envs, volumes, networkNames: Array.isArray(svc.networks) ? svc.networks : [],
       labels, capAdd: svc.cap_add ?? [], capDrop: svc.cap_drop ?? [], extraHosts,
-      restartPolicy: svc.restart ?? "no", hostname: svc.hostname ?? null, user: svc.user ?? null,
-      command: typeof svc.command === "string" ? svc.command : null,
+      restartPolicy: svc.restart ?? 'no', hostname: svc.hostname ?? null, user: svc.user ?? null,
+      command: typeof svc.command === 'string' ? svc.command : null,
       cpuLimit: svc.cpus ?? null, memoryLimit: svc.mem_limit ?? null,
       pinnedUrl: safePinnedUrl.success ? safePinnedUrl.data : null,
       ...(icon.success ? { icon: icon.data } : {}),
@@ -332,11 +332,11 @@ export function composeNamedVolumes(content: string, project: string): Array<{ k
   } catch {
     return []
   }
-  const volumes = doc && typeof doc === "object" ? doc.volumes : null
-  if (!volumes || typeof volumes !== "object") return []
+  const volumes = doc && typeof doc === 'object' ? doc.volumes : null
+  if (!volumes || typeof volumes !== 'object') return []
   return Object.entries<any>(volumes)
-    .filter(([, v]) => !(v && typeof v === "object" && v.external))
-    .map(([key, v]) => ({ key, name: v && typeof v === "object" && typeof v.name === "string" ? v.name : `${project}_${key}` }))
+    .filter(([, v]) => !(v && typeof v === 'object' && v.external))
+    .map(([key, v]) => ({ key, name: v && typeof v === 'object' && typeof v.name === 'string' ? v.name : `${project}_${key}` }))
 }
 
 /** Absolute host paths bind-mounted by any service (missing volume guard, #3). */
@@ -348,13 +348,13 @@ export function composeBindSources(content: string): string[] {
     return []
   }
   const out = new Set<string>()
-  const services = doc && typeof doc === "object" ? doc.services : null
-  for (const svc of Object.values<any>(services && typeof services === "object" ? services : {})) {
+  const services = doc && typeof doc === 'object' ? doc.services : null
+  for (const svc of Object.values<any>(services && typeof services === 'object' ? services : {})) {
     for (const v of Array.isArray(svc?.volumes) ? svc.volumes : []) {
-      if (typeof v === "string") {
-        const src = v.split(":")[0] ?? ""
-        if (src.startsWith("/")) out.add(src)
-      } else if (v && v.type === "bind" && typeof v.source === "string" && v.source.startsWith("/")) {
+      if (typeof v === 'string') {
+        const src = v.split(':')[0] ?? ''
+        if (src.startsWith('/')) out.add(src)
+      } else if (v && v.type === 'bind' && typeof v.source === 'string' && v.source.startsWith('/')) {
         out.add(v.source)
       }
     }
@@ -366,6 +366,6 @@ export function composeBindSources(content: string): string[] {
 export function composeImages(content: string): string[] {
   const json = parse(content) as { services?: Record<string, { image?: unknown }> } | null
   return Object.values(json?.services ?? {})
-    .map(s => (typeof s?.image === "string" ? s.image : ""))
+    .map(s => (typeof s?.image === 'string' ? s.image : ''))
     .filter(Boolean)
 }

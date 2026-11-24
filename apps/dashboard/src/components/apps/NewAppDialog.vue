@@ -136,7 +136,7 @@ async function add(start: boolean) {
       <div class="grid gap-1.5">
         <div class="flex items-end justify-between gap-2">
           <Label for="new-app-compose" class="text-xs">compose.yaml</Label>
-          <input ref="fileInput" type="file" accept=".yml,.yaml,text/yaml" class="hidden" @change="readFile" />
+          <input ref="fileInput" type="file" accept=".yml,.yaml,text/yaml" class="hidden" @change="readFile">
           <Button type="button" variant="ghost" size="xs" @click="fileInput?.click()">{{ t('ui.apps.NewAppDialog.chooseFile') }}</Button>
         </div>
         <Textarea id="new-app-compose" v-model="content" rows="10" spellcheck="false"

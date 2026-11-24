@@ -48,7 +48,7 @@ const yamlSaving   = ref(false)
 const yamlError    = ref('')
 const yamlSavedAt  = ref(false)
 
-watch(() => props.rawYaml, (v) => {
+watch(() => props.rawYaml, v => {
   yamlDraft.value = v ?? ''
   yamlDirty.value = false
   yamlError.value = ''

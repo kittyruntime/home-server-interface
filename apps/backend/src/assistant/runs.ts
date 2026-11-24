@@ -1,4 +1,4 @@
-import type { ChatEvent } from "./chat"
+import type { ChatEvent } from './chat'
 
 // The built-in assistant's turns run on the server, apart from the request
 // that started them: leaving the chat or closing the page does not stop one.
@@ -41,14 +41,14 @@ export function startRun(conversationId: string, userId: string): Run | null {
 export function emitRun(run: Run, e: ChatEvent) {
   if (run.done) return
   const last = run.events[run.events.length - 1]
-  if (e.type === "text" && last?.type === "text") run.events[run.events.length - 1] = { type: "text", delta: last.delta + e.delta }
+  if (e.type === 'text' && last?.type === 'text') run.events[run.events.length - 1] = { type: 'text', delta: last.delta + e.delta }
   else run.events.push(e)
   for (const s of run.subscribers) s(e)
 }
 
 export function finishRun(run: Run) {
   if (run.done) return
-  emitRun(run, { type: "done" })
+  emitRun(run, { type: 'done' })
   run.done = true
   run.subscribers.clear()
   if (runs.get(run.conversationId) === run) runs.delete(run.conversationId)

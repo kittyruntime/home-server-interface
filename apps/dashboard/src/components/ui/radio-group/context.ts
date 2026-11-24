@@ -1,4 +1,4 @@
-import type { InjectionKey, Ref } from "vue"
+import type { InjectionKey, Ref } from 'vue'
 
 export type RadioValue = string | number | boolean
 
@@ -12,4 +12,4 @@ export interface RadioGroupContext {
   select: (value: RadioValue) => void
 }
 
-export const radioGroupKey: InjectionKey<RadioGroupContext> = Symbol("radio-group")
+export const radioGroupKey: InjectionKey<RadioGroupContext> = Symbol('radio-group')

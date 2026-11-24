@@ -124,7 +124,7 @@ async function save() {
   saving.value = true
   try {
     await track(`Saving ${props.name}`, () =>
-      trpc.fs.writeText.mutate({ path: props.path, content: view!.state.doc.toString() })
+      trpc.fs.writeText.mutate({ path: props.path, content: view!.state.doc.toString() }),
     )
     dirty.value = false
     emit('dirty', false)

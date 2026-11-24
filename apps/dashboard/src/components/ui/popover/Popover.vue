@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import type { Ref } from "vue"
-import { useVModel } from "@vueuse/core"
-import { provide, shallowRef, useId } from "vue"
-import { popoverKey } from "./context"
+import type { Ref } from 'vue'
+import { useVModel } from '@vueuse/core'
+import { provide, shallowRef, useId } from 'vue'
+import { popoverKey } from './context'
 
 const props = withDefaults(defineProps<{
   open?: boolean
@@ -14,9 +14,9 @@ const props = withDefaults(defineProps<{
   defaultOpen: false,
   modal: false,
 })
-const emit = defineEmits<{ "update:open": [value: boolean] }>()
+const emit = defineEmits<{ 'update:open': [value: boolean] }>()
 
-const open = useVModel(props, "open", emit, { passive: true, defaultValue: props.defaultOpen }) as Ref<boolean>
+const open = useVModel(props, 'open', emit, { passive: true, defaultValue: props.defaultOpen }) as Ref<boolean>
 
 const trigger = shallowRef<HTMLElement | null>(null)
 const anchor = shallowRef<HTMLElement | null>(null)

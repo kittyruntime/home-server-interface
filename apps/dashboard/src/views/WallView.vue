@@ -45,8 +45,7 @@ const clock = computed(() => new Intl.DateTimeFormat(locale.value, { weekday: 'l
 // The screen stays on; the pointer hides after 3 s without moving.
 let lock: { release: () => Promise<void> } | null = null
 async function keepAwake() {
-  try { lock = document.visibilityState === 'visible' ? await (navigator as Navigator & { wakeLock?: { request: (t: 'screen') => Promise<{ release: () => Promise<void> }> } }).wakeLock?.request('screen') ?? null : null }
-  catch { lock = null }
+  try { lock = document.visibilityState === 'visible' ? await (navigator as Navigator & { wakeLock?: { request: (t: 'screen') => Promise<{ release: () => Promise<void> }> } }).wakeLock?.request('screen') ?? null : null } catch { lock = null }
 }
 const idle = ref(false)
 let idleTimer: ReturnType<typeof setTimeout> | null = null

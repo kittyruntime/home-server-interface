@@ -1,4 +1,4 @@
-import { readWorkerUpdateStatus, NO_RESTART_FAILURE_AFTER_MS, type UpdateResult } from "./update-watch"
+import { readWorkerUpdateStatus, NO_RESTART_FAILURE_AFTER_MS, type UpdateResult } from './update-watch'
 
 // An update, an HSI restart or a host reboot in progress (#132). While it
 // lasts, every dashboard shows a blocking overlay and mutations are refused,
@@ -11,7 +11,7 @@ import { readWorkerUpdateStatus, NO_RESTART_FAILURE_AFTER_MS, type UpdateResult 
 // before restarting anything); an update refused or failed before any restart
 // ends as soon as the worker reports its result.
 
-export type MaintenanceKind = "update" | "restart" | "reboot"
+export type MaintenanceKind = 'update' | 'restart' | 'reboot'
 export interface Maintenance { kind: MaintenanceKind; target: string | null; since: string }
 
 const EXPIRES_AFTER_MS: Record<MaintenanceKind, number> = {
@@ -39,7 +39,7 @@ export function maintenanceHolds(m: Maintenance, now: Date, lastUpdate: UpdateRe
   if (now.getTime() - since >= EXPIRES_AFTER_MS[m.kind]) return false
   // The worker finished this update without restarting the backend
   // (refused, or failed and rolled back while this process kept running).
-  if (m.kind === "update" && lastUpdate && lastUpdate.to === m.target && Date.parse(lastUpdate.at) >= since) return false
+  if (m.kind === 'update' && lastUpdate && lastUpdate.to === m.target && Date.parse(lastUpdate.at) >= since) return false
   return true
 }
 
@@ -52,7 +52,7 @@ export async function currentMaintenance(
 ): Promise<Maintenance | null> {
   if (!current) return null
   if (cached && now.getTime() - cached.at < CACHE_MS) return cached.value
-  const last = current.kind === "update" ? (await readStatus())?.last ?? null : null
+  const last = current.kind === 'update' ? (await readStatus())?.last ?? null : null
   if (current && !maintenanceHolds(current, now, last)) current = null
   cached = { at: now.getTime(), value: current }
   return current

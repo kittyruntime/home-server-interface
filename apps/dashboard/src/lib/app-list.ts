@@ -19,8 +19,8 @@ export function filterApps<T extends AppListItem>(apps: T[], query: string): T[]
   const normalized = query.trim().toLocaleLowerCase()
   if (!normalized) return apps
   return apps.filter(app => [
-      app.name,
-      app.app?.image ?? '',
-      ...(app.app?.ports ?? []).map(port => `${port.hostPort} ${port.containerPort} ${port.hostPort}:${port.containerPort}`),
-    ].some(value => value.toLocaleLowerCase().includes(normalized)))
+    app.name,
+    app.app?.image ?? '',
+    ...(app.app?.ports ?? []).map(port => `${port.hostPort} ${port.containerPort} ${port.hostPort}:${port.containerPort}`),
+  ].some(value => value.toLocaleLowerCase().includes(normalized)))
 }

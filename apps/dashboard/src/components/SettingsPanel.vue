@@ -37,7 +37,6 @@ interface NavItem {
   group?: Group
 }
 
-
 const nav: NavItem[] = [
   { id: 'profile',     label: 'profile',  show: () => true,  group: 'account' },
   { id: 'ai',          label: 'ai',     show: () => true, group: 'account' },
@@ -71,10 +70,10 @@ function focusOn(section: SectionId) {
 defineExpose({ focusOn })
 
 const ICONS: Record<SectionId, Component> = {
-  profile: UserIcon, ai: BotIcon, users: UsersIcon, places: FolderIcon,
-  permissions: LockIcon, groups: ShieldCheckIcon, alerting: TriangleAlertIcon,
-  notifications: BellIcon, secure: LockIcon, network: NetworkIcon, updates: UploadIcon, telemetry: ChartNoAxesColumnIcon,
-  backups: SaveIcon, 'data-backups': SaveIcon,
+  'profile': UserIcon, 'ai': BotIcon, 'users': UsersIcon, 'places': FolderIcon,
+  'permissions': LockIcon, 'groups': ShieldCheckIcon, 'alerting': TriangleAlertIcon,
+  'notifications': BellIcon, 'secure': LockIcon, 'network': NetworkIcon, 'updates': UploadIcon, 'telemetry': ChartNoAxesColumnIcon,
+  'backups': SaveIcon, 'data-backups': SaveIcon,
 }
 const navItems = computed(() => visibleNav.value.map(n => ({
   id: n.id, label: t(`settings.nav.${n.label}`), icon: ICONS[n.id], group: n.group && t(`settings.groups.${n.group}`),
@@ -90,20 +89,20 @@ const navItems = computed(() => visibleNav.value.map(n => ({
     <div class="flex-1 overflow-y-auto">
       <div :class="['p-4 sm:p-8', ['users','groups','permissions'].includes(active) ? 'max-w-5xl' : 'max-w-2xl']">
 
-        <ProfileSection     v-if="active === 'profile'" />
-        <AiAccessSection    v-else-if="active === 'ai'" />
-        <UserListPanel      v-else-if="active === 'users'" />
-        <PlacesSection      v-else-if="active === 'places'" />
+        <ProfileSection v-if="active === 'profile'" />
+        <AiAccessSection v-else-if="active === 'ai'" />
+        <UserListPanel v-else-if="active === 'users'" />
+        <PlacesSection v-else-if="active === 'places'" />
         <PermissionsSection v-else-if="active === 'permissions'" />
-        <GroupsSection      v-else-if="active === 'groups'" />
+        <GroupsSection v-else-if="active === 'groups'" />
         <SecureAccessSection v-else-if="active === 'secure'" />
         <NetworkSection v-else-if="active === 'network'" />
         <TelemetrySection v-else-if="active === 'telemetry'" />
-        <UpdateSection      v-else-if="active === 'updates'" />
-        <AlertingSection    v-else-if="active === 'alerting'" />
+        <UpdateSection v-else-if="active === 'updates'" />
+        <AlertingSection v-else-if="active === 'alerting'" />
         <NotificationsSection v-else-if="active === 'notifications'" />
-        <BackupSection      v-else-if="active === 'backups'" />
-        <DataBackupSection  v-else-if="active === 'data-backups'" />
+        <BackupSection v-else-if="active === 'backups'" />
+        <DataBackupSection v-else-if="active === 'data-backups'" />
 
       </div>
     </div>

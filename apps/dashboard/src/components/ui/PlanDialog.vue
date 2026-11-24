@@ -140,8 +140,7 @@ async function apply() {
     const err = e as { message?: string; data?: { code?: string } }
     // CONFLICT is a stale plan or a check that now fails (the name got taken):
     // show the server's reason either way.
-    if (err.data?.code === 'CONFLICT') { stale.value = true; staleReason.value = err.message ?? '' }
-    else applyError.value = err.message ?? t('uis.shared.PlanDialog.theOperationFailed')
+    if (err.data?.code === 'CONFLICT') { stale.value = true; staleReason.value = err.message ?? '' } else applyError.value = err.message ?? t('uis.shared.PlanDialog.theOperationFailed')
   } finally {
     applying.value = false
   }

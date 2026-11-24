@@ -1,13 +1,13 @@
-import bcrypt from "bcryptjs"
-import { TRPCError } from "@trpc/server"
-import type { PrismaClient } from "@app/database"
-import { requestSync } from "../nats"
-import { log } from "../utils/log"
+import bcrypt from 'bcryptjs'
+import { TRPCError } from '@trpc/server'
+import type { PrismaClient } from '@app/database'
+import { requestSync } from '../nats'
+import { log } from '../utils/log'
 
 // System account names that may never be claimed as an HSI username, since
 // the username doubles as the backing Linux/Samba account. "admin" is
 // deliberately excluded: it's a valid (and commonly used) HSI username.
-export const RESERVED_USERNAMES = new Set(["root", "daemon", "bin", "sys", "nobody", "www-data"])
+export const RESERVED_USERNAMES = new Set(['root', 'daemon', 'bin', 'sys', 'nobody', 'www-data'])
 
 export const userSelect = {
   id: true,
@@ -27,9 +27,9 @@ export const reLinuxUsername = /^[a-z_][a-z0-9_-]{0,31}$/
 /** Refuses a reserved or taken username. */
 export async function assertCreatable(prisma: PrismaClient, username: string): Promise<void> {
   if (RESERVED_USERNAMES.has(username))
-    throw new TRPCError({ code: "BAD_REQUEST", message: "That username is reserved" })
+    throw new TRPCError({ code: 'BAD_REQUEST', message: 'That username is reserved' })
   const existing = await prisma.user.findUnique({ where: { username } })
-  if (existing) throw new TRPCError({ code: "CONFLICT", message: "Username already taken" })
+  if (existing) throw new TRPCError({ code: 'CONFLICT', message: 'Username already taken' })
 }
 
 /** The HSI user row only; the Linux/Samba account is handled by the caller. */
@@ -64,7 +64,7 @@ export async function changePassword(
   newPassword: string,
 ) {
   if (!(await verifyPassword(prisma, userId, currentPassword)))
-    throw new TRPCError({ code: "FORBIDDEN", message: "Current password is incorrect" })
+    throw new TRPCError({ code: 'FORBIDDEN', message: 'Current password is incorrect' })
   const newHashed = await bcrypt.hash(newPassword, 12)
   const result = await prisma.user.update({
     where: { id: userId },
@@ -104,10 +104,10 @@ export async function syncSystemPassword(
     // create it first. The worker's create is idempotent (useradd exit 9 =
     // already exists → treated as success).
     if (reLinuxUsername.test(user.username)) {
-      await requestSync("root.linux.user.create", { username: user.username })
+      await requestSync('root.linux.user.create', { username: user.username })
     }
     const res = await requestSync<{ linuxOk?: boolean; smbOk?: boolean; smbSkipped?: boolean }>(
-      "root.sharing.setPassword",
+      'root.sharing.setPassword',
       { linuxUsername: user.username, password: plainPassword, skipSamba: !user.sambaEnabled },
     )
     // The worker replies ok even when a sub-step fails (best-effort). Surface a
@@ -117,16 +117,16 @@ export async function syncSystemPassword(
     if (res?.smbOk === false && !res.smbSkipped) {
       log.warn(
         { username: user.username },
-        "password-sync: Samba password NOT set: smbpasswd failed (is samba installed, and does the Linux account exist?). " +
-          "SMB auth will be refused for this user until this succeeds.",
+        'password-sync: Samba password NOT set: smbpasswd failed (is samba installed, and does the Linux account exist?). ' +
+          'SMB auth will be refused for this user until this succeeds.',
       )
     }
     if (res?.linuxOk === false) {
-      log.warn({ username: user.username }, "password-sync: Linux password NOT set: chpasswd failed")
+      log.warn({ username: user.username }, 'password-sync: Linux password NOT set: chpasswd failed')
     }
     return sambaPasswordWritten(res ?? {})
   } catch (e) {
-    log.warn({ err: e }, "password-sync failed (non-fatal)")
+    log.warn({ err: e }, 'password-sync failed (non-fatal)')
     return false
   }
 }
@@ -156,9 +156,9 @@ export type IdentityStatus = {
 function describeIssue(u: {
   linuxExists: boolean; sambaEnabled: boolean; sambaExists: boolean
 }): string | null {
-  if (!u.linuxExists) return "No Linux account: password sync has never succeeded for this user."
-  if (u.sambaEnabled && !u.sambaExists) return "Samba enabled, but no Samba account exists yet; it will sync on next login or password change."
-  if (!u.sambaEnabled && u.sambaExists) return "Samba disabled, but a Samba account still exists; see https://kittyruntime.github.io/home-server-interface/guide/manage-without-hsi/ to remove it."
+  if (!u.linuxExists) return 'No Linux account: password sync has never succeeded for this user.'
+  if (u.sambaEnabled && !u.sambaExists) return 'Samba enabled, but no Samba account exists yet; it will sync on next login or password change.'
+  if (!u.sambaEnabled && u.sambaExists) return 'Samba disabled, but a Samba account still exists; see https://kittyruntime.github.io/home-server-interface/guide/manage-without-hsi/ to remove it.'
   return null
 }
 
@@ -168,7 +168,7 @@ function describeIssue(u: {
 export async function getIdentityStatus(prisma: PrismaClient): Promise<IdentityStatus[]> {
   const users = await prisma.user.findMany({
     select: { id: true, username: true, displayName: true, isAdmin: true, sambaEnabled: true },
-    orderBy: { createdAt: "asc" },
+    orderBy: { createdAt: 'asc' },
   })
   const linuxUsers = users.filter(u => reLinuxUsername.test(u.username))
   let infos: Array<{
@@ -177,7 +177,7 @@ export async function getIdentityStatus(prisma: PrismaClient): Promise<IdentityS
   }> = []
   try {
     const res = await requestSync<{ users: typeof infos }>(
-      "root.linux.user.info",
+      'root.linux.user.info',
       { usernames: linuxUsers.map(u => u.username) },
     )
     infos = res.users

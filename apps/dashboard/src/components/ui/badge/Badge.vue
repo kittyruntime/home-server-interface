@@ -1,18 +1,18 @@
 <script setup lang="ts">
-import type { PrimitiveProps } from "../Primitive.vue"
-import type { HTMLAttributes } from "vue"
-import type { BadgeVariants } from "."
-import { reactiveOmit } from "@vueuse/core"
-import { cn } from "@/lib/utils"
-import Primitive from "../Primitive.vue"
-import { badgeVariants } from "."
+import type { PrimitiveProps } from '../Primitive.vue'
+import type { HTMLAttributes } from 'vue'
+import type { BadgeVariants } from '.'
+import { reactiveOmit } from '@vueuse/core'
+import { cn } from '@/lib/utils'
+import Primitive from '../Primitive.vue'
+import { badgeVariants } from '.'
 
 const props = defineProps<PrimitiveProps & {
-  variant?: BadgeVariants["variant"]
-  class?: HTMLAttributes["class"]
+  variant?: BadgeVariants['variant']
+  class?: HTMLAttributes['class']
 }>()
 
-const delegatedProps = reactiveOmit(props, "class")
+const delegatedProps = reactiveOmit(props, 'class')
 </script>
 
 <template>

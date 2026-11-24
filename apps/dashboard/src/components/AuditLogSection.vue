@@ -59,11 +59,6 @@ onMounted(load)
 watch([page], load)
 watch([filterAction, filterVia], () => { page.value = 0; load() })
 
-
-
-
-
-
 function parseMeta(raw: string | null | undefined): Record<string, unknown> | null {
   if (!raw) return null
   try { return JSON.parse(raw) as Record<string, unknown> } catch { return null }
@@ -136,8 +131,8 @@ function parseMeta(raw: string | null | undefined): Record<string, unknown> | nu
             <template v-for="entry in entries" :key="entry.id">
               <TableRow @click="selectedEntry = selectedEntry?.id === entry.id ? null : entry"
                 :class="['cursor-pointer transition-colors hover:bg-base-200/40',
-                  selectedEntry?.id === entry.id ? 'bg-primary/5' : '',
-                  !entry.success ? 'bg-error/4' : '']">
+                         selectedEntry?.id === entry.id ? 'bg-primary/5' : '',
+                         !entry.success ? 'bg-error/4' : '']">
 
                 <TableCell class="px-4 py-2.5 text-xs text-base-content/70 font-mono whitespace-nowrap">
                   {{ formatDateTime(entry.createdAt, { seconds: true }) }}
@@ -168,11 +163,11 @@ function parseMeta(raw: string | null | undefined): Record<string, unknown> | nu
                 <TableCell class="px-4 py-2.5 text-center">
                   <span v-if="entry.success"
                     class="inline-flex items-center gap-1 text-2xs font-semibold px-1.5 py-0.5 rounded-sm bg-success/10 text-success">
-                    <span class="w-1.5 h-1.5 rounded-full bg-success"/>OK
+                    <span class="w-1.5 h-1.5 rounded-full bg-success" />OK
                   </span>
                   <span v-else
                     class="inline-flex items-center gap-1 text-2xs font-semibold px-1.5 py-0.5 rounded-sm bg-error/10 text-error">
-                    <span class="w-1.5 h-1.5 rounded-full bg-error"/>{{ t('ui.monitor.AuditLogSection.fail') }}
+                    <span class="w-1.5 h-1.5 rounded-full bg-error" />{{ t('ui.monitor.AuditLogSection.fail') }}
                   </span>
                 </TableCell>
               </TableRow>
@@ -207,12 +202,12 @@ function parseMeta(raw: string | null | undefined): Record<string, unknown> | nu
         <span>{{ total.toLocaleString() }} entr{{ total === 1 ? 'y' : 'ies' }}</span>
         <div class="flex items-center gap-1">
           <Button variant="outline" size="xs" @click="page--" :disabled="page === 0 || loading"
-            >
+          >
             {{ t('ui.monitor.AuditLogSection.prev') }}
           </Button>
           <span class="px-3 py-1.5 text-xs">{{ page + 1 }} / {{ pages }}</span>
           <Button variant="outline" size="xs" @click="page++" :disabled="page >= pages - 1 || loading"
-            >
+          >
             {{ t('ui.monitor.AuditLogSection.next') }}
           </Button>
         </div>

@@ -1,6 +1,6 @@
-import type { PrismaClient } from "@app/database"
-import { isIP } from "node:net"
-import { requestSync } from "../nats"
+import type { PrismaClient } from '@app/database'
+import { isIP } from 'node:net'
+import { requestSync } from '../nats'
 
 // SMB service settings, the connection journal pulled from the root worker,
 // its 30-day retention and the automatic blocking of addresses that keep
@@ -12,8 +12,8 @@ const DAY_MS = 86_400_000
 export type SmbSettingsPatch = Partial<{
   netbiosName: string
   workgroup: string
-  minProtocol: "SMB2" | "SMB3"
-  encryption: "off" | "desired" | "required"
+  minProtocol: 'SMB2' | 'SMB3'
+  encryption: 'off' | 'desired' | 'required'
   discoveryWsd: boolean
   discoveryMdns: boolean
   autoBlock: boolean
@@ -69,7 +69,7 @@ export interface SmbServiceState {
 }
 
 export function smbServiceState(): Promise<SmbServiceState> {
-  return requestSync<SmbServiceState>("root.sharing.service", {})
+  return requestSync<SmbServiceState>('root.sharing.service', {})
 }
 
 // Whether this Samba can write the journal changes with a package upgrade,
@@ -95,13 +95,13 @@ export async function pullSmbEvents(prisma: Db, worker: WorkerCall = requestSync
   const settings = await getSmbSettings(prisma)
   const cursor = settings.eventCursor ? JSON.parse(settings.eventCursor) : undefined
   const res = await worker<{ available: boolean; cursor: unknown; events: WorkerEvent[] }>(
-    "root.sharing.events", cursor ? { cursor } : {})
+    'root.sharing.events', cursor ? { cursor } : {})
   if (!res.available) return 0
   if (res.events.length > 0) {
     await prisma.shareEvent.createMany({
       data: res.events.map(e => ({
         at: new Date(e.at), kind: e.kind, result: e.result,
-        reason: e.reason ?? "", user: (e.user ?? "").toLowerCase(), ip: e.ip ?? "", machine: e.machine ?? "", share: e.share ?? "",
+        reason: e.reason ?? '', user: (e.user ?? '').toLowerCase(), ip: e.ip ?? '', machine: e.machine ?? '', share: e.share ?? '',
       })),
     })
   }
@@ -142,18 +142,18 @@ export async function smbDrift(prisma: Db, audit: boolean, now = new Date()): Pr
 // Failures that mean someone tries passwords: an unknown account name is
 // mapped to guest (a PC signed in under another name), an address already
 // blocked keeps knocking, and a refused share is not a password.
-const BLOCKING_REASONS = ["wrong_password", "account_disabled"]
+const BLOCKING_REASONS = ['wrong_password', 'account_disabled']
 
 /** The address as Go's net.ParseIP writes it back, or "" when it is not a
  *  plain address (a zone or anything else is refused, never stored). */
 export function normalizeIp(ip: string): string {
-  const v4 = ip.startsWith("::ffff:") ? ip.slice(7) : ip
-  if (v4.includes("%") || !isIP(v4)) return ""
+  const v4 = ip.startsWith('::ffff:') ? ip.slice(7) : ip
+  if (v4.includes('%') || !isIP(v4)) return ''
   return isIP(v4) === 6 ? new URL(`http://[${v4}]`).hostname.slice(1, -1) : v4
 }
 
 function isLoopback(ip: string): boolean {
-  return ip === "::1" || ip.startsWith("127.")
+  return ip === '::1' || ip.startsWith('127.')
 }
 
 /** Blocks the addresses with too many password failures in the window,
@@ -164,7 +164,7 @@ export async function applyAutoBlock(prisma: Db, now = new Date()): Promise<stri
   if (!s.autoBlock) return []
   const since = new Date(now.getTime() - s.blockWindowMin * 60_000)
   const refused = await prisma.shareEvent.findMany({
-    where: { result: "refused", reason: { in: BLOCKING_REASONS }, at: { gte: since } },
+    where: { result: 'refused', reason: { in: BLOCKING_REASONS }, at: { gte: since } },
     select: { ip: true, at: true, reason: true },
   })
   const blocks = new Map((await prisma.smbBlock.findMany()).map(b => [b.ip, b.until]))
@@ -183,7 +183,7 @@ export async function applyAutoBlock(prisma: Db, now = new Date()): Promise<stri
     if (n < s.blockThreshold) continue
     const end = blocks.get(ip)
     if (end && end > now) continue
-    await prisma.smbBlock.upsert({ where: { ip }, create: { ip, until, reason: "auto" }, update: { until, reason: "auto", createdAt: now } })
+    await prisma.smbBlock.upsert({ where: { ip }, create: { ip, until, reason: 'auto' }, update: { until, reason: 'auto', createdAt: now } })
     blocked.push(ip)
   }
   return blocked
@@ -192,7 +192,7 @@ export async function applyAutoBlock(prisma: Db, now = new Date()): Promise<stri
 /** Active blocks, the caller's own address marked so the admin sees they
  *  locked themselves out of SMB. */
 export async function listBlocks(prisma: Db, callerIp: string | undefined, now = new Date()) {
-  const mine = normalizeIp(callerIp ?? "")
+  const mine = normalizeIp(callerIp ?? '')
   const rows = await prisma.smbBlock.findMany({ where: { until: { gt: now } } })
   return rows
     .map(b => ({ ip: b.ip, until: b.until, reason: b.reason, mine: b.ip === mine }))
@@ -218,7 +218,7 @@ export function startSmbJournal(prisma: Db, resync: () => Promise<void>, log: { 
       // on the next tick, since the rendered state did not change.
       if (await smbDrift(prisma, audit)) await resync()
     } catch (e) {
-      log.warn({ err: e }, "smb journal: pull failed")
+      log.warn({ err: e }, 'smb journal: pull failed')
     } finally {
       busy = false
     }

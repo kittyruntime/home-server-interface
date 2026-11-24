@@ -1,7 +1,7 @@
 // Versioned cutover from the published Role/Permission model.
 // Run only after matching an inventoried source fingerprint and taking #9a snapshot.
-import { createPrismaClient } from "../../src/index"
-import { reportCutoverError } from "./error"
+import { createPrismaClient } from '../../src/index'
+import { reportCutoverError } from './error'
 
 const prisma = createPrismaClient()
 
@@ -12,7 +12,7 @@ async function tableExists(name: string): Promise<boolean> {
   return rows.length > 0
 }
 
-const flags = ["canRead", "canWrite", "canDelete", "canShare"] as const
+const flags = ['canRead', 'canWrite', 'canDelete', 'canShare'] as const
 
 const STATEMENTS: string[] = [
   // 1. New User flag columns
@@ -90,22 +90,22 @@ const STATEMENTS: string[] = [
 ]
 
 async function main() {
-  if (await tableExists("Role")) {
-    for (const table of ["RolePlacePermission", "UserPlacePermission"]) {
+  if (await tableExists('Role')) {
+    for (const table of ['RolePlacePermission', 'UserPlacePermission']) {
       const columns = await prisma.$queryRawUnsafe<Array<{ name: string }>>(`PRAGMA table_info("${table}")`)
-      if (!columns.some(column => column.name === "canShare")) {
+      if (!columns.some(column => column.name === 'canShare')) {
         await prisma.$executeRawUnsafe(`ALTER TABLE "${table}" ADD COLUMN "canShare" BOOLEAN NOT NULL DEFAULT false`)
       }
     }
   }
-  if (!(await tableExists("Role"))) {
-    console.log("[permissions-redesign] already migrated (no Role table); nothing to do.")
+  if (!(await tableExists('Role'))) {
+    console.log('[permissions-redesign] already migrated (no Role table); nothing to do.')
     return
   }
-  console.log("[permissions-redesign] migrating (atomic)…")
+  console.log('[permissions-redesign] migrating (atomic)…')
   // Single atomic transaction: a failure rolls back and leaves the old schema intact for a safe retry.
   await prisma.$transaction(STATEMENTS.map(s => prisma.$executeRawUnsafe(s)))
-  console.log("[permissions-redesign] done.")
+  console.log('[permissions-redesign] done.')
 }
 
 main().then(() => prisma.$disconnect()).catch(async error => { reportCutoverError(error); await prisma.$disconnect() })

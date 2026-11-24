@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { provide, toRef } from "vue"
-import { DEFAULT_DELAY, tooltipProviderKey } from "./context"
+import { provide, toRef } from 'vue'
+import { DEFAULT_DELAY, tooltipProviderKey } from './context'
 
 /* Sets the default hover delay of the tooltips below it. Other
    provider props are accepted and ignored. */
@@ -15,7 +15,7 @@ const props = withDefaults(defineProps<{
   delayDuration: DEFAULT_DELAY,
 })
 
-provide(tooltipProviderKey, { delayDuration: toRef(props, "delayDuration") })
+provide(tooltipProviderKey, { delayDuration: toRef(props, 'delayDuration') })
 </script>
 
 <template>

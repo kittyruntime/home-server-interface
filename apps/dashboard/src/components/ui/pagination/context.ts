@@ -1,6 +1,6 @@
-import type { ComputedRef, InjectionKey } from "vue"
+import type { ComputedRef, InjectionKey } from 'vue'
 
-export type PaginationItemData = { type: "page", value: number } | { type: "ellipsis" }
+export type PaginationItemData = { type: 'page', value: number } | { type: 'ellipsis' }
 
 export interface PaginationContext {
   page: ComputedRef<number>
@@ -10,14 +10,14 @@ export interface PaginationContext {
   setPage: (page: number) => void
 }
 
-export const paginationKey: InjectionKey<PaginationContext> = Symbol("pagination")
+export const paginationKey: InjectionKey<PaginationContext> = Symbol('pagination')
 
 function range(start: number, end: number): number[] {
   return Array.from({ length: end - start + 1 }, (_, idx) => idx + start)
 }
 
 /** Page numbers around the current page, with "ellipsis" where pages are skipped. */
-export function getRange(currentPage: number, pageCount: number, siblingCount: number, showEdges: boolean): Array<number | "ellipsis"> {
+export function getRange(currentPage: number, pageCount: number, siblingCount: number, showEdges: boolean): Array<number | 'ellipsis'> {
   const first = 1
   const last = pageCount
   const leftSibling = Math.max(currentPage - siblingCount, first)
@@ -31,11 +31,11 @@ export function getRange(currentPage: number, pageCount: number, siblingCount: n
     const rightEllipsis = rightSibling < last - 2 && Math.abs(last - itemCount) > 2 && Math.abs(last - rightSibling) > 2
 
     if (!leftEllipsis && rightEllipsis)
-      return [...range(1, itemCount), "ellipsis", last]
+      return [...range(1, itemCount), 'ellipsis', last]
     if (leftEllipsis && !rightEllipsis)
-      return [first, "ellipsis", ...range(last - itemCount + 1, last)]
+      return [first, 'ellipsis', ...range(last - itemCount + 1, last)]
     if (leftEllipsis && rightEllipsis)
-      return [first, "ellipsis", ...range(leftSibling, rightSibling), "ellipsis", last]
+      return [first, 'ellipsis', ...range(leftSibling, rightSibling), 'ellipsis', last]
     return range(first, last)
   }
 

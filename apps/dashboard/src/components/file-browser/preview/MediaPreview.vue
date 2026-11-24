@@ -26,7 +26,7 @@ onMounted(async () => {
       <p class="status-text">[ERR] {{ path.split('/').pop() }}</p>
     </div>
 
-    <img v-else-if="kind === 'image'" :src="url ?? undefined" :alt="path" class="max-w-full max-h-full object-contain" @error="failed = true" />
+    <img v-else-if="kind === 'image'" :src="url ?? undefined" :alt="path" class="max-w-full max-h-full object-contain" @error="failed = true">
 
     <video v-else-if="kind === 'video'" :src="url ?? undefined" controls autoplay class="max-w-full max-h-full" @error="failed = true" />
 

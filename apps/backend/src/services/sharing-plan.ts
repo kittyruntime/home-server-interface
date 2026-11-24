@@ -1,12 +1,12 @@
-import { TRPCError } from "@trpc/server"
-import type { PlanApplyResult, PlanStep } from "./storage-plan"
-import type { SmbSettingsPatch } from "./smb-events.service"
+import { TRPCError } from '@trpc/server'
+import type { PlanApplyResult, PlanStep } from './storage-plan'
+import type { SmbSettingsPatch } from './smb-events.service'
 
 // Operation plans for Samba shares (#36): the worker previews smb.conf and the
 // smbd reload for the share definitions as they will be after the change; the
 // database row is written only once that plan ran.
 
-export const SHARE_OPS = ["share.create", "share.update", "share.remove", "smb.settings"] as const
+export const SHARE_OPS = ['share.create', 'share.update', 'share.remove', 'smb.settings'] as const
 export type ShareOp = typeof SHARE_OPS[number]
 
 export interface ShareRow {
@@ -16,18 +16,18 @@ export interface ShareRow {
   place: { name: string; path: string }
 }
 export type ShareChange =
-  | { kind: "create"; row: ShareRow }
-  | { kind: "update"; id: string; patch: Partial<Pick<ShareRow, "enabled" | "readOnly" | "guestOk" | "smbName" | "hidden" | "timeMachine" | "timeMachineMaxGb" | "smb" | "nfs" | "nfsClients" | "nfsWriteAs" | "sftp">> }
-  | { kind: "remove"; id: string }
-  | { kind: "settings"; patch: SmbSettingsPatch }
+  | { kind: 'create'; row: ShareRow }
+  | { kind: 'update'; id: string; patch: Partial<Pick<ShareRow, 'enabled' | 'readOnly' | 'guestOk' | 'smbName' | 'hidden' | 'timeMachine' | 'timeMachineMaxGb' | 'smb' | 'nfs' | 'nfsClients' | 'nfsWriteAs' | 'sftp'>> }
+  | { kind: 'remove'; id: string }
+  | { kind: 'settings'; patch: SmbSettingsPatch }
 
 export function overlayShares(rows: ShareRow[], change?: ShareChange): ShareRow[] {
   if (!change) return rows
   switch (change.kind) {
-    case "create": return [...rows, change.row]
-    case "update": return rows.map(r => (r.id === change.id ? { ...r, ...change.patch } : r))
-    case "remove": return rows.filter(r => r.id !== change.id)
-    case "settings": return rows
+    case 'create': return [...rows, change.row]
+    case 'update': return rows.map(r => (r.id === change.id ? { ...r, ...change.patch } : r))
+    case 'remove': return rows.filter(r => r.id !== change.id)
+    case 'settings': return rows
   }
 }
 
@@ -50,17 +50,17 @@ export interface SharePlanDeps {
 
 /** Why a share cannot be a Time Machine destination on this server, or null. */
 export function timeMachineRefusal(state: { installed: boolean; timeMachine?: boolean } | null): string | null {
-  if (!state?.installed) return "Samba is not installed or not answering"
-  if (!state.timeMachine) return "This Samba lacks the fruit and streams_xattr modules Time Machine needs"
+  if (!state?.installed) return 'Samba is not installed or not answering'
+  if (!state.timeMachine) return 'This Samba lacks the fruit and streams_xattr modules Time Machine needs'
   return null
 }
 
-export const NO_SAMBA_FINGERPRINT = "no-samba"
-const SAMBA_MISSING = "Samba is not installed on the host. Run: apt install samba"
-const NFS_MISSING = "The NFS server is not installed on the host (nfs-kernel-server or nfs-utils)"
+export const NO_SAMBA_FINGERPRINT = 'no-samba'
+const SAMBA_MISSING = 'Samba is not installed on the host. Run: apt install samba'
+const NFS_MISSING = 'The NFS server is not installed on the host (nfs-kernel-server or nfs-utils)'
 
 function noSambaRemoval(name: string): PlanStep {
-  return { kind: "delete", target: name, summary: `Samba is not installed; only HSI's record of the share ${name} is removed` }
+  return { kind: 'delete', target: name, summary: `Samba is not installed; only HSI's record of the share ${name} is removed` }
 }
 
 /** The worker never answered (timeout, not running): the operation may still
@@ -73,14 +73,14 @@ export function noAnswer(e: unknown): boolean {
 export function workerError(e: unknown): never {
   const code = (e as { code?: string }).code
   const message = e instanceof Error ? e.message : String(e)
-  if (code === "SMBD_MISSING") throw new TRPCError({ code: "PRECONDITION_FAILED", message: SAMBA_MISSING })
-  if (code === "NFS_MISSING") throw new TRPCError({ code: "PRECONDITION_FAILED", message: NFS_MISSING })
-  if (code === "SFTP_MISSING") throw new TRPCError({ code: "PRECONDITION_FAILED", message: "OpenSSH's server is not installed on the host (openssh-server)" })
-  if (code === "SFTP_UNSUPPORTED") throw new TRPCError({ code: "PRECONDITION_FAILED", message: "The SSH server's configuration does not include /etc/ssh/sshd_config.d, so HSI cannot add SFTP to it" })
-  if (code === "ESTALE") throw new TRPCError({ code: "CONFLICT", message })
+  if (code === 'SMBD_MISSING') throw new TRPCError({ code: 'PRECONDITION_FAILED', message: SAMBA_MISSING })
+  if (code === 'NFS_MISSING') throw new TRPCError({ code: 'PRECONDITION_FAILED', message: NFS_MISSING })
+  if (code === 'SFTP_MISSING') throw new TRPCError({ code: 'PRECONDITION_FAILED', message: "OpenSSH's server is not installed on the host (openssh-server)" })
+  if (code === 'SFTP_UNSUPPORTED') throw new TRPCError({ code: 'PRECONDITION_FAILED', message: "The SSH server's configuration does not include /etc/ssh/sshd_config.d, so HSI cannot add SFTP to it" })
+  if (code === 'ESTALE') throw new TRPCError({ code: 'CONFLICT', message })
   // The worker refused the request (code ERR); anything else (a timeout, the
   // worker down) is a server error, not the user's.
-  throw new TRPCError({ code: code === "ERR" ? "BAD_REQUEST" : "INTERNAL_SERVER_ERROR", message })
+  throw new TRPCError({ code: code === 'ERR' ? 'BAD_REQUEST' : 'INTERNAL_SERVER_ERROR', message })
 }
 
 async function smbSyncInput(deps: SharePlanDeps, shares?: unknown[]): Promise<Record<string, unknown>> {
@@ -97,28 +97,28 @@ function needsSamba(deps: SharePlanDeps, shares: unknown[]): boolean {
 export async function previewShareChange(op: ShareOp, name: string, deps: SharePlanDeps): Promise<{ steps: PlanStep[]; fingerprint: string }> {
   const shares = await deps.defs()
   if (needsSamba(deps, shares) && !await deps.smbdInstalled()) {
-    if (op !== "share.remove") throw new TRPCError({ code: "PRECONDITION_FAILED", message: SAMBA_MISSING })
+    if (op !== 'share.remove') throw new TRPCError({ code: 'PRECONDITION_FAILED', message: SAMBA_MISSING })
     return { steps: [noSambaRemoval(name)], fingerprint: NO_SAMBA_FINGERPRINT }
   }
   try {
-    return await deps.worker("root.plan.preview", { op: "smb.sync", input: await smbSyncInput(deps, shares) })
+    return await deps.worker('root.plan.preview', { op: 'smb.sync', input: await smbSyncInput(deps, shares) })
   } catch (e) { workerError(e) }
 }
 
 export async function applyShareChange(op: ShareOp, name: string, fingerprint: string, deps: SharePlanDeps): Promise<PlanApplyResult> {
   if (fingerprint === NO_SAMBA_FINGERPRINT) {
-    if (op !== "share.remove" || await deps.smbdInstalled()) {
-      throw new TRPCError({ code: "CONFLICT", message: "The server changed since this preview; review the plan again" })
+    if (op !== 'share.remove' || await deps.smbdInstalled()) {
+      throw new TRPCError({ code: 'CONFLICT', message: 'The server changed since this preview; review the plan again' })
     }
     await deps.commit()
-    return { ok: true, steps: [noSambaRemoval(name)], results: [{ status: "done" }] }
+    return { ok: true, steps: [noSambaRemoval(name)], results: [{ status: 'done' }] }
   }
   let failed = false
   try {
     return await deps.serialize(async () => {
       let res: PlanApplyResult
       try {
-        res = await deps.worker<PlanApplyResult>("root.plan.apply", { op: "smb.sync", input: await smbSyncInput(deps), fingerprint })
+        res = await deps.worker<PlanApplyResult>('root.plan.apply', { op: 'smb.sync', input: await smbSyncInput(deps), fingerprint })
       } catch (e) { workerError(e) }
       if (!res.ok) { failed = true; return res }
       try {

@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import type { HTMLAttributes } from "vue"
-import type { RadioValue } from "./context"
-import { computed, nextTick, provide, ref, toRef, useId } from "vue"
-import { cn } from "@/lib/utils"
-import Primitive from "../Primitive.vue"
-import { radioGroupKey } from "./context"
+import type { HTMLAttributes } from 'vue'
+import type { RadioValue } from './context'
+import { computed, nextTick, provide, ref, toRef, useId } from 'vue'
+import { cn } from '@/lib/utils'
+import Primitive from '../Primitive.vue'
+import { radioGroupKey } from './context'
 
 const props = withDefaults(defineProps<{
   modelValue?: RadioValue
@@ -13,11 +13,11 @@ const props = withDefaults(defineProps<{
   required?: boolean
   name?: string
   as?: string | object
-  class?: HTMLAttributes["class"]
-}>(), { modelValue: undefined, defaultValue: undefined, name: undefined, as: "div" })
+  class?: HTMLAttributes['class']
+}>(), { modelValue: undefined, defaultValue: undefined, name: undefined, as: 'div' })
 
 const emits = defineEmits<{
-  "update:modelValue": [value: RadioValue]
+  'update:modelValue': [value: RadioValue]
 }>()
 
 const generatedName = `radio-group-${useId()}`
@@ -28,12 +28,12 @@ const tick = ref(0)
 provide(radioGroupKey, {
   name: computed(() => props.name ?? generatedName),
   model,
-  disabled: toRef(props, "disabled"),
-  required: toRef(props, "required"),
+  disabled: toRef(props, 'disabled'),
+  required: toRef(props, 'required'),
   tick,
   select(value) {
     local.value = value
-    emits("update:modelValue", value)
+    emits('update:modelValue', value)
     nextTick(() => tick.value++)
   },
 })

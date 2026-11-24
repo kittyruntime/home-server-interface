@@ -1,7 +1,7 @@
-import * as os from "os"
-import * as fs from "fs"
-import { prisma } from "@app/database"
-import { log } from "../utils/log"
+import * as os from 'os'
+import * as fs from 'fs'
+import { prisma } from '@app/database'
+import { log } from '../utils/log'
 
 let cpuPrev: { idle: number; total: number }[] | null = null
 
@@ -24,17 +24,17 @@ function sampleCpu(): number {
 
 function parseNetDev(): Record<string, { rx: number; tx: number }> {
   try {
-    const content = fs.readFileSync("/proc/net/dev", "utf8")
+    const content = fs.readFileSync('/proc/net/dev', 'utf8')
     const result: Record<string, { rx: number; tx: number }> = {}
-    for (const line of content.split("\n").slice(2)) {
+    for (const line of content.split('\n').slice(2)) {
       const trimmed = line.trim()
       if (!trimmed) continue
-      const [iface, rest] = trimmed.split(":")
+      const [iface, rest] = trimmed.split(':')
       if (!iface || !rest) continue
       const cols = rest.trim().split(/\s+/)
       result[iface.trim()] = {
-        rx: parseInt(cols[0] ?? "0", 10),
-        tx: parseInt(cols[8] ?? "0", 10),
+        rx: parseInt(cols[0] ?? '0', 10),
+        tx: parseInt(cols[8] ?? '0', 10),
       }
     }
     return result
@@ -59,7 +59,7 @@ function sampleNet(): { rx: number; tx: number } {
 
   let rxDelta = 0, txDelta = 0
   for (const [iface, vals] of Object.entries(current)) {
-    if (iface === "lo") continue
+    if (iface === 'lo') continue
     const prev = prevNet.data[iface]
     if (!prev) continue
     rxDelta += Math.max(0, vals.rx - prev.rx)
@@ -102,7 +102,7 @@ export function startMetricsSampler(): void {
       })
     } catch (e) {
       // non-fatal: sampler errors must not crash the server
-      log.error({ err: e }, "metrics-sampler failed")
+      log.error({ err: e }, 'metrics-sampler failed')
     }
   }, 60_000)
 }

@@ -1,5 +1,5 @@
-import { realpath } from "node:fs/promises"
-import path from "node:path"
+import { realpath } from 'node:fs/promises'
+import path from 'node:path'
 
 // resolveExisting walks up from p until it finds an existing ancestor,
 // resolves symlinks on that ancestor, then re-joins the (possibly

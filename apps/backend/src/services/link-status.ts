@@ -1,5 +1,5 @@
-import { request as httpRequest } from "node:http"
-import { request as httpsRequest } from "node:https"
+import { request as httpRequest } from 'node:http'
+import { request as httpsRequest } from 'node:https'
 
 // Whether the services an admin pinned on a dashboard answer. Only the status
 // line is read: no body, no redirect followed. Certificates are checked; a
@@ -9,8 +9,8 @@ import { request as httpsRequest } from "node:https"
 export type LinkStatus = { url: string; up: boolean; status: number | null; ms: number | null; untrusted?: boolean }
 
 const CERT_ERRORS = new Set([
-  "DEPTH_ZERO_SELF_SIGNED_CERT", "SELF_SIGNED_CERT_IN_CHAIN", "UNABLE_TO_VERIFY_LEAF_SIGNATURE",
-  "UNABLE_TO_GET_ISSUER_CERT_LOCALLY", "CERT_HAS_EXPIRED", "ERR_TLS_CERT_ALTNAME_INVALID", "CERT_NOT_YET_VALID",
+  'DEPTH_ZERO_SELF_SIGNED_CERT', 'SELF_SIGNED_CERT_IN_CHAIN', 'UNABLE_TO_VERIFY_LEAF_SIGNATURE',
+  'UNABLE_TO_GET_ISSUER_CERT_LOCALLY', 'CERT_HAS_EXPIRED', 'ERR_TLS_CERT_ALTNAME_INVALID', 'CERT_NOT_YET_VALID',
 ])
 
 /** A TLS error that means the server answered with a certificate we do not trust. */
@@ -19,7 +19,7 @@ export const isCertificateError = (code: string | undefined) => !!code && CERT_E
 export function checkableUrl(raw: string): URL | null {
   try {
     const u = new URL(raw)
-    return u.protocol === "http:" || u.protocol === "https:" ? u : null
+    return u.protocol === 'http:' || u.protocol === 'https:' ? u : null
   } catch { return null }
 }
 
@@ -32,12 +32,12 @@ export function checkUrl(raw: string, timeoutMs = 4000): Promise<LinkStatus> {
   const started = Date.now()
   return new Promise(resolve => {
     const done = (status: number | null) => resolve({ url: raw, up: isUp(status), status, ms: status == null ? null : Date.now() - started })
-    const req = (u.protocol === "https:" ? httpsRequest : httpRequest)(u, { method: "HEAD", timeout: timeoutMs }, res => {
+    const req = (u.protocol === 'https:' ? httpsRequest : httpRequest)(u, { method: 'HEAD', timeout: timeoutMs }, res => {
       res.resume()
       done(res.statusCode ?? null)
     })
-    req.on("timeout", () => req.destroy(new Error("timeout")))
-    req.on("error", (e: NodeJS.ErrnoException) => {
+    req.on('timeout', () => req.destroy(new Error('timeout')))
+    req.on('error', (e: NodeJS.ErrnoException) => {
       if (isCertificateError(e.code)) resolve({ url: raw, up: true, status: null, ms: Date.now() - started, untrusted: true })
       else done(null)
     })

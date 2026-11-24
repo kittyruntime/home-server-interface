@@ -94,9 +94,3 @@ export function useSource<T>(key: string, fetcher: () => Promise<T>, intervalMs:
     refresh: () => load(entry),
   }
 }
-
-/** Forget every source (sign-out, tests). */
-export function resetSources(): void {
-  for (const e of entries.values()) stop(e)
-  entries.clear()
-}

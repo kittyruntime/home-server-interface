@@ -100,7 +100,7 @@ function onBookmarkZoneDrop(e: DragEvent) {
           <!-- Drop a folder here to bookmark it -->
           <div v-if="draggingDirs" role="presentation"
             :class="['mx-2 mb-1 rounded-field border border-dashed px-2 py-2 text-center text-xs transition-colors',
-              bookmarkZoneOver ? 'border-primary bg-primary/10 text-primary' : 'border-base-300 text-base-content/70']"
+                     bookmarkZoneOver ? 'border-primary bg-primary/10 text-primary' : 'border-base-300 text-base-content/70']"
             @dragover="onBookmarkZoneOver" @dragleave="bookmarkZoneOver = false" @drop="onBookmarkZoneDrop">
             {{ t('files.bookmarks.dropHere') }}
           </div>

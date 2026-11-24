@@ -1,8 +1,8 @@
-import { prisma } from "@app/database"
-import { log } from "../utils/log"
-import { resolveStored } from "./notification-connectors"
-import { deliverResolved, type DeliveryResult } from "./notification-transports"
-import type { NotificationEvent } from "./notifications"
+import { prisma } from '@app/database'
+import { log } from '../utils/log'
+import { resolveStored } from './notification-connectors'
+import { deliverResolved, type DeliveryResult } from './notification-transports'
+import type { NotificationEvent } from './notifications'
 
 // Outbox for external deliveries. dispatchEvent inserts pending rows; a poller
 // makes one attempt per due row per tick, reschedules failures with backoff,
@@ -35,11 +35,11 @@ export type Deliver = (connectorId: string, event: NotificationEvent) => Promise
 
 export function planAfterAttempt(attemptsBefore: number, result: DeliveryResult, now: Date) {
   const attempts = attemptsBefore + 1
-  if (result.ok) return { status: "sent", attempts, nextAttemptAt: now, sentAt: now as Date | null, error: "" }
-  const error = result.error ?? "unknown error"
-  if (attempts >= MAX_ATTEMPTS) return { status: "failed", attempts, nextAttemptAt: now, sentAt: now as Date | null, error }
+  if (result.ok) return { status: 'sent', attempts, nextAttemptAt: now, sentAt: now as Date | null, error: '' }
+  const error = result.error ?? 'unknown error'
+  if (attempts >= MAX_ATTEMPTS) return { status: 'failed', attempts, nextAttemptAt: now, sentAt: now as Date | null, error }
   const delay = RETRY_DELAYS_MS[attempts - 1] ?? RETRY_DELAYS_MS[RETRY_DELAYS_MS.length - 1]!
-  return { status: "pending", attempts, nextAttemptAt: new Date(now.getTime() + delay), sentAt: null as Date | null, error }
+  return { status: 'pending', attempts, nextAttemptAt: new Date(now.getTime() + delay), sentAt: null as Date | null, error }
 }
 
 /** Null when a send is allowed at `now`, else the earliest time it is. */
@@ -63,7 +63,7 @@ export async function runDeliveryTick(store: DeliveryStore, deliver: Deliver, no
   for (const row of rows) {
     const connector = await store.connector(row.connectorId)
     if (!connector || !connector.enabled) {
-      await store.update(row.id, { status: "failed", sentAt: now, error: connector ? "connector disabled" : "connector removed" })
+      await store.update(row.id, { status: 'failed', sentAt: now, error: connector ? 'connector disabled' : 'connector removed' })
       continue
     }
     const until = rateLimitedUntil(await store.sentSince(row.connectorId, new Date(now.getTime() - 60_000)), connector.rateLimitPerMinute, now)
@@ -75,10 +75,10 @@ export async function runDeliveryTick(store: DeliveryStore, deliver: Deliver, no
     try {
       event = JSON.parse(row.event) as NotificationEvent
     } catch {
-      await store.update(row.id, { status: "failed", sentAt: now, error: "invalid event" })
+      await store.update(row.id, { status: 'failed', sentAt: now, error: 'invalid event' })
       continue
     }
-    await store.update(row.id, { status: "sending" })
+    await store.update(row.id, { status: 'sending' })
     let result: DeliveryResult
     try {
       result = await deliver(row.connectorId, event)
@@ -94,20 +94,20 @@ export async function enqueue(store: DeliveryStore, connectorIds: string[], even
   await store.insertPending(connectorIds.map(connectorId => ({ connectorId, event: JSON.stringify(event), now })))
   const overflow = (await store.countPending()) - QUEUE_CAP
   if (overflow > 0) {
-    for (const id of await store.oldestPending(overflow)) await store.update(id, { status: "failed", sentAt: now, error: "queue full" })
-    log.warn({ dropped: overflow }, "notifications: delivery queue full, oldest pending deliveries failed")
+    for (const id of await store.oldestPending(overflow)) await store.update(id, { status: 'failed', sentAt: now, error: 'queue full' })
+    log.warn({ dropped: overflow }, 'notifications: delivery queue full, oldest pending deliveries failed')
   }
 }
 
 export const prismaDeliveryStore: DeliveryStore = {
   async resetSending() {
-    const r = await prisma.notificationDelivery.updateMany({ where: { status: "sending" }, data: { status: "pending" } })
+    const r = await prisma.notificationDelivery.updateMany({ where: { status: 'sending' }, data: { status: 'pending' } })
     return r.count
   },
   async due(now, limit) {
     return prisma.notificationDelivery.findMany({
-      where: { status: "pending", nextAttemptAt: { lte: now } },
-      orderBy: { at: "asc" }, take: limit,
+      where: { status: 'pending', nextAttemptAt: { lte: now } },
+      orderBy: { at: 'asc' }, take: limit,
       select: { id: true, connectorId: true, attempts: true, event: true },
     })
   },
@@ -116,36 +116,36 @@ export const prismaDeliveryStore: DeliveryStore = {
   },
   async sentSince(connectorId, since) {
     const rows = await prisma.notificationDelivery.findMany({
-      where: { connectorId, status: "sent", test: false, sentAt: { gt: since } }, select: { sentAt: true },
+      where: { connectorId, status: 'sent', test: false, sentAt: { gt: since } }, select: { sentAt: true },
     })
     return rows.map(r => r.sentAt!)
   },
   async update(id, patch) {
     await prisma.notificationDelivery.update({
       where: { id },
-      data: { ...patch, ...(patch.status ? { ok: patch.status === "sent" } : {}) },
+      data: { ...patch, ...(patch.status ? { ok: patch.status === 'sent' } : {}) },
     })
   },
   async insertPending(rows) {
     await prisma.notificationDelivery.createMany({
-      data: rows.map(r => ({ connectorId: r.connectorId, event: r.event, status: "pending", nextAttemptAt: r.now, at: r.now })),
+      data: rows.map(r => ({ connectorId: r.connectorId, event: r.event, status: 'pending', nextAttemptAt: r.now, at: r.now })),
     })
   },
   async oldestPending(count) {
-    const rows = await prisma.notificationDelivery.findMany({ where: { status: "pending" }, orderBy: { at: "asc" }, take: count, select: { id: true } })
+    const rows = await prisma.notificationDelivery.findMany({ where: { status: 'pending' }, orderBy: { at: 'asc' }, take: count, select: { id: true } })
     return rows.map(r => r.id)
   },
-  countPending: () => prisma.notificationDelivery.count({ where: { status: "pending" } }),
+  countPending: () => prisma.notificationDelivery.count({ where: { status: 'pending' } }),
   async prune(keep) {
-    const terminal = { status: { in: ["sent", "failed"] } }
-    const rows = await prisma.notificationDelivery.findMany({ where: terminal, orderBy: { at: "desc" }, skip: keep - 1, take: 1, select: { at: true } })
+    const terminal = { status: { in: ['sent', 'failed'] } }
+    const rows = await prisma.notificationDelivery.findMany({ where: terminal, orderBy: { at: 'desc' }, skip: keep - 1, take: 1, select: { at: true } })
     if (rows[0]) await prisma.notificationDelivery.deleteMany({ where: { ...terminal, at: { lt: rows[0].at } } })
   },
 }
 
 export const deliverToConnector: Deliver = async (connectorId, event) => {
   const row = await prisma.notificationConnector.findUnique({ where: { id: connectorId } })
-  if (!row) return { ok: false, error: "connector removed" }
+  if (!row) return { ok: false, error: 'connector removed' }
   // A SecretsError (missing key, unreadable secret) is caught by the tick as a failed attempt.
   return deliverResolved(resolveStored(row), event)
 }
@@ -160,7 +160,7 @@ export async function startDeliveryQueue(): Promise<void> {
   if (started) return
   started = true
   const reset = await prismaDeliveryStore.resetSending()
-  if (reset > 0) log.info({ count: reset }, "notifications: retrying deliveries interrupted by a restart")
+  if (reset > 0) log.info({ count: reset }, 'notifications: retrying deliveries interrupted by a restart')
   let running = false
   const timer = setInterval(async () => {
     if (running) return
@@ -169,7 +169,7 @@ export async function startDeliveryQueue(): Promise<void> {
       await runDeliveryTick(prismaDeliveryStore, deliverToConnector)
       await prismaDeliveryStore.prune(KEEP_TERMINAL)
     } catch (e) {
-      log.error({ err: e }, "notifications: delivery tick failed")
+      log.error({ err: e }, 'notifications: delivery tick failed')
     } finally {
       running = false
     }
