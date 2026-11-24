@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Hide the server root**: an admin can leave "/" out of the file
+  manager's places (Settings > Display). Bookmarks outside the places still
+  open.
+
+### Changed
+- **File properties** fold into sections (Storage, General, Dates,
+  Permissions, Details); Dates and Details start folded, and each section
+  stays as you left it.
+
 ## [1.93.0] - 2026-11-24
 
 ### Added

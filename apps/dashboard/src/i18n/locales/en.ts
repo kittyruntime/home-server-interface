@@ -880,6 +880,8 @@ export default {
       title: 'Display',
       showHidden: 'Show hidden files',
       showHiddenHint: 'Files and folders whose name starts with a dot.',
+      showRoot: 'Show the server root',
+      showRootHint: 'Lists the whole server (“/”) among the places. Bookmarks outside the places still open.',
       visibleColumns: 'Visible columns…',
       columns: 'Columns',
       columnsHint: 'Shown in the list view, next to the name.',

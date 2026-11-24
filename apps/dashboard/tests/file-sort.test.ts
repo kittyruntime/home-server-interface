@@ -65,5 +65,7 @@ test('display preferences fall back field by field', () => {
   assert.equal(p.sortDir, 'desc')
   assert.deepEqual(p.columns, ['size', 'type'])
   assert.equal(p.showHidden, false)
+  assert.equal(p.showRoot, true)
+  assert.equal(normalizeFilePrefs({ showRoot: false }).showRoot, false)
   assert.equal(p.view, 'grid')
 })

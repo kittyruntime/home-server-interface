@@ -69,8 +69,8 @@ await testAppearancePreferences()
 async function testFileManagerPreferences() {
   const { parsePrefs, mergePrefs } = await import("../trpc/routers/user")
   assert.deepEqual(
-    parsePrefs({ fileManager: { sortField: "type", sortDir: "desc", columns: ["size"], showHidden: true, view: "grid" } }).fileManager,
-    { sortField: "type", sortDir: "desc", columns: ["size"], showHidden: true, view: "grid" },
+    parsePrefs({ fileManager: { sortField: "type", sortDir: "desc", columns: ["size"], showHidden: true, showRoot: false, view: "grid" } }).fileManager,
+    { sortField: "type", sortDir: "desc", columns: ["size"], showHidden: true, showRoot: false, view: "grid" },
   )
   const bad = parsePrefs({ locale: "fr", fileManager: { sortField: "colour", columns: ["owner"], showHidden: "yes", view: "grid" } })
   assert.equal(bad.locale, "fr")

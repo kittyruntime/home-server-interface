@@ -8,6 +8,7 @@ import { useFilePrefs } from '../../lib/file-prefs'
 import { COLUMNS, type Column } from '../../lib/file-sort'
 
 // The Display tab of the file manager's settings (#196).
+defineProps<{ isAdmin?: boolean }>()
 const { t } = useI18n()
 const { filePrefs, setFilePrefs } = useFilePrefs()
 
@@ -26,6 +27,13 @@ function toggleColumn(column: Column, on: boolean) {
             <span class="block text-xs text-base-content/70">{{ t('files.display.showHiddenHint') }}</span>
           </span>
           <Switch :model-value="filePrefs.showHidden" @update:model-value="v => setFilePrefs({ showHidden: v })" />
+        </label>
+        <label v-if="isAdmin" class="flex cursor-pointer items-center justify-between gap-4 border-t border-base-300 px-4 py-3">
+          <span class="space-y-0.5">
+            <span class="block text-sm font-medium">{{ t('files.display.showRoot') }}</span>
+            <span class="block text-xs text-base-content/70">{{ t('files.display.showRootHint') }}</span>
+          </span>
+          <Switch :model-value="filePrefs.showRoot" @update:model-value="v => setFilePrefs({ showRoot: v })" />
         </label>
       </Card>
 

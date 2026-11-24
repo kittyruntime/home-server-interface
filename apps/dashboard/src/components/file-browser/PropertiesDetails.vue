@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import PropSection from './PropSection.vue'
 import { computed, onBeforeUnmount, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Button } from '@/components/ui/button'
@@ -47,8 +48,7 @@ onBeforeUnmount(() => controller?.abort())
 </script>
 
 <template>
-  <div class="px-5 py-4 space-y-2.5">
-    <div class="text-xs font-semibold uppercase tracking-caps text-base-content/70">{{ t('files.details.title') }}</div>
+  <PropSection id="details" :title="t('files.details.title')">
 
     <dl class="space-y-1.5 text-sm">
       <!-- Folder: size of everything inside -->
@@ -106,5 +106,5 @@ onBeforeUnmount(() => controller?.abort())
     </dl>
 
     <p v-if="error" role="alert" class="text-xs text-error">{{ error }}</p>
-  </div>
+  </PropSection>
 </template>

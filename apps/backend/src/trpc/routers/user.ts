@@ -35,6 +35,9 @@ const zPreferences = z.object({
     sortDir: z.enum(["asc", "desc"]).optional().catch(undefined),
     columns: z.array(z.enum(["size", "modified", "type"])).max(3).optional().catch(undefined),
     showHidden: z.boolean().optional().catch(undefined),
+    showRoot: z.boolean().optional().catch(undefined),
+    // Properties window sections folded away.
+    foldedSections: z.array(z.enum(["storage", "general", "dates", "permissions", "details"])).max(5).optional().catch(undefined),
     view: z.enum(["list", "grid"]).optional().catch(undefined),
     // Bookmarked folders (#199), in the user's order.
     bookmarks: z.array(z.object({
