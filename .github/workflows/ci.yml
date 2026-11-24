@@ -88,7 +88,21 @@ jobs:
       - name: Test backend and root-worker
         run: pnpm test
 
+      # The inventory rebuilds the schema of every published release (over a
+      # minute); its output only moves with the database package.
+      - name: Check whether the database package changed
+        id: db
+        env:
+          BASE: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          if git cat-file -e "$BASE^{commit}" 2>/dev/null && git diff --quiet "$BASE" HEAD -- packages/database .github/workflows/ci.yml; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Verify published SQLite inventory and conversion checksums
+        if: steps.db.outputs.changed == 'true'
         run: |
           python3 packages/database/prisma/cutover/inventory.py
           python3 packages/database/prisma/cutover/generate-conversions.py
