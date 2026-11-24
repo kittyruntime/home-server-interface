@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.92.1] - 2026-11-24
+
 ### Changed
 - **Phones and tablets**: every small button, checkbox and switch answers to
   a finger-sized area on a touch screen, without changing its look, and the
@@ -2419,7 +2421,8 @@ First stable release.
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.92.0...HEAD
+[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.92.1...HEAD
+[1.92.1]: https://github.com/kittyruntime/home-server-interface/compare/v1.92.0...v1.92.1
 [1.92.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.91.0...v1.92.0
 [1.91.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.90.1...v1.91.0
 [1.90.1]: https://github.com/kittyruntime/home-server-interface/compare/v1.90.0...v1.90.1
