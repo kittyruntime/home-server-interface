@@ -283,244 +283,244 @@ onUnmounted(() => {
   <!-- Single root wrapper: required so the route <Transition> in App.vue can
        animate this view and its style fallthrough (--ui-dur) merges here. -->
   <div>
-  <div class="flex h-[100dvh] w-full max-w-full flex-col overflow-hidden bg-base-100 sm:flex-row">
+    <div class="flex h-[100dvh] w-full max-w-full flex-col overflow-hidden bg-base-100 sm:flex-row">
 
-    <!-- Sidebar: 64px (desktop only) -->
-    <aside class="rail hidden sm:flex flex-col items-center w-16 bg-base-100 text-base-content border-r border-base-300 py-4 flex-shrink-0">
+      <!-- Sidebar: 64px (desktop only) -->
+      <aside class="rail hidden sm:flex flex-col items-center w-16 bg-base-100 text-base-content border-r border-base-300 py-4 flex-shrink-0">
 
-      <template v-if="desktopMode && !isMobile">
-        <Dock class="flex-1" @open-launchpad="launchpadOpen = true" />
-      </template>
-      <template v-else>
-        <!-- App nav (drag an icon to reorder, persisted per browser) -->
-        <!-- Scrolls on a short screen (a phone held sideways) rather than
+        <template v-if="desktopMode && !isMobile">
+          <Dock class="flex-1" @open-launchpad="launchpadOpen = true" />
+        </template>
+        <template v-else>
+          <!-- App nav (drag an icon to reorder, persisted per browser) -->
+          <!-- Scrolls on a short screen (a phone held sideways) rather than
              pushing the bell and the account off the bottom. -->
-        <nav class="rail-scroll flex min-h-0 w-full flex-1 flex-col items-stretch gap-1 overflow-y-auto overscroll-contain">
-          <div
-            v-for="item in navItems"
-            :key="item.id"
-            draggable="true"
-            @dragstart="onNavDragStart(item.id, $event)"
-            @pointerenter="prefetchPanel(item.id)"
-            @dragover.prevent="onNavDragOver(item.id, $event)"
-            @dragend="onNavDragEnd"
-            @drop.prevent="onNavDragEnd"
-            :class="['relative flex justify-center py-0.5 transition-opacity', draggingId === item.id ? 'opacity-40' : '']"
-          >
-            <span
-              v-if="isActive(item.id)"
-              class="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-6 bg-primary rounded-r-full"
-            />
-            <Tooltip>
-              <TooltipTrigger as-child>
-                <Button
-                  variant="ghost"
-                  size="icon-lg"
-                  @click="selectApp(item.id)"
-                  @keydown="onNavKeydown(item.id, $event)"
-                  :data-nav-id="item.id"
-                  :aria-label="item.label"
-                  :aria-current="isActive(item.id) ? 'page' : undefined"
-                  aria-keyshortcuts="Alt+ArrowUp Alt+ArrowDown"
-                  :class="[
-                    'relative rounded-xl [&_svg:not([class*=size-])]:size-5',
-                    isActive(item.id)
-                      ? 'bg-primary text-primary-content hover:bg-primary hover:text-primary-content'
-                      : 'text-base-content/70 hover:text-base-content',
-                  ]"
-                >
-                  <SidebarNavIcon :id="item.id" />
-                  <span
-                    v-if="item.id === 'settings' && updateAvailable && !isActive('settings')"
-                    class="absolute top-1.5 right-1.5 size-2 rounded-full bg-warning"
-                  />
-                  <span
-                    v-if="item.id === 'storage' && hasAlerts('storage.') && !isActive('storage')"
-                    class="absolute top-1.5 right-1.5 size-2 rounded-full bg-error"
-                  />
-                  <span
-                    v-if="item.id === 'monitor' && alerts.length && !isActive('monitor')"
-                    class="absolute top-1.5 right-1.5 size-2 rounded-full bg-error"
-                  />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="right">{{ item.label }}</TooltipContent>
-            </Tooltip>
-          </div>
-        </nav>
-      </template>
+          <nav class="rail-scroll flex min-h-0 w-full flex-1 flex-col items-stretch gap-1 overflow-y-auto overscroll-contain">
+            <div
+              v-for="item in navItems"
+              :key="item.id"
+              draggable="true"
+              @dragstart="onNavDragStart(item.id, $event)"
+              @pointerenter="prefetchPanel(item.id)"
+              @dragover.prevent="onNavDragOver(item.id, $event)"
+              @dragend="onNavDragEnd"
+              @drop.prevent="onNavDragEnd"
+              :class="['relative flex justify-center py-0.5 transition-opacity', draggingId === item.id ? 'opacity-40' : '']"
+            >
+              <span
+                v-if="isActive(item.id)"
+                class="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-6 bg-primary rounded-r-full"
+              />
+              <Tooltip>
+                <TooltipTrigger as-child>
+                  <Button
+                    variant="ghost"
+                    size="icon-lg"
+                    @click="selectApp(item.id)"
+                    @keydown="onNavKeydown(item.id, $event)"
+                    :data-nav-id="item.id"
+                    :aria-label="item.label"
+                    :aria-current="isActive(item.id) ? 'page' : undefined"
+                    aria-keyshortcuts="Alt+ArrowUp Alt+ArrowDown"
+                    :class="[
+                      'relative rounded-xl [&_svg:not([class*=size-])]:size-5',
+                      isActive(item.id)
+                        ? 'bg-primary text-primary-content hover:bg-primary hover:text-primary-content'
+                        : 'text-base-content/70 hover:text-base-content',
+                    ]"
+                  >
+                    <SidebarNavIcon :id="item.id" />
+                    <span
+                      v-if="item.id === 'settings' && updateAvailable && !isActive('settings')"
+                      class="absolute top-1.5 right-1.5 size-2 rounded-full bg-warning"
+                    />
+                    <span
+                      v-if="item.id === 'storage' && hasAlerts('storage.') && !isActive('storage')"
+                      class="absolute top-1.5 right-1.5 size-2 rounded-full bg-error"
+                    />
+                    <span
+                      v-if="item.id === 'monitor' && alerts.length && !isActive('monitor')"
+                      class="absolute top-1.5 right-1.5 size-2 rounded-full bg-error"
+                    />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="right">{{ item.label }}</TooltipContent>
+              </Tooltip>
+            </div>
+          </nav>
+        </template>
 
-      <!-- Notifications bell -->
-      <ActivityPopover v-if="!isMobile" side="right" :tooltip="t('ui.views.DashboardLayout.activity')" @open-page="openActivity">
-        <Button
-          variant="ghost"
-          size="icon-lg"
-          :aria-label="t('ui.views.DashboardLayout.activity')"
-          class="relative mb-2 rounded-xl text-base-content/70 hover:text-base-content data-[state=open]:bg-base-200 data-[state=open]:text-primary [&_svg:not([class*=size-])]:size-5"
-        >
-          <BellIcon />
-          <BellIndicator />
-          <span
-            v-if="badgeCount > 0"
-            class="absolute top-1.5 right-1.5 min-w-[14px] h-3.5 px-0.5 bg-primary rounded-full text-2xs font-bold text-primary-content flex items-center justify-center tabular-nums leading-none"
-          >{{ badgeCount > 9 ? '9+' : badgeCount }}</span>
-        </Button>
-      </ActivityPopover>
-
-      <!-- User avatar -->
-      <AccountMenu v-if="!isMobile" side="right" @profile="goToProfile" @reset-order="resetSidebarOrder" @logout="handleLogout">
-        <template #default="{ initials }">
+        <!-- Notifications bell -->
+        <ActivityPopover v-if="!isMobile" side="right" :tooltip="t('ui.views.DashboardLayout.activity')" @open-page="openActivity">
           <Button
             variant="ghost"
-            size="icon"
-            :aria-label="t('ui.views.DashboardLayout.account')"
-            class="group size-9 rounded-full p-0 select-none hover:bg-transparent"
+            size="icon-lg"
+            :aria-label="t('ui.views.DashboardLayout.activity')"
+            class="relative mb-2 rounded-xl text-base-content/70 hover:text-base-content data-[state=open]:bg-base-200 data-[state=open]:text-primary [&_svg:not([class*=size-])]:size-5"
           >
-            <Avatar class="size-9 overflow-visible text-xs opacity-80 transition-all duration-150 group-hover:opacity-100 group-data-[state=open]:opacity-100 group-data-[state=open]:ring-2 group-data-[state=open]:ring-primary group-data-[state=open]:ring-offset-2 group-data-[state=open]:ring-offset-base-100">
-              <AvatarFallback class="bg-primary font-bold text-primary-content">{{ initials }}</AvatarFallback>
-            </Avatar>
+            <BellIcon />
+            <BellIndicator />
+            <span
+              v-if="badgeCount > 0"
+              class="absolute top-1.5 right-1.5 min-w-[14px] h-3.5 px-0.5 bg-primary rounded-full text-2xs font-bold text-primary-content flex items-center justify-center tabular-nums leading-none"
+            >{{ badgeCount > 9 ? '9+' : badgeCount }}</span>
           </Button>
-        </template>
-      </AccountMenu>
-    </aside>
+        </ActivityPopover>
 
-    <!-- Main area -->
-    <main class="flex min-w-0 flex-1 flex-col overflow-hidden">
-      <!-- Forced password change: this account was created with its password still
+        <!-- User avatar -->
+        <AccountMenu v-if="!isMobile" side="right" @profile="goToProfile" @reset-order="resetSidebarOrder" @logout="handleLogout">
+          <template #default="{ initials }">
+            <Button
+              variant="ghost"
+              size="icon"
+              :aria-label="t('ui.views.DashboardLayout.account')"
+              class="group size-9 rounded-full p-0 select-none hover:bg-transparent"
+            >
+              <Avatar class="size-9 overflow-visible text-xs opacity-80 transition-all duration-150 group-hover:opacity-100 group-data-[state=open]:opacity-100 group-data-[state=open]:ring-2 group-data-[state=open]:ring-primary group-data-[state=open]:ring-offset-2 group-data-[state=open]:ring-offset-base-100">
+                <AvatarFallback class="bg-primary font-bold text-primary-content">{{ initials }}</AvatarFallback>
+              </Avatar>
+            </Button>
+          </template>
+        </AccountMenu>
+      </aside>
+
+      <!-- Main area -->
+      <main class="flex min-w-0 flex-1 flex-col overflow-hidden">
+        <!-- Forced password change: this account was created with its password still
            at the value it was seeded with. Not dismissible: the server refuses
            every other mutation until it's changed (see blockIfMustChangePassword
            in trpc/index.ts), so leaving this open to close would just be confusing. -->
-      <div
-        v-if="mustChangePassword"
-        class="flex items-center gap-3 px-4 sm:px-6 py-2 bg-warning/15 border-b text-sm flex-shrink-0"
-      >
-        <TriangleAlertIcon class="size-4 shrink-0 text-warning" />
-        <span class="text-base-content flex-1 min-w-0">
-          {{ t('ui.views.DashboardLayout.youMustChangeYourPassword') }}
-          <Button variant="link" class="h-auto p-0 font-medium text-base-content underline" @click="goToProfile">{{ t('ui.views.DashboardLayout.changeItNow') }}</Button>
-        </span>
-      </div>
-      <DesktopShell v-if="desktopMode && !isMobile" />
-      <template v-else>
-        <!-- Top bar (hidden for files: FileToolbar acts as the header) -->
-        <header v-if="activeApp !== 'files'" class="h-11 flex items-center justify-between px-4 sm:px-6 border-b flex-shrink-0 bg-base-200">
-          <span class="eyebrow">{{ activeAppLabel }}</span>
-          <Button
-            v-if="activeApp === 'apps' && isAdmin"
-            size="xs"
-            @click="appsPanelRef?.openNew()"
-          >
-            <PlusIcon />
-            {{ t('ui.views.DashboardLayout.newApp') }}
-          </Button>
-        </header>
-
-        <!-- Content: the keyed wrapper (not the panels: FileBrowserPanel is
-             multi-root) cross-fades on app switch, like routes do. -->
-        <div :class="['min-w-0 flex-1', activeApp !== 'dashboard' ? 'overflow-hidden' : 'overflow-auto']">
-          <Transition name="ui-fade" mode="out-in">
-          <div :key="activeApp" class="mobile-density h-full route-fade">
-          <DashboardPanel v-if="activeApp === 'dashboard'" class="h-full" @navigate="onDashboardNavigate" />
-          <FileBrowserPanel v-else-if="activeApp === 'files'" class="h-full" />
-          <AppsPanel v-else-if="activeApp === 'apps'" ref="appsPanelRef" class="h-full" />
-          <SettingsPanel v-else-if="activeApp === 'settings'" class="h-full" :focusSection="settingsSection" />
-          <StoragePanel v-else-if="activeApp === 'storage'" class="h-full" />
-          <MonitorPanel v-else-if="activeApp === 'monitor'" class="h-full" />
-          <SharingPanel v-else-if="activeApp === 'sharing'" class="h-full" />
-          <AssistantPanel v-else-if="activeApp === 'assistant'" class="h-full" />
-          <ActivityPanel v-else-if="activeApp === 'activity'" class="h-full" />
-          <div v-else class="flex items-center justify-center h-full text-base-content/70 select-none">
-            <div class="text-center space-y-3">
-              <LayoutGridIcon class="size-12 mx-auto opacity-20" :stroke-width="1" />
-              <p class="text-sm">{{ t('ui.views.DashboardLayout.selectAnAppFromThe') }}</p>
-            </div>
-          </div>
-          </div>
-          </Transition>
+        <div
+          v-if="mustChangePassword"
+          class="flex items-center gap-3 px-4 sm:px-6 py-2 bg-warning/15 border-b text-sm flex-shrink-0"
+        >
+          <TriangleAlertIcon class="size-4 shrink-0 text-warning" />
+          <span class="text-base-content flex-1 min-w-0">
+            {{ t('ui.views.DashboardLayout.youMustChangeYourPassword') }}
+            <Button variant="link" class="h-auto p-0 font-medium text-base-content underline" @click="goToProfile">{{ t('ui.views.DashboardLayout.changeItNow') }}</Button>
+          </span>
         </div>
-      </template>
-    </main>
+        <DesktopShell v-if="desktopMode && !isMobile" />
+        <template v-else>
+          <!-- Top bar (hidden for files: FileToolbar acts as the header) -->
+          <header v-if="activeApp !== 'files'" class="h-11 flex items-center justify-between px-4 sm:px-6 border-b flex-shrink-0 bg-base-200">
+            <span class="eyebrow">{{ activeAppLabel }}</span>
+            <Button
+              v-if="activeApp === 'apps' && isAdmin"
+              size="xs"
+              @click="appsPanelRef?.openNew()"
+            >
+              <PlusIcon />
+              {{ t('ui.views.DashboardLayout.newApp') }}
+            </Button>
+          </header>
 
-    <!-- Mobile bottom nav -->
-    <nav class="flex sm:hidden w-full flex-shrink-0 items-center h-14 overflow-hidden bg-base-100 border-t border-base-300 px-1 pb-[env(safe-area-inset-bottom)]">
-
-      <!-- App nav (order mirrors the sidebar; not draggable on mobile) -->
-      <div v-for="item in mobilePrimaryItems" :key="item.id" class="relative flex min-w-0 flex-1 justify-center">
-        <span v-if="isActive(item.id)"
-          class="absolute bottom-0 left-1/2 -translate-x-1/2 w-5 h-0.5 bg-primary rounded-t-full" />
-        <Button variant="ghost" @click="selectApp(item.id)" :aria-label="item.label"
-          :aria-current="isActive(item.id) ? 'page' : undefined"
-          :class="['relative h-11 w-full max-w-11 rounded-xl transition-all duration-150 hover:bg-transparent [&_svg:not([class*=size-])]:size-5',
-            isActive(item.id) ? 'text-primary' : 'text-base-content/70']">
-          <SidebarNavIcon :id="item.id" />
-          <span v-if="item.id === 'settings' && updateAvailable && !isActive('settings')"
-            class="absolute top-1.5 right-1.5 size-2 rounded-full bg-warning" />
-          <span v-if="item.id === 'storage' && hasAlerts('storage.') && !isActive('storage')"
-            class="absolute top-1.5 right-1.5 size-2 rounded-full bg-error" />
-          <span v-if="item.id === 'monitor' && alerts.length && !isActive('monitor')"
-            class="absolute top-1.5 right-1.5 size-2 rounded-full bg-error" />
-        </Button>
-      </div>
-
-      <DropdownMenu v-if="mobileMoreItems.length">
-        <DropdownMenuTrigger as-child>
-          <Button variant="ghost" :aria-label="t('ui.views.DashboardLayout.moreApps')"
-            class="relative h-11 min-w-0 flex-1 rounded-xl text-base-content/70 hover:bg-transparent data-[state=open]:text-primary">
-            <EllipsisIcon class="size-5" />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent side="top" align="center" :side-offset="8" class="grid w-[calc(100vw-1.5rem)] grid-cols-2 gap-1 p-2">
-          <DropdownMenuItem v-for="item in mobileMoreItems" :key="item.id" class="min-w-0 gap-3 px-3 py-3 [&_svg:not([class*=text-])]:text-current" @select="selectApp(item.id)">
-            <SidebarNavIcon :id="item.id" class="shrink-0" />
-            <span class="truncate">{{ item.label }}</span>
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-
-      <!-- Notifications bell -->
-      <!-- On a phone the bell opens the Activity page itself: a popover there
-           would cover the whole screen anyway. -->
-      <Button v-if="isMobile" variant="ghost" :aria-label="t('ui.views.DashboardLayout.activity')"
-        :class="['relative h-11 min-w-0 flex-1 rounded-xl transition-all duration-150 hover:bg-transparent',
-          activeApp === 'activity' ? 'text-primary' : 'text-base-content/70']"
-        @click="openActivity">
-        <!-- The dot and the count sit on the icon, not on the wide button. -->
-        <span class="relative grid size-11 place-items-center">
-          <BellIcon class="size-5" />
-          <BellIndicator />
-          <span v-if="badgeCount > 0"
-            class="absolute top-1.5 right-1.5 min-w-[14px] h-3.5 px-0.5 bg-primary rounded-full text-2xs font-bold text-primary-content flex items-center justify-center tabular-nums leading-none"
-          >{{ badgeCount > 9 ? '9+' : badgeCount }}</span>
-        </span>
-      </Button>
-
-      <!-- User avatar -->
-      <AccountMenu v-if="isMobile" side="top" @profile="goToProfile" @reset-order="resetSidebarOrder" @logout="handleLogout">
-        <template #default="{ initials }">
-          <Button variant="ghost" :aria-label="t('ui.views.DashboardLayout.account')"
-            class="group h-11 min-w-0 flex-1 text-xs font-bold select-none hover:bg-transparent">
-            <Avatar class="size-8 overflow-visible opacity-80 transition-all duration-150 group-data-[state=open]:opacity-100 group-data-[state=open]:ring-2 group-data-[state=open]:ring-primary group-data-[state=open]:ring-offset-2 group-data-[state=open]:ring-offset-base-100">
-              <AvatarFallback class="bg-primary font-bold text-primary-content">{{ initials }}</AvatarFallback>
-            </Avatar>
-          </Button>
+          <!-- Content: the keyed wrapper (not the panels: FileBrowserPanel is
+             multi-root) cross-fades on app switch, like routes do. -->
+          <div :class="['min-w-0 flex-1', activeApp !== 'dashboard' ? 'overflow-hidden' : 'overflow-auto']">
+            <Transition name="ui-fade" mode="out-in">
+              <div :key="activeApp" class="mobile-density h-full route-fade">
+                <DashboardPanel v-if="activeApp === 'dashboard'" class="h-full" @navigate="onDashboardNavigate" />
+                <FileBrowserPanel v-else-if="activeApp === 'files'" class="h-full" />
+                <AppsPanel v-else-if="activeApp === 'apps'" ref="appsPanelRef" class="h-full" />
+                <SettingsPanel v-else-if="activeApp === 'settings'" class="h-full" :focusSection="settingsSection" />
+                <StoragePanel v-else-if="activeApp === 'storage'" class="h-full" />
+                <MonitorPanel v-else-if="activeApp === 'monitor'" class="h-full" />
+                <SharingPanel v-else-if="activeApp === 'sharing'" class="h-full" />
+                <AssistantPanel v-else-if="activeApp === 'assistant'" class="h-full" />
+                <ActivityPanel v-else-if="activeApp === 'activity'" class="h-full" />
+                <div v-else class="flex items-center justify-center h-full text-base-content/70 select-none">
+                  <div class="text-center space-y-3">
+                    <LayoutGridIcon class="size-12 mx-auto opacity-20" :stroke-width="1" />
+                    <p class="text-sm">{{ t('ui.views.DashboardLayout.selectAnAppFromThe') }}</p>
+                  </div>
+                </div>
+              </div>
+            </Transition>
+          </div>
         </template>
-      </AccountMenu>
+      </main>
 
-    </nav>
+      <!-- Mobile bottom nav -->
+      <nav class="flex sm:hidden w-full flex-shrink-0 items-center h-14 overflow-hidden bg-base-100 border-t border-base-300 px-1 pb-[env(safe-area-inset-bottom)]">
 
-  </div>
+        <!-- App nav (order mirrors the sidebar; not draggable on mobile) -->
+        <div v-for="item in mobilePrimaryItems" :key="item.id" class="relative flex min-w-0 flex-1 justify-center">
+          <span v-if="isActive(item.id)"
+            class="absolute bottom-0 left-1/2 -translate-x-1/2 w-5 h-0.5 bg-primary rounded-t-full" />
+          <Button variant="ghost" @click="selectApp(item.id)" :aria-label="item.label"
+            :aria-current="isActive(item.id) ? 'page' : undefined"
+            :class="['relative h-11 w-full max-w-11 rounded-xl transition-all duration-150 hover:bg-transparent [&_svg:not([class*=size-])]:size-5',
+                     isActive(item.id) ? 'text-primary' : 'text-base-content/70']">
+            <SidebarNavIcon :id="item.id" />
+            <span v-if="item.id === 'settings' && updateAvailable && !isActive('settings')"
+              class="absolute top-1.5 right-1.5 size-2 rounded-full bg-warning" />
+            <span v-if="item.id === 'storage' && hasAlerts('storage.') && !isActive('storage')"
+              class="absolute top-1.5 right-1.5 size-2 rounded-full bg-error" />
+            <span v-if="item.id === 'monitor' && alerts.length && !isActive('monitor')"
+              class="absolute top-1.5 right-1.5 size-2 rounded-full bg-error" />
+          </Button>
+        </div>
 
-  <!-- Nothing to report while the server is away (#132). -->
-  <!-- A popover is promoted to the top layer, so toasts stay visible above an
+        <DropdownMenu v-if="mobileMoreItems.length">
+          <DropdownMenuTrigger as-child>
+            <Button variant="ghost" :aria-label="t('ui.views.DashboardLayout.moreApps')"
+              class="relative h-11 min-w-0 flex-1 rounded-xl text-base-content/70 hover:bg-transparent data-[state=open]:text-primary">
+              <EllipsisIcon class="size-5" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent side="top" align="center" :side-offset="8" class="grid w-[calc(100vw-1.5rem)] grid-cols-2 gap-1 p-2">
+            <DropdownMenuItem v-for="item in mobileMoreItems" :key="item.id" class="min-w-0 gap-3 px-3 py-3 [&_svg:not([class*=text-])]:text-current" @select="selectApp(item.id)">
+              <SidebarNavIcon :id="item.id" class="shrink-0" />
+              <span class="truncate">{{ item.label }}</span>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+
+        <!-- Notifications bell -->
+        <!-- On a phone the bell opens the Activity page itself: a popover there
+           would cover the whole screen anyway. -->
+        <Button v-if="isMobile" variant="ghost" :aria-label="t('ui.views.DashboardLayout.activity')"
+          :class="['relative h-11 min-w-0 flex-1 rounded-xl transition-all duration-150 hover:bg-transparent',
+                   activeApp === 'activity' ? 'text-primary' : 'text-base-content/70']"
+          @click="openActivity">
+          <!-- The dot and the count sit on the icon, not on the wide button. -->
+          <span class="relative grid size-11 place-items-center">
+            <BellIcon class="size-5" />
+            <BellIndicator />
+            <span v-if="badgeCount > 0"
+              class="absolute top-1.5 right-1.5 min-w-[14px] h-3.5 px-0.5 bg-primary rounded-full text-2xs font-bold text-primary-content flex items-center justify-center tabular-nums leading-none"
+            >{{ badgeCount > 9 ? '9+' : badgeCount }}</span>
+          </span>
+        </Button>
+
+        <!-- User avatar -->
+        <AccountMenu v-if="isMobile" side="top" @profile="goToProfile" @reset-order="resetSidebarOrder" @logout="handleLogout">
+          <template #default="{ initials }">
+            <Button variant="ghost" :aria-label="t('ui.views.DashboardLayout.account')"
+              class="group h-11 min-w-0 flex-1 text-xs font-bold select-none hover:bg-transparent">
+              <Avatar class="size-8 overflow-visible opacity-80 transition-all duration-150 group-data-[state=open]:opacity-100 group-data-[state=open]:ring-2 group-data-[state=open]:ring-primary group-data-[state=open]:ring-offset-2 group-data-[state=open]:ring-offset-base-100">
+                <AvatarFallback class="bg-primary font-bold text-primary-content">{{ initials }}</AvatarFallback>
+              </Avatar>
+            </Button>
+          </template>
+        </AccountMenu>
+
+      </nav>
+
+    </div>
+
+    <!-- Nothing to report while the server is away (#132). -->
+    <!-- A popover is promoted to the top layer, so toasts stay visible above an
        open native dialog (raiseToasts re-shows it whenever one opens). -->
-  <div popover="manual" data-toast-layer class="toast-layer">
-    <Toaster v-if="!maintenance.kind" position="top-right" close-button />
-  </div>
-  <ConfirmDialog />
-  <ConflictDialog v-if="conflictQuestion" :key="conflictQuestion.id" />
-  <AgentRequests v-if="!maintenance.kind" />
-  <PlanDialog />
-  <JobLogsDialog v-if="isAdmin" />
-  <Launchpad v-if="launchpadOpen" @close="launchpadOpen = false" />
+    <div popover="manual" data-toast-layer class="toast-layer">
+      <Toaster v-if="!maintenance.kind" position="top-right" close-button />
+    </div>
+    <ConfirmDialog />
+    <ConflictDialog v-if="conflictQuestion" :key="conflictQuestion.id" />
+    <AgentRequests v-if="!maintenance.kind" />
+    <PlanDialog />
+    <JobLogsDialog v-if="isAdmin" />
+    <Launchpad v-if="launchpadOpen" @close="launchpadOpen = false" />
   </div>
 </template>

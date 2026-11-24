@@ -106,14 +106,6 @@ export default {
     cancel: 'Cancel',
     noNetworkInterfaceFound: 'No network interface found.',
   },
-  NotificationMenu: {
-    activity: 'Activity',
-    closeActivityPanel: 'Close activity panel',
-    viewLogs: 'View logs',
-    dismissOperation: 'Dismiss operation',
-    noNotifications: 'No notifications',
-    markAllRead: 'Mark all read',
-  },
   NotificationsSection: {
     disableConnector: 'Disable connector',
     enableConnector: 'Enable connector',
@@ -230,7 +222,6 @@ export default {
     readTheFullGuide: 'Read the full guide',
   },
   SharedLinksSection: {
-    sharedLinks: 'Shared links',
     publicLinksYouHaveCreated: 'Public links you have created for files and folders. Anyone with a link can access it until it expires, hits its download limit, or you revoke it.',
     noSharedLinksYet: 'No shared links yet.',
     shareAFileOrFolder: 'Share a file or folder from the file browser to create one.',

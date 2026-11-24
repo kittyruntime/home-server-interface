@@ -23,14 +23,14 @@ export type ActivityEntry = {
   steps?: Array<{ summary: string; status: string }>
 }
 
-function planOf(meta: string | null): Pick<ActivityEntry, "op" | "steps"> {
+function planOf(meta: string | null): Pick<ActivityEntry, 'op' | 'steps'> {
   if (!meta) return {}
   try {
     const plan = (JSON.parse(meta) as { plan?: { op?: unknown; steps?: Array<{ summary?: unknown; status?: unknown }> } }).plan
     if (!plan || !Array.isArray(plan.steps)) return {}
     return {
-      ...(typeof plan.op === "string" ? { op: plan.op } : {}),
-      steps: plan.steps.map(s => ({ summary: String(s.summary ?? ""), status: String(s.status ?? "") })),
+      ...(typeof plan.op === 'string' ? { op: plan.op } : {}),
+      steps: plan.steps.map(s => ({ summary: String(s.summary ?? ''), status: String(s.status ?? '') })),
     }
   } catch {
     return {}
@@ -53,7 +53,7 @@ export function activityEntries(rows: ActivityRow[]): ActivityEntry[] {
 // member device: `arrays` also finds them through the array name in their
 // logged input.
 export function activityWhere(targets: string[], arrays: string[] = []) {
-  const action = { notIn: ["storage.plan"] }
+  const action = { notIn: ['storage.plan'] }
   if (!arrays.length) return { target: { in: targets }, action }
   return {
     OR: [{ target: { in: targets } }, ...arrays.map(a => ({ meta: { contains: `"name":"${a}"` } }))],

@@ -1,7 +1,7 @@
-import type { PrismaClient } from "@app/database"
-import { TRPCError } from "@trpc/server"
-import { adminLinuxUsers, effectiveSmbName, resolveShareUsers } from "./sharing.service"
-import { assertNotThrottled, clearLoginFailures, recordLoginFailure } from "./login-throttle"
+import type { PrismaClient } from '@app/database'
+import { TRPCError } from '@trpc/server'
+import { adminLinuxUsers, effectiveSmbName, resolveShareUsers } from './sharing.service'
+import { assertNotThrottled, clearLoginFailures, recordLoginFailure } from './login-throttle'
 
 // What a signed-in user may see of SMB. Admins see everything; anyone else
 // sees the shares they can reach and only their own sessions and events.
@@ -11,7 +11,7 @@ export interface Viewer { userId: string; username: string; isAdmin: boolean }
 
 export async function viewerOf(prisma: PrismaClient, userId: string): Promise<Viewer> {
   const u = await prisma.user.findUnique({ where: { id: userId }, select: { username: true, isAdmin: true } })
-  if (!u) throw new TRPCError({ code: "UNAUTHORIZED" })
+  if (!u) throw new TRPCError({ code: 'UNAUTHORIZED' })
   return { userId, username: u.username, isAdmin: u.isAdmin }
 }
 
@@ -62,7 +62,7 @@ export function peopleOnShare(now: { smb: SmbConnection[]; nfs: string[]; sftp: 
 export interface EventFilter {
   share?: string
   user?: string
-  result?: "ok" | "refused"
+  result?: 'ok' | 'refused'
   since?: Date
   cursor?: string
   limit: number
@@ -78,7 +78,7 @@ export async function listEvents(prisma: PrismaClient, v: Viewer, f: EventFilter
   }
   const rows = await prisma.shareEvent.findMany({
     where,
-    orderBy: [{ at: "desc" }, { id: "desc" }],
+    orderBy: [{ at: 'desc' }, { id: 'desc' }],
     take: f.limit + 1,
     ...(f.cursor && { cursor: { id: f.cursor }, skip: 1 }),
   })
@@ -89,7 +89,7 @@ export async function listEvents(prisma: PrismaClient, v: Viewer, f: EventFilter
 export interface ReachableShare {
   id: string
   name: string
-  level: "read" | "write"
+  level: 'read' | 'write'
   guestOk: boolean
   hidden: boolean
   /** Offered over SMB and over SFTP. */
@@ -103,7 +103,7 @@ export async function reachableShares(prisma: PrismaClient, v: Viewer): Promise<
     // NFS has no sign-in: only what a person opens with their account.
     where: { enabled: true, OR: [{ smb: true }, { sftp: true }] },
     include: { place: { select: { name: true, path: true } } },
-    orderBy: { createdAt: "asc" },
+    orderBy: { createdAt: 'asc' },
   })
   const admins = new Set(await adminLinuxUsers(prisma))
   const out: ReachableShare[] = []
@@ -112,7 +112,7 @@ export async function reachableShares(prisma: PrismaClient, v: Viewer): Promise<
     const valid = users.validUsers.includes(v.username) || admins.has(v.username)
     if (!valid && !s.guestOk) continue
     const write = !s.readOnly && valid && (users.writeUsers.includes(v.username) || admins.has(v.username))
-    out.push({ id: s.id, name: effectiveSmbName(s, s.place.name), level: write ? "write" : "read", guestOk: s.guestOk, hidden: s.hidden, smb: s.smb ?? true, sftp: s.sftp ?? false })
+    out.push({ id: s.id, name: effectiveSmbName(s, s.place.name), level: write ? 'write' : 'read', guestOk: s.guestOk, hidden: s.hidden, smb: s.smb ?? true, sftp: s.sftp ?? false })
   }
   return out
 }
@@ -129,7 +129,7 @@ export async function repairNetworkPassword(prisma: PrismaClient, v: Viewer, pas
   assertNotThrottled(keys)
   if (!await deps.verify(prisma, v.userId, password)) {
     recordLoginFailure(keys)
-    throw new TRPCError({ code: "UNAUTHORIZED", message: "Wrong password" })
+    throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Wrong password' })
   }
   clearLoginFailures([keys[0]])
   return { ok: await deps.sync(prisma, v.userId, password) }

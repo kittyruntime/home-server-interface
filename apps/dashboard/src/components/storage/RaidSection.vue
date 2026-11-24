@@ -130,7 +130,7 @@ onUnmounted(() => { if (syncTimer) clearInterval(syncTimer) })
 // ── Computed ──────────────────────────────────────────────────────────────────
 
 const raidBlockDevs = computed(() =>
-  devices.value.filter(d => d.type === 'md' || raids.value.find(r => r.name === d.name))
+  devices.value.filter(d => d.type === 'md' || raids.value.find(r => r.name === d.name)),
 )
 
 function raidBlockDev(name: string): BlockDev | undefined {
@@ -201,7 +201,7 @@ watch(() => props.preselect, devs => {
 }, { immediate: true })
 
 const selectedRaidLevel = computed(() =>
-  RAID_LEVELS.value.find(l => l.level === raidWiz.value?.level) ?? RAID_LEVELS.value[1]!
+  RAID_LEVELS.value.find(l => l.level === raidWiz.value?.level) ?? RAID_LEVELS.value[1]!,
 )
 
 function toggleRaidDev(name: string) {
@@ -256,7 +256,7 @@ function memberSize(name: string): number {
 }
 
 const raidCanAdvance = computed(() =>
-  !!raidWiz.value && raidWiz.value.devs.length >= selectedRaidLevel.value.minDev
+  !!raidWiz.value && raidWiz.value.devs.length >= selectedRaidLevel.value.minDev,
 )
 
 async function doCreateRaid() {
@@ -309,7 +309,6 @@ async function doDestroyRaid() {
   }
 }
 
-
 const shown = computed(() => props.only ? raids.value.filter(x => x.name === props.only) : raids.value)
 </script>
 
@@ -355,7 +354,7 @@ const shown = computed(() => props.only ? raids.value.filter(x => x.name === pro
         class="gap-0 py-0 shadow-none overflow-hidden flex flex-row"
         :class="isRaidHealthy(r) ? 'border-base-300' : 'border-error/20'">
         <!-- Left accent stripe -->
-        <div class="w-0.5 shrink-0" :class="isRaidHealthy(r) ? 'bg-primary/50' : 'bg-error'"/>
+        <div class="w-0.5 shrink-0" :class="isRaidHealthy(r) ? 'bg-primary/50' : 'bg-error'" />
         <div class="flex-1 min-w-0">
           <!-- Header -->
           <div class="flex flex-wrap items-center gap-x-3 gap-y-1.5 px-4 pt-3.5 pb-2">
@@ -368,7 +367,7 @@ const shown = computed(() => props.only ? raids.value.filter(x => x.name === pro
             <div class="ml-auto flex flex-wrap items-center justify-end gap-x-3 gap-y-1">
               <span class="text-2xs text-base-content/70">{{ t('uip.storage.RaidSection.drivesActive', { p0: r.active, p1: r.total }) }}</span>
               <span class="inline-flex items-center gap-1.5 text-2xs font-medium" :class="isRaidHealthy(r) ? 'text-success' : 'text-error'">
-                <span class="w-1.5 h-1.5 rounded-full shrink-0" :class="isRaidHealthy(r) ? 'bg-success' : 'bg-error animate-pulse'"/>
+                <span class="w-1.5 h-1.5 rounded-full shrink-0" :class="isRaidHealthy(r) ? 'bg-success' : 'bg-error animate-pulse'" />
                 {{ isRaidHealthy(r) ? t('ui.storage.RaidSection.healthy') : syncLabel(r) }}
               </span>
               <!-- Cross-nav: RAID used as LVM PV -->
@@ -409,17 +408,17 @@ const shown = computed(() => props.only ? raids.value.filter(x => x.name === pro
                     <svg viewBox="0 0 52 68" class="w-12 h-16">
                       <rect x="3" y="3" width="46" height="62" rx="5"
                         :fill="membersOf(r)[idx]?.role !== 'faulty' ? 'var(--color-base-200)' : 'color-mix(in srgb, var(--color-error) 6%, transparent)'"
-                        :stroke="membersOf(r)[idx]?.role !== 'faulty' ? 'var(--color-base-300)' : 'color-mix(in srgb, var(--color-error) 50%, transparent)'" stroke-width="1.5"/>
-                      <circle cx="9" cy="10" r="2" fill="var(--color-base-100)" opacity="0.8"/>
-                      <circle cx="43" cy="10" r="2" fill="var(--color-base-100)" opacity="0.8"/>
-                      <circle cx="9" cy="58" r="2" fill="var(--color-base-100)" opacity="0.8"/>
-                      <circle cx="43" cy="58" r="2" fill="var(--color-base-100)" opacity="0.8"/>
-                      <circle cx="26" cy="32" r="12" fill="none" :stroke="membersOf(r)[idx]?.role !== 'faulty' ? 'var(--color-primary)' : 'color-mix(in srgb, var(--color-error) 50%, transparent)'" stroke-width="1" opacity="0.35"/>
-                      <circle cx="26" cy="32" r="6" fill="none" :stroke="membersOf(r)[idx]?.role !== 'faulty' ? 'var(--color-primary)' : 'color-mix(in srgb, var(--color-error) 50%, transparent)'" stroke-width="1" opacity="0.35"/>
-                      <line x1="26" y1="32" x2="35" y2="21" :stroke="membersOf(r)[idx]?.role !== 'faulty' ? 'var(--color-primary)' : 'color-mix(in srgb, var(--color-error) 60%, transparent)'" stroke-width="1.5" opacity="0.5" stroke-linecap="round"/>
-                      <circle cx="26" cy="32" r="2.5" :fill="membersOf(r)[idx]?.role !== 'faulty' ? 'var(--color-primary)' : 'color-mix(in srgb, var(--color-error) 70%, transparent)'" opacity="0.8"/>
-                      <circle cx="40" cy="50" r="2" :fill="membersOf(r)[idx]?.role !== 'faulty' ? 'var(--color-success)' : 'var(--color-error)'" opacity="0.9"/>
-                      <rect x="15" y="60" width="22" height="2.5" rx="1" fill="color-mix(in oklab, var(--color-base-content) 70%, transparent)" opacity="0.25"/>
+                        :stroke="membersOf(r)[idx]?.role !== 'faulty' ? 'var(--color-base-300)' : 'color-mix(in srgb, var(--color-error) 50%, transparent)'" stroke-width="1.5" />
+                      <circle cx="9" cy="10" r="2" fill="var(--color-base-100)" opacity="0.8" />
+                      <circle cx="43" cy="10" r="2" fill="var(--color-base-100)" opacity="0.8" />
+                      <circle cx="9" cy="58" r="2" fill="var(--color-base-100)" opacity="0.8" />
+                      <circle cx="43" cy="58" r="2" fill="var(--color-base-100)" opacity="0.8" />
+                      <circle cx="26" cy="32" r="12" fill="none" :stroke="membersOf(r)[idx]?.role !== 'faulty' ? 'var(--color-primary)' : 'color-mix(in srgb, var(--color-error) 50%, transparent)'" stroke-width="1" opacity="0.35" />
+                      <circle cx="26" cy="32" r="6" fill="none" :stroke="membersOf(r)[idx]?.role !== 'faulty' ? 'var(--color-primary)' : 'color-mix(in srgb, var(--color-error) 50%, transparent)'" stroke-width="1" opacity="0.35" />
+                      <line x1="26" y1="32" x2="35" y2="21" :stroke="membersOf(r)[idx]?.role !== 'faulty' ? 'var(--color-primary)' : 'color-mix(in srgb, var(--color-error) 60%, transparent)'" stroke-width="1.5" opacity="0.5" stroke-linecap="round" />
+                      <circle cx="26" cy="32" r="2.5" :fill="membersOf(r)[idx]?.role !== 'faulty' ? 'var(--color-primary)' : 'color-mix(in srgb, var(--color-error) 70%, transparent)'" opacity="0.8" />
+                      <circle cx="40" cy="50" r="2" :fill="membersOf(r)[idx]?.role !== 'faulty' ? 'var(--color-success)' : 'var(--color-error)'" opacity="0.9" />
+                      <rect x="15" y="60" width="22" height="2.5" rx="1" fill="color-mix(in oklab, var(--color-base-content) 70%, transparent)" opacity="0.25" />
                     </svg>
                   </div>
                   <Button variant="link" @click="emit('navigate', { kind: 'disk', name: dev })"
@@ -528,8 +527,8 @@ const shown = computed(() => props.only ? raids.value.filter(x => x.name === pro
     </div>
 
     <!-- Shared device dialogs (format / mount / unmount) -->
-    <DeviceFormatWizard  ref="formatWiz" @done="refresh" @mount="d => mountDlg?.open(d)" />
-    <DeviceMountDialog   ref="mountDlg"  @done="refresh" />
+    <DeviceFormatWizard ref="formatWiz" @done="refresh" @mount="d => mountDlg?.open(d)" />
+    <DeviceMountDialog ref="mountDlg" @done="refresh" />
     <DeviceUnmountDialog ref="umountDlg" @done="refresh" />
 
     <!-- ════════════════════════════════════════════════════════════════════ -->
@@ -537,180 +536,180 @@ const shown = computed(() => props.only ? raids.value.filter(x => x.name === pro
     <!-- ════════════════════════════════════════════════════════════════════ -->
     <Modal :label="t('ui.storage.RaidSection.createRaid3')" v-if="raidWiz" panel-class="w-full max-w-lg" :show-close="false" :prevent-close="!!raidWiz.busy" @close="raidWiz = null">
 
-          <!-- Step indicator -->
-          <div class="flex items-center gap-0 border-b border-base-300">
-            <div v-for="(label, i) in [t('ui.storage.RaidSection.stepRaidLevel'), t('ui.storage.RaidSection.stepSelectDrives'), t('ui.storage.RaidSection.stepConfirm')]" :key="i"
-              :class="['flex-1 py-2.5 text-center text-2xs font-semibold transition-colors',
-                raidWiz.step === i + 1 ? 'text-primary border-b-2 border-primary'
-                : raidWiz.step > i + 1  ? 'text-base-content/70'
-                : 'text-base-content/35']"
-            >{{ i + 1 }}. {{ label }}</div>
+      <!-- Step indicator -->
+      <div class="flex items-center gap-0 border-b border-base-300">
+        <div v-for="(label, i) in [t('ui.storage.RaidSection.stepRaidLevel'), t('ui.storage.RaidSection.stepSelectDrives'), t('ui.storage.RaidSection.stepConfirm')]" :key="i"
+          :class="['flex-1 py-2.5 text-center text-2xs font-semibold transition-colors',
+                   raidWiz.step === i + 1 ? 'text-primary border-b-2 border-primary'
+                   : raidWiz.step > i + 1 ? 'text-base-content/70'
+                     : 'text-base-content/35']"
+        >{{ i + 1 }}. {{ label }}</div>
+      </div>
+
+      <!-- Step 1: Choose RAID level -->
+      <div v-if="raidWiz.step === 1" class="p-5 space-y-3">
+        <p class="flex items-center gap-1.5 text-sm text-base-content/70">
+          {{ t('ui.storage.RaidSection.chooseTheRaidConfigurationThat') }}
+          <Hint :text="t('ui.storage.RaidSection.levelDiagramHint')" />
+        </p>
+
+        <!-- Own container: the dialog is teleported out of the Storage panel. -->
+        <div class="@container"><div role="radiogroup" :aria-label="t('ui.storage.RaidSection.raidLevel')" class="grid grid-cols-1 @md:grid-cols-2 gap-2">
+          <Item
+            v-for="lvl in RAID_LEVELS" :key="lvl.level"
+            as="button" type="button" variant="outline" role="radio" :aria-checked="raidWiz.level === lvl.level"
+            @click="raidWiz.level = lvl.level"
+            :class="['block p-3 text-left rounded-xl',
+                     raidWiz.level === lvl.level
+                       ? 'border-primary bg-primary/5'
+                       : 'hover:border-base-300']"
+          >
+            <div class="flex items-center gap-2 mb-1">
+              <span class="text-sm font-bold text-base-content">{{ lvl.name }}</span>
+              <span class="text-2xs text-base-content/70">{{ lvl.sub }}</span>
+            </div>
+            <div class="text-2xs text-base-content/70 leading-relaxed">{{ lvl.desc }}</div>
+            <div class="flex items-center gap-3 mt-2 text-2xs">
+              <span class="text-base-content/70">{{ t('uip.storage.RaidSection.minDrives', { p0: lvl.minDev }) }}</span>
+              <span :class="lvl.redundant ? 'text-success' : 'text-error'">
+                {{ t('uip.storage.RaidSection.redundancy', { p0: lvl.redundancy }) }}
+              </span>
+            </div>
+            <RaidLevelVisual :level="lvl.level" class="mt-2.5 pt-2.5 border-t border-base-300" />
+          </Item>
+        </div></div>
+
+        <!-- Selected level danger notice -->
+        <Alert variant="warning" class="flex items-start gap-2 px-3 py-2 text-2xs text-warning" role="note">
+          <TriangleAlertIcon class="w-3.5 h-3.5 mt-0.5 shrink-0" aria-hidden="true" />
+          <span>{{ selectedRaidLevel.danger }}</span>
+        </Alert>
+
+        <div class="flex gap-2 pt-1">
+          <Button variant="outline" @click="raidWiz = null" class="flex-1 justify-center">{{ t('ui.storage.RaidSection.cancel') }}</Button>
+          <Button @click="raidWiz.step = 2" class="flex-1 justify-center">{{ t('ui.storage.RaidSection.next') }}</Button>
+        </div>
+      </div>
+
+      <!-- Step 2: Select drives -->
+      <div v-else-if="raidWiz.step === 2" class="p-5 space-y-3">
+        <p class="text-sm text-base-content/80">
+          {{ t('ui.storage.RaidSection.selectDrivesFor') }} <strong>{{ selectedRaidLevel.name }}</strong>.
+          <span class="text-base-content/70">{{ t('uip.storage.RaidSection.minimumRequired', { p0: selectedRaidLevel.minDev }) }}</span>
+        </p>
+
+        <!-- Capacity: computed from the selected drives once there are enough -->
+        <div class="px-1 space-y-0.5">
+          <div v-if="wizardCapacity?.cap.valid" class="text-xs text-base-content">
+            {{ t('ui.storage.RaidSection.usable') }} <strong>{{ fmtBytes(wizardCapacity.cap.usable) }}</strong>
+            {{ t('uip.storage.RaidSection.ofRaw', { p0: fmtBytes(wizardCapacity.cap.raw), p1: wizardCapacity.cap.efficiency, p2: toleranceText(wizardCapacity.cap.faultTolerance, wizardCapacity.cap.maxFaultTolerance) }) }}
           </div>
-
-          <!-- Step 1: Choose RAID level -->
-          <div v-if="raidWiz.step === 1" class="p-5 space-y-3">
-            <p class="flex items-center gap-1.5 text-sm text-base-content/70">
-              {{ t('ui.storage.RaidSection.chooseTheRaidConfigurationThat') }}
-              <Hint :text="t('ui.storage.RaidSection.levelDiagramHint')" />
-            </p>
-
-            <!-- Own container: the dialog is teleported out of the Storage panel. -->
-            <div class="@container"><div role="radiogroup" :aria-label="t('ui.storage.RaidSection.raidLevel')" class="grid grid-cols-1 @md:grid-cols-2 gap-2">
-              <Item
-                v-for="lvl in RAID_LEVELS" :key="lvl.level"
-                as="button" type="button" variant="outline" role="radio" :aria-checked="raidWiz.level === lvl.level"
-                @click="raidWiz.level = lvl.level"
-                :class="['block p-3 text-left rounded-xl',
-                  raidWiz.level === lvl.level
-                    ? 'border-primary bg-primary/5'
-                    : 'hover:border-base-300']"
-              >
-                <div class="flex items-center gap-2 mb-1">
-                  <span class="text-sm font-bold text-base-content">{{ lvl.name }}</span>
-                  <span class="text-2xs text-base-content/70">{{ lvl.sub }}</span>
-                </div>
-                <div class="text-2xs text-base-content/70 leading-relaxed">{{ lvl.desc }}</div>
-                <div class="flex items-center gap-3 mt-2 text-2xs">
-                  <span class="text-base-content/70">{{ t('uip.storage.RaidSection.minDrives', { p0: lvl.minDev }) }}</span>
-                  <span :class="lvl.redundant ? 'text-success' : 'text-error'">
-                    {{ t('uip.storage.RaidSection.redundancy', { p0: lvl.redundancy }) }}
-                  </span>
-                </div>
-                <RaidLevelVisual :level="lvl.level" class="mt-2.5 pt-2.5 border-t border-base-300" />
-              </Item>
-            </div></div>
-
-            <!-- Selected level danger notice -->
-            <Alert variant="warning" class="flex items-start gap-2 px-3 py-2 text-2xs text-warning" role="note">
-              <TriangleAlertIcon class="w-3.5 h-3.5 mt-0.5 shrink-0" aria-hidden="true" />
-              <span>{{ selectedRaidLevel.danger }}</span>
-            </Alert>
-
-            <div class="flex gap-2 pt-1">
-              <Button variant="outline" @click="raidWiz = null" class="flex-1 justify-center">{{ t('ui.storage.RaidSection.cancel') }}</Button>
-              <Button @click="raidWiz.step = 2" class="flex-1 justify-center">{{ t('ui.storage.RaidSection.next') }}</Button>
-            </div>
+          <div v-for="w in wizardCapacity?.cap.valid ? wizardCapacity.waste : []" :key="w.name" class="text-2xs text-warning">
+            {{ t('uip.storage.RaidSection.unusedOnDevDrivesAre', { p0: fmtBytes(w.bytes), p1: w.name }) }}
           </div>
+          <div class="text-2xs text-base-content/70">{{ selectedRaidLevel.capacityHint }}</div>
+        </div>
 
-          <!-- Step 2: Select drives -->
-          <div v-else-if="raidWiz.step === 2" class="p-5 space-y-3">
-            <p class="text-sm text-base-content/80">
-              {{ t('ui.storage.RaidSection.selectDrivesFor') }} <strong>{{ selectedRaidLevel.name }}</strong>.
-              <span class="text-base-content/70">{{ t('uip.storage.RaidSection.minimumRequired', { p0: selectedRaidLevel.minDev }) }}</span>
-            </p>
+        <div v-if="eligibleForRaid.length === 0" class="py-6 text-center text-sm text-base-content/70">
+          {{ t('ui.storage.RaidSection.noEligibleDrivesAvailable') }}<br>
+          <span class="text-xs">{{ t('ui.storage.RaidSection.drivesMustBeUnmountedNot') }}</span>
+        </div>
 
-            <!-- Capacity: computed from the selected drives once there are enough -->
-            <div class="px-1 space-y-0.5">
-              <div v-if="wizardCapacity?.cap.valid" class="text-xs text-base-content">
-                {{ t('ui.storage.RaidSection.usable') }} <strong>{{ fmtBytes(wizardCapacity.cap.usable) }}</strong>
-                {{ t('uip.storage.RaidSection.ofRaw', { p0: fmtBytes(wizardCapacity.cap.raw), p1: wizardCapacity.cap.efficiency, p2: toleranceText(wizardCapacity.cap.faultTolerance, wizardCapacity.cap.maxFaultTolerance) }) }}
-              </div>
-              <div v-for="w in wizardCapacity?.cap.valid ? wizardCapacity.waste : []" :key="w.name" class="text-2xs text-warning">
-                {{ t('uip.storage.RaidSection.unusedOnDevDrivesAre', { p0: fmtBytes(w.bytes), p1: w.name }) }}
-              </div>
-              <div class="text-2xs text-base-content/70">{{ selectedRaidLevel.capacityHint }}</div>
+        <div v-else class="space-y-1.5 max-h-60 overflow-y-auto pr-1">
+          <label
+            v-for="dev in eligibleForRaid" :key="dev.name"
+            :class="['flex items-center gap-3 p-2.5 rounded-lg border cursor-pointer transition-colors',
+                     raidWiz.devs.includes(dev.name)
+                       ? 'border-primary bg-primary/5'
+                       : 'border-base-300 hover:border-base-300']"
+            @click="toggleRaidDev(dev.name)"
+          >
+            <div :class="['w-4 h-4 rounded border-2 flex items-center justify-center flex-shrink-0 transition-colors',
+                          raidWiz.devs.includes(dev.name) ? 'border-primary bg-primary' : 'border-base-300']">
+              <CheckIcon v-if="raidWiz.devs.includes(dev.name)" class="w-2.5 h-2.5 text-white" aria-hidden="true" />
             </div>
-
-            <div v-if="eligibleForRaid.length === 0" class="py-6 text-center text-sm text-base-content/70">
-              {{ t('ui.storage.RaidSection.noEligibleDrivesAvailable') }}<br>
-              <span class="text-xs">{{ t('ui.storage.RaidSection.drivesMustBeUnmountedNot') }}</span>
+            <div class="flex-1 min-w-0">
+              <span class="font-mono text-sm text-base-content">/dev/{{ dev.name }}</span>
+              <span v-if="dev.model" class="text-xs text-base-content/70 ml-2">{{ dev.model }}</span>
             </div>
+            <span class="text-xs text-base-content/70 shrink-0">{{ fmtBytes(dev.size) }}</span>
+          </label>
+        </div>
 
-            <div v-else class="space-y-1.5 max-h-60 overflow-y-auto pr-1">
-              <label
-                v-for="dev in eligibleForRaid" :key="dev.name"
-                :class="['flex items-center gap-3 p-2.5 rounded-lg border cursor-pointer transition-colors',
-                  raidWiz.devs.includes(dev.name)
-                    ? 'border-primary bg-primary/5'
-                    : 'border-base-300 hover:border-base-300']"
-                @click="toggleRaidDev(dev.name)"
-              >
-                <div :class="['w-4 h-4 rounded border-2 flex items-center justify-center flex-shrink-0 transition-colors',
-                  raidWiz.devs.includes(dev.name) ? 'border-primary bg-primary' : 'border-base-300']">
-                  <CheckIcon v-if="raidWiz.devs.includes(dev.name)" class="w-2.5 h-2.5 text-white" aria-hidden="true" />
-                </div>
-                <div class="flex-1 min-w-0">
-                  <span class="font-mono text-sm text-base-content">/dev/{{ dev.name }}</span>
-                  <span v-if="dev.model" class="text-xs text-base-content/70 ml-2">{{ dev.model }}</span>
-                </div>
-                <span class="text-xs text-base-content/70 shrink-0">{{ fmtBytes(dev.size) }}</span>
-              </label>
-            </div>
+        <div v-if="raidWiz.devs.length > 0 && !raidCanAdvance" class="text-2xs text-warning px-1">
+          {{ t('uip.storage.RaidSection.requiresAtLeastDrivesSelected', { p0: selectedRaidLevel.name, p1: selectedRaidLevel.minDev, p2: raidWiz.devs.length }) }}
+        </div>
 
-            <div v-if="raidWiz.devs.length > 0 && !raidCanAdvance" class="text-2xs text-warning px-1">
-              {{ t('uip.storage.RaidSection.requiresAtLeastDrivesSelected', { p0: selectedRaidLevel.name, p1: selectedRaidLevel.minDev, p2: raidWiz.devs.length }) }}
-            </div>
+        <!-- Array name -->
+        <div>
+          <label class="block text-xs font-medium text-base-content/80 mb-1.5">{{ t('ui.storage.RaidSection.arrayName') }}</label>
+          <Input
+            v-model="raidWiz.name"
+            type="text"
+            placeholder="md0"
+            class="w-full px-3 py-2 text-sm font-mono"
+          />
+          <p class="text-2xs text-base-content/70 mt-1">{{ t('ui.storage.RaidSection.willCreate') }} <span>/dev/{{ raidWiz.name || 'md0' }}</span></p>
+        </div>
 
-            <!-- Array name -->
-            <div>
-              <label class="block text-xs font-medium text-base-content/80 mb-1.5">{{ t('ui.storage.RaidSection.arrayName') }}</label>
-              <Input
-                v-model="raidWiz.name"
-                type="text"
-                placeholder="md0"
-                class="w-full px-3 py-2 text-sm font-mono"
-              />
-              <p class="text-2xs text-base-content/70 mt-1">{{ t('ui.storage.RaidSection.willCreate') }} <span>/dev/{{ raidWiz.name || 'md0' }}</span></p>
-            </div>
+        <div class="flex gap-2 pt-1">
+          <Button variant="outline" @click="raidWiz.step = 1" class="flex-1 justify-center">{{ t('ui.storage.RaidSection.back') }}</Button>
+          <Button @click="raidWiz.step = 3" :disabled="!raidCanAdvance || !raidWiz.name"
+            class="flex-1 justify-center">
+            {{ t('ui.storage.RaidSection.next') }}
+          </Button>
+        </div>
+      </div>
 
-            <div class="flex gap-2 pt-1">
-              <Button variant="outline" @click="raidWiz.step = 1" class="flex-1 justify-center">{{ t('ui.storage.RaidSection.back') }}</Button>
-              <Button @click="raidWiz.step = 3" :disabled="!raidCanAdvance || !raidWiz.name"
-                class="flex-1 justify-center">
-                {{ t('ui.storage.RaidSection.next') }}
-              </Button>
-            </div>
-          </div>
-
-          <!-- Step 3: Confirm -->
-          <div v-else-if="raidWiz.step === 3" class="p-5 space-y-4">
-            <Alert variant="destructive" class="flex items-start gap-3 p-4 text-base-content" role="note">
-              <TriangleAlertIcon class="w-5 h-5 text-error mt-0.5 shrink-0" aria-hidden="true" />
-              <div>
-                <div class="font-semibold text-error text-sm mb-1">{{ t('ui.storage.RaidSection.allDataOnSelectedDrives') }}</div>
-                <div class="text-xs text-error">
-                  {{ t('ui.storage.RaidSection.creatingThisRaidArrayWill') }}
-                </div>
-              </div>
-            </Alert>
-
-            <div class="space-y-1 text-xs text-base-content/70">
-              <div class="flex gap-2"><span class="w-20 text-base-content/80">{{ t('ui.storage.RaidSection.array') }}</span><span class="font-mono">/dev/{{ raidWiz.name }}</span></div>
-              <div class="flex gap-2"><span class="w-20 text-base-content/80">{{ t('ui.storage.RaidSection.level') }}</span><span>{{ selectedRaidLevel.name }}</span></div>
-              <div class="flex gap-2"><span class="w-20 text-base-content/80">{{ t('ui.storage.RaidSection.drives') }}</span><span class="font-mono">{{ raidWiz.devs.join(', ') }}</span></div>
-              <div class="flex gap-2"><span class="w-20 text-base-content/80">{{ t('ui.storage.RaidSection.capacity') }}</span>
-                <span v-if="wizardCapacity?.cap.valid">{{ t('uip.storage.RaidSection.usableOfRaw', { p0: fmtBytes(wizardCapacity.cap.usable), p1: fmtBytes(wizardCapacity.cap.raw), p2: wizardCapacity.cap.efficiency }) }}</span>
-                <span v-else>{{ selectedRaidLevel.capacityHint }}</span>
-              </div>
-              <div v-if="wizardCapacity?.cap.valid" class="flex gap-2"><span class="w-20 text-base-content/80">{{ t('ui.storage.RaidSection.redundancy') }}</span><span>{{ toleranceText(wizardCapacity.cap.faultTolerance, wizardCapacity.cap.maxFaultTolerance) }}</span></div>
-            </div>
-
-            <div>
-              <label class="block text-xs text-base-content/80 mb-1.5">
-                {{ t('ui.storage.RaidSection.type') }} <span class="font-bold text-base-content">{{ t('ui.storage.RaidSection.createRaid2') }}</span> {{ t('ui.storage.RaidSection.toConfirm') }}
-              </label>
-              <Input
-                v-model="raidWiz.confirm"
-                type="text"
-                :placeholder="t('ui.storage.RaidSection.createRaid2')"
-                class="w-full px-3 py-2 text-sm font-mono placeholder-base-content/70"
-              />
-            </div>
-
-            <p v-if="raidWiz.err" role="alert" class="px-1 status-text text-error"><span class="status-tag">[ERR]</span> {{ raidWiz.err }}</p>
-
-            <div class="flex gap-2">
-              <Button variant="outline" @click="raidWiz.step = 2" :disabled="raidWiz.busy" class="flex-1 justify-center">{{ t('ui.storage.RaidSection.back') }}</Button>
-              <Button variant="destructive"
-                @click="doCreateRaid"
-                :disabled="raidWiz.confirm !== 'CREATE RAID' || raidWiz.busy"
-                class="flex-1 justify-center"
-              >
-                <span v-if="raidWiz.busy">{{ t('ui.storage.RaidSection.creating') }}</span>
-                <span v-else>{{ t('ui.storage.RaidSection.createRaid3') }}</span>
-              </Button>
+      <!-- Step 3: Confirm -->
+      <div v-else-if="raidWiz.step === 3" class="p-5 space-y-4">
+        <Alert variant="destructive" class="flex items-start gap-3 p-4 text-base-content" role="note">
+          <TriangleAlertIcon class="w-5 h-5 text-error mt-0.5 shrink-0" aria-hidden="true" />
+          <div>
+            <div class="font-semibold text-error text-sm mb-1">{{ t('ui.storage.RaidSection.allDataOnSelectedDrives') }}</div>
+            <div class="text-xs text-error">
+              {{ t('ui.storage.RaidSection.creatingThisRaidArrayWill') }}
             </div>
           </div>
+        </Alert>
+
+        <div class="space-y-1 text-xs text-base-content/70">
+          <div class="flex gap-2"><span class="w-20 text-base-content/80">{{ t('ui.storage.RaidSection.array') }}</span><span class="font-mono">/dev/{{ raidWiz.name }}</span></div>
+          <div class="flex gap-2"><span class="w-20 text-base-content/80">{{ t('ui.storage.RaidSection.level') }}</span><span>{{ selectedRaidLevel.name }}</span></div>
+          <div class="flex gap-2"><span class="w-20 text-base-content/80">{{ t('ui.storage.RaidSection.drives') }}</span><span class="font-mono">{{ raidWiz.devs.join(', ') }}</span></div>
+          <div class="flex gap-2"><span class="w-20 text-base-content/80">{{ t('ui.storage.RaidSection.capacity') }}</span>
+            <span v-if="wizardCapacity?.cap.valid">{{ t('uip.storage.RaidSection.usableOfRaw', { p0: fmtBytes(wizardCapacity.cap.usable), p1: fmtBytes(wizardCapacity.cap.raw), p2: wizardCapacity.cap.efficiency }) }}</span>
+            <span v-else>{{ selectedRaidLevel.capacityHint }}</span>
+          </div>
+          <div v-if="wizardCapacity?.cap.valid" class="flex gap-2"><span class="w-20 text-base-content/80">{{ t('ui.storage.RaidSection.redundancy') }}</span><span>{{ toleranceText(wizardCapacity.cap.faultTolerance, wizardCapacity.cap.maxFaultTolerance) }}</span></div>
+        </div>
+
+        <div>
+          <label class="block text-xs text-base-content/80 mb-1.5">
+            {{ t('ui.storage.RaidSection.type') }} <span class="font-bold text-base-content">{{ t('ui.storage.RaidSection.createRaid2') }}</span> {{ t('ui.storage.RaidSection.toConfirm') }}
+          </label>
+          <Input
+            v-model="raidWiz.confirm"
+            type="text"
+            :placeholder="t('ui.storage.RaidSection.createRaid2')"
+            class="w-full px-3 py-2 text-sm font-mono placeholder-base-content/70"
+          />
+        </div>
+
+        <p v-if="raidWiz.err" role="alert" class="px-1 status-text text-error"><span class="status-tag">[ERR]</span> {{ raidWiz.err }}</p>
+
+        <div class="flex gap-2">
+          <Button variant="outline" @click="raidWiz.step = 2" :disabled="raidWiz.busy" class="flex-1 justify-center">{{ t('ui.storage.RaidSection.back') }}</Button>
+          <Button variant="destructive"
+            @click="doCreateRaid"
+            :disabled="raidWiz.confirm !== 'CREATE RAID' || raidWiz.busy"
+            class="flex-1 justify-center"
+          >
+            <span v-if="raidWiz.busy">{{ t('ui.storage.RaidSection.creating') }}</span>
+            <span v-else>{{ t('ui.storage.RaidSection.createRaid3') }}</span>
+          </Button>
+        </div>
+      </div>
 
     </Modal>
 

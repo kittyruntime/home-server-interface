@@ -34,9 +34,7 @@ const link = computed(() => created.value ? `${location.origin}/wall#${created.v
 
 async function run(fn: () => Promise<unknown>, ok: string) {
   busy.value = true; result.value = null
-  try { await fn(); result.value = { ok: true, text: ok }; await load() }
-  catch (e) { result.value = { ok: false, text: (e as Error).message } }
-  finally { busy.value = false }
+  try { await fn(); result.value = { ok: true, text: ok }; await load() } catch (e) { result.value = { ok: false, text: (e as Error).message } } finally { busy.value = false }
 }
 const create = () => run(async () => { created.value = (await trpc.dashboard.createWall.mutate(payload.value)).token }, t('widgets.wall.created'))
 const refresh = (w: Wall) => run(() => trpc.dashboard.updateWall.mutate({ id: w.id, ...payload.value }), t('widgets.wall.updated', { name: w.name }))

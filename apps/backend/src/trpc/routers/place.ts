@@ -1,12 +1,12 @@
-import { z } from "zod"
-import { TRPCError } from "@trpc/server"
-import { router, protectedProcedure, adminProcedure } from "../index"
-import { requestSync } from "../../nats"
-import { preparePlaceDir, syncSharesBestEffort } from "../../services/sharing.service"
-import { trashRequest } from "../../services/trash"
+import { z } from 'zod'
+import { TRPCError } from '@trpc/server'
+import { router, protectedProcedure, adminProcedure } from '../index'
+import { requestSync } from '../../nats'
+import { preparePlaceDir, syncSharesBestEffort } from '../../services/sharing.service'
+import { trashRequest } from '../../services/trash'
 
 async function accessiblePlaceIds(
-  ctx: { prisma: any; user: { userId: string; isAdmin: boolean } }
+  ctx: { prisma: any; user: { userId: string; isAdmin: boolean } },
 ): Promise<string[]> {
   const userGroups = await ctx.prisma.userGroup.findMany({
     where: { userId: ctx.user.userId },
@@ -21,9 +21,9 @@ async function accessiblePlaceIds(
     }),
     groupIds.length > 0
       ? ctx.prisma.groupPlacePermission.findMany({
-          where: { groupId: { in: groupIds }, canRead: true },
-          select: { placeId: true },
-        })
+        where: { groupId: { in: groupIds }, canRead: true },
+        select: { placeId: true },
+      })
       : Promise.resolve([]),
   ])
 
@@ -35,9 +35,9 @@ async function accessiblePlaceIds(
   ] as string[]
 }
 
-const graphemes = new Intl.Segmenter(undefined, { granularity: "grapheme" })
+const graphemes = new Intl.Segmenter(undefined, { granularity: 'grapheme' })
 // Built at runtime: the v flag is newer than the TypeScript target, not than Node 22.
-const RGI_EMOJI = new RegExp("^\\p{RGI_Emoji}$", "v")
+const RGI_EMOJI = new RegExp('^\\p{RGI_Emoji}$', 'v')
 
 function isSingleEmoji(value: string): boolean {
   return [...graphemes.segment(value)].length === 1 && RGI_EMOJI.test(value)
@@ -46,12 +46,12 @@ function isSingleEmoji(value: string): boolean {
 export const placeRouter = router({
   list: protectedProcedure.query(async ({ ctx }) => {
     if (ctx.user.isAdmin) {
-      return ctx.prisma.place.findMany({ orderBy: { createdAt: "asc" } })
+      return ctx.prisma.place.findMany({ orderBy: { createdAt: 'asc' } })
     }
     const ids = await accessiblePlaceIds(ctx)
     return ctx.prisma.place.findMany({
       where: { id: { in: ids } },
-      orderBy: { createdAt: "asc" },
+      orderBy: { createdAt: 'asc' },
     })
   }),
 
@@ -59,13 +59,13 @@ export const placeRouter = router({
     .input(z.object({ name: z.string().min(1), path: z.string().min(1) }))
     .mutation(async ({ ctx, input }) => {
       try {
-        const result = await requestSync<{ type: string }>("root.fs.stat", { path: input.path })
-        if (result.type !== "dir") {
-          throw new TRPCError({ code: "BAD_REQUEST", message: "Path is not a directory" })
+        const result = await requestSync<{ type: string }>('root.fs.stat', { path: input.path })
+        if (result.type !== 'dir') {
+          throw new TRPCError({ code: 'BAD_REQUEST', message: 'Path is not a directory' })
         }
       } catch (e) {
         if (e instanceof TRPCError) throw e
-        throw new TRPCError({ code: "BAD_REQUEST", message: "Path does not exist" })
+        throw new TRPCError({ code: 'BAD_REQUEST', message: 'Path does not exist' })
       }
 
       const place = await ctx.prisma.place.create({ data: { name: input.name, path: input.path } })
@@ -77,7 +77,7 @@ export const placeRouter = router({
   setIcon: adminProcedure
     .input(z.object({
       id: z.string(),
-      icon: z.string().max(32).refine(isSingleEmoji, "Use a single emoji").nullable(),
+      icon: z.string().max(32).refine(isSingleEmoji, 'Use a single emoji').nullable(),
     }))
     .mutation(({ ctx, input }) =>
       ctx.prisma.place.update({ where: { id: input.id }, data: { icon: input.icon } })),
@@ -93,13 +93,13 @@ export const placeRouter = router({
     }))
     .mutation(async ({ ctx, input }) => {
       const place = await ctx.prisma.place.findUnique({ where: { id: input.id } })
-      if (!place) throw new TRPCError({ code: "NOT_FOUND", message: "Place not found" })
+      if (!place) throw new TRPCError({ code: 'NOT_FOUND', message: 'Place not found' })
       ctx.audit.target = place.name
       if (!input.enabled && place.trashEnabled && input.emptyExisting) {
         try {
-          await trashRequest({ op: "empty", placeRoot: place.path }, 300_000)
+          await trashRequest({ op: 'empty', placeRoot: place.path }, 300_000)
         } catch (e: any) {
-          throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: e?.message ?? "Could not empty the trash" })
+          throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: e?.message ?? 'Could not empty the trash' })
         }
       }
       return ctx.prisma.place.update({
@@ -119,9 +119,9 @@ export const placeRouter = router({
     .input(z.object({ path: z.string().min(1) }))
     .mutation(async ({ input }) => {
       try {
-        await requestSync("root.fs.mkdirp", { path: input.path })
+        await requestSync('root.fs.mkdirp', { path: input.path })
       } catch (e: any) {
-        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: e?.message ?? "Failed to create directory" })
+        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: e?.message ?? 'Failed to create directory' })
       }
       return { ok: true }
     }),

@@ -1,13 +1,13 @@
-import { z } from "zod"
-import { router, adminProcedure } from "../index"
-import { syncSharesBestEffort } from "../../services/sharing.service"
+import { z } from 'zod'
+import { router, adminProcedure } from '../index'
+import { syncSharesBestEffort } from '../../services/sharing.service'
 
 export const groupRouter = router({
   list: adminProcedure.query(({ ctx }) =>
     ctx.prisma.group.findMany({
       select: { id: true, name: true, createdAt: true, members: { select: { userId: true } } },
-      orderBy: { name: "asc" },
-    })
+      orderBy: { name: 'asc' },
+    }),
   ),
 
   create: adminProcedure
@@ -30,7 +30,7 @@ export const groupRouter = router({
     .mutation(async ({ ctx, input }) => {
       await ctx.prisma.$transaction([
         ctx.prisma.userGroup.deleteMany({ where: { groupId: input.id } }),
-        ctx.prisma.userGroup.createMany({ data: input.userIds.map((userId) => ({ userId, groupId: input.id })) }),
+        ctx.prisma.userGroup.createMany({ data: input.userIds.map(userId => ({ userId, groupId: input.id })) }),
       ])
       void syncSharesBestEffort(ctx.prisma)
       return { ok: true }

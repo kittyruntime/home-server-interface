@@ -1,26 +1,26 @@
-import { mkdir, readFile, readdir, rename, rm, stat, writeFile } from "node:fs/promises"
-import path from "node:path"
-import crypto from "node:crypto"
-import { TRPCError } from "@trpc/server"
-import { parseComposeYaml, STACK_NAME_RE, type AppInput } from "@app/compose"
-import { requestSync } from "../nats"
+import { mkdir, readFile, readdir, rename, rm, stat, writeFile } from 'node:fs/promises'
+import path from 'node:path'
+import crypto from 'node:crypto'
+import { TRPCError } from '@trpc/server'
+import { parseComposeYaml, STACK_NAME_RE, type AppInput } from '@app/compose'
+import { requestSync } from '../nats'
 
-export const STACKS_DIR = process.env.HSI_CONTAINERS_DIR ?? "/opt/containers"
+export const STACKS_DIR = process.env.HSI_CONTAINERS_DIR ?? '/opt/containers'
 
 // Names end up as path segments under STACKS_DIR (compose.yaml ops, recursive
 // delete), so reject traversal/absolute/dotted names at the service boundary:
 // the router validates too, but the destructive primitives must not trust it.
 function assertValidStackName(name: string): void {
-  if (!STACK_NAME_RE.test(name)) throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid app name" })
+  if (!STACK_NAME_RE.test(name)) throw new TRPCError({ code: 'BAD_REQUEST', message: 'Invalid app name' })
 }
 
 export function stackFilePath(name: string): string {
   assertValidStackName(name)
-  return path.join(STACKS_DIR, name, "compose.yaml")
+  return path.join(STACKS_DIR, name, 'compose.yaml')
 }
 
 function sha256(s: string): string {
-  return crypto.createHash("sha256").update(s).digest("hex")
+  return crypto.createHash('sha256').update(s).digest('hex')
 }
 
 export interface StackSummary {
@@ -45,9 +45,9 @@ const lastWritten = new Map<string, string>()
 export function markStackWritten(name: string, hash: string) { lastWritten.set(name, hash) }
 
 export function stackStatus(observed: Array<{ status: string }>): string {
-  if (!observed.length) return "unknown"
-  if (observed.some(c => c.status === "running")) return "running"
-  return "stopped"
+  if (!observed.length) return 'unknown'
+  if (observed.some(c => c.status === 'running')) return 'running'
+  return 'stopped'
 }
 
 export async function scanStacks(): Promise<Array<{ name: string; content: string; hash: string }>> {
@@ -55,11 +55,11 @@ export async function scanStacks(): Promise<Array<{ name: string; content: strin
   try { entries = await readdir(STACKS_DIR) } catch { return [] }
   const out: Array<{ name: string; content: string; hash: string }> = []
   for (const name of entries.sort()) {
-    if (name.startsWith(".")) continue
+    if (name.startsWith('.')) continue
     try {
       const st = await stat(path.join(STACKS_DIR, name))
       if (!st.isDirectory()) continue
-      const content = await readFile(stackFilePath(name), "utf8")
+      const content = await readFile(stackFilePath(name), 'utf8')
       out.push({ name, content, hash: sha256(content) })
     } catch { /* no compose.yaml or unreadable - skip */ }
   }
@@ -86,8 +86,8 @@ function observedForStack(all: ObservedContainer[], name: string, services: stri
   // legacy mixed-case stack dirs.
   const lower = name.toLowerCase()
   return all.filter(c =>
-    c.labels["com.docker.compose.project"] === lower ||
-    (c.labels["com.docker.compose.service"] && services.includes(c.labels["com.docker.compose.service"])) ||
+    c.labels['com.docker.compose.project'] === lower ||
+    (c.labels['com.docker.compose.service'] && services.includes(c.labels['com.docker.compose.service'])) ||
     services.includes(c.name),
   )
 }
@@ -102,7 +102,7 @@ function stackView(s: { name: string; content: string; hash: string }, all: Obse
   const observed = observedForStack(all, s.name, parsed.services)
   const status = stackStatus(observed)
   const pendingApply = parsed.services.length > 0 &&
-    !observed.some(c => c.labels["com.docker.compose.project"] === s.name.toLowerCase())
+    !observed.some(c => c.labels['com.docker.compose.project'] === s.name.toLowerCase())
   const lw = lastWritten.get(s.name)
   return {
     name: s.name, path: path.dirname(stackFilePath(s.name)), hash: s.hash,
@@ -117,8 +117,8 @@ function stackView(s: { name: string; content: string; hash: string }, all: Obse
  * an unreachable worker or Docker is an error, never "no container".
  */
 export async function stackStatusNow(name: string): Promise<string> {
-  const content = await readFile(stackFilePath(name), "utf8")
-  const all = await requestSync<ObservedContainer[]>("root.container.listAll", {}, 10_000)
+  const content = await readFile(stackFilePath(name), 'utf8')
+  const all = await requestSync<ObservedContainer[]>('root.container.listAll', {}, 10_000)
   return stackStatus(observedForStack(all, name, parseComposeYaml(content).services))
 }
 
@@ -126,11 +126,11 @@ export async function stackStatusNow(name: string): Promise<string> {
 // start, restart and pin). Same names as scanStacks: a directory entry that
 // is not hidden.
 export async function getStack(name: string) {
-  const notFound = () => new TRPCError({ code: "NOT_FOUND", message: "App not found" })
-  if (!name || name.startsWith(".") || name.includes("/") || name.includes("\\")) throw notFound()
+  const notFound = () => new TRPCError({ code: 'NOT_FOUND', message: 'App not found' })
+  if (!name || name.startsWith('.') || name.includes('/') || name.includes('\\')) throw notFound()
   let content: string
   try {
-    content = await readFile(stackFilePath(name), "utf8")
+    content = await readFile(stackFilePath(name), 'utf8')
   } catch {
     throw notFound()
   }
@@ -147,7 +147,7 @@ export async function writeStack(name: string, content: string): Promise<string>
   await mkdir(dir, { recursive: true })
   const hash = sha256(content)
   const tmp = path.join(dir, `.compose-${process.pid}-${Date.now()}.tmp`)
-  await writeFile(tmp, content, "utf8")
+  await writeFile(tmp, content, 'utf8')
   await rename(tmp, stackFilePath(name))
   markStackWritten(name, hash)
   return hash
@@ -155,17 +155,17 @@ export async function writeStack(name: string, content: string): Promise<string>
 
 // The compose file an app update replaced (#26), kept next to it for a rollback.
 export function previousFilePath(name: string): string {
-  return stackFilePath(name) + ".previous"
+  return stackFilePath(name) + '.previous'
 }
 
 export async function readPreviousStack(name: string): Promise<string | null> {
-  try { return await readFile(previousFilePath(name), "utf8") } catch { return null }
+  try { return await readFile(previousFilePath(name), 'utf8') } catch { return null }
 }
 
 export async function writePreviousStack(name: string, content: string): Promise<void> {
   const tmp = path.join(path.dirname(stackFilePath(name)), `.previous-${process.pid}-${Date.now()}.tmp`)
   try {
-    await writeFile(tmp, content, "utf8")
+    await writeFile(tmp, content, 'utf8')
     await rename(tmp, previousFilePath(name))
   } catch (e) {
     // A leftover would also end up in configuration backups.
@@ -189,8 +189,7 @@ let dockerCache: { at: number; list: DockerContainerLite[] } | null = null
 export async function dockerContainers(): Promise<DockerContainerLite[]> {
   if (dockerCache && Date.now() - dockerCache.at < 5_000) return dockerCache.list
   let list: DockerContainerLite[] = []
-  try { list = await requestSync<DockerContainerLite[]>("root.container.listAll", {}, 10_000) }
-  catch { /* worker/docker unavailable - treat as empty */ }
+  try { list = await requestSync<DockerContainerLite[]>('root.container.listAll', {}, 10_000) } catch { /* worker/docker unavailable - treat as empty */ }
   dockerCache = { at: Date.now(), list }
   return list
 }

@@ -1,6 +1,6 @@
-import * as os from "os"
-import * as fs from "fs"
-import { requestSync } from "../nats"
+import * as os from 'os'
+import * as fs from 'fs'
+import { requestSync } from '../nats'
 
 // Live performance for the Monitor app: per core CPU, memory detail, each disk
 // and each network port, plus the process list. Rates come from the difference
@@ -16,7 +16,7 @@ export interface CpuTimes { total: number; idle: number }
 /** /proc/stat: the machine total first, then one entry per core. */
 export function parseCpuTimes(stat: string): CpuTimes[] {
   const out: CpuTimes[] = []
-  for (const line of stat.split("\n")) {
+  for (const line of stat.split('\n')) {
     if (!/^cpu\d*\s/.test(line)) continue
     const v = line.trim().split(/\s+/).slice(1, 9).map(Number)
     const total = v.reduce((a, b) => a + (Number.isFinite(b) ? b : 0), 0)
@@ -44,7 +44,7 @@ export interface MemoryDetail {
 
 export function parseMeminfo(text: string): MemoryDetail {
   const kb: Record<string, number> = {}
-  for (const line of text.split("\n")) {
+  for (const line of text.split('\n')) {
     const m = /^(\w+):\s+(\d+)/.exec(line)
     if (m) kb[m[1]!] = Number(m[2]) * 1024
   }
@@ -69,7 +69,7 @@ export function isWholeDisk(name: string): boolean {
 /** /proc/diskstats in bytes (sectors are always 512 bytes there). */
 export function parseDiskstats(text: string): Record<string, DiskCounters> {
   const out: Record<string, DiskCounters> = {}
-  for (const line of text.split("\n")) {
+  for (const line of text.split('\n')) {
     const f = line.trim().split(/\s+/)
     const name = f[2]
     if (!name || f.length < 13 || !isWholeDisk(name)) continue
@@ -92,8 +92,8 @@ export function diskRates(prev: DiskCounters, cur: DiskCounters, dtMs: number) {
 
 export function parseNetDev(text: string): Record<string, { rx: number; tx: number }> {
   const out: Record<string, { rx: number; tx: number }> = {}
-  for (const line of text.split("\n").slice(2)) {
-    const [iface, rest] = line.split(":")
+  for (const line of text.split('\n').slice(2)) {
+    const [iface, rest] = line.split(':')
     if (!iface?.trim() || !rest) continue
     const cols = rest.trim().split(/\s+/)
     out[iface.trim()] = { rx: Number(cols[0] ?? 0), tx: Number(cols[8] ?? 0) }
@@ -111,9 +111,9 @@ export interface RawProcess {
   kind?: ProcessKind; owner?: string
 }
 
-export type ProcessKind = "system" | "hsi" | "app" | "user"
+export type ProcessKind = 'system' | 'hsi' | 'app' | 'user'
 
-export interface ProcessRow extends Omit<RawProcess, "ticks" | "read" | "write" | "kind" | "owner"> {
+export interface ProcessRow extends Omit<RawProcess, 'ticks' | 'read' | 'write' | 'kind' | 'owner'> {
   kind: ProcessKind
   owner: string
   /** Share of the whole machine, like the CPU graph. */
@@ -136,8 +136,8 @@ export function processRates(seen: Seen, list: RawProcess[], dtSec: number, core
     const ok = prev && dtSec > 0
     return {
       ...p,
-      kind: p.kind ?? "system",
-      owner: p.owner ?? "",
+      kind: p.kind ?? 'system',
+      owner: p.owner ?? '',
       cpu: ok ? round1(Math.min(100, Math.max(0, ((ticks - prev.ticks) / USER_HZ / dtSec / Math.max(1, cores)) * 100))) : 0,
       readBps: ok ? Math.round(Math.max(0, read - prev.read) / dtSec) : 0,
       writeBps: ok ? Math.round(Math.max(0, write - prev.write) / dtSec) : 0,
@@ -148,46 +148,46 @@ export function processRates(seen: Seen, list: RawProcess[], dtSec: number, core
 
 // ── Sampling ─────────────────────────────────────────────────────────────────
 
-const read = (p: string) => { try { return fs.readFileSync(p, "utf8") } catch { return "" } }
+const read = (p: string) => { try { return fs.readFileSync(p, 'utf8') } catch { return '' } }
 const sysNum = (p: string) => { const n = Number(read(p).trim()); return Number.isFinite(n) ? n : null }
 
 interface Reading { at: number; cpu: CpuTimes[]; disks: Record<string, DiskCounters>; net: Record<string, { rx: number; tx: number }> }
 
 function takeReading(): Reading {
-  return { at: Date.now(), cpu: parseCpuTimes(read("/proc/stat")), disks: parseDiskstats(read("/proc/diskstats")), net: parseNetDev(read("/proc/net/dev")) }
+  return { at: Date.now(), cpu: parseCpuTimes(read('/proc/stat')), disks: parseDiskstats(read('/proc/diskstats')), net: parseNetDev(read('/proc/net/dev')) }
 }
 
 /** Ports worth showing: real hardware and bonds, not loopback, bridges or container links. */
 function shownPort(name: string): boolean {
-  return name !== "lo" && (fs.existsSync(`/sys/class/net/${name}/device`) || /^bond\d+$/.test(name))
+  return name !== 'lo' && (fs.existsSync(`/sys/class/net/${name}/device`) || /^bond\d+$/.test(name))
 }
 
 function countProcesses(): number {
-  try { return fs.readdirSync("/proc").filter(n => /^\d+$/.test(n)).length } catch { return 0 }
+  try { return fs.readdirSync('/proc').filter(n => /^\d+$/.test(n)).length } catch { return 0 }
 }
 
 function buildPerf(prev: Reading, cur: Reading) {
   const dt = cur.at - prev.at
   const busy = cpuBusy(prev.cpu, cur.cpu)
   const cpus = os.cpus()
-  const loadavg = read("/proc/loadavg").trim().split(/\s+/)
-  const threads = Number(loadavg[3]?.split("/")[1] ?? 0)
+  const loadavg = read('/proc/loadavg').trim().split(/\s+/)
+  const threads = Number(loadavg[3]?.split('/')[1] ?? 0)
   const addrs = os.networkInterfaces()
   return {
     at: cur.at,
     uptime: Math.floor(os.uptime()),
     cpu: {
-      model: cpus[0]?.model?.replace(/\s+/g, " ").trim() ?? "",
+      model: cpus[0]?.model?.replace(/\s+/g, ' ').trim() ?? '',
       cores: cpus.length,
       usage: busy[0] ?? 0,
       perCore: busy.slice(1),
       mhz: cpus.length ? Math.round(cpus.reduce((a, c) => a + c.speed, 0) / cpus.length) : 0,
-      maxMhz: (() => { const k = sysNum("/sys/devices/system/cpu/cpu0/cpufreq/cpuinfo_max_freq"); return k ? Math.round(k / 1000) : null })(),
+      maxMhz: (() => { const k = sysNum('/sys/devices/system/cpu/cpu0/cpufreq/cpuinfo_max_freq'); return k ? Math.round(k / 1000) : null })(),
       loadavg: os.loadavg() as [number, number, number],
       processes: countProcesses(),
       threads: Number.isFinite(threads) ? threads : 0,
     },
-    memory: parseMeminfo(read("/proc/meminfo")),
+    memory: parseMeminfo(read('/proc/meminfo')),
     disks: Object.entries(cur.disks).map(([name, c]) => {
       const sectors = sysNum(`/sys/block/${name}/size`)
       return {
@@ -205,7 +205,7 @@ function buildPerf(prev: Reading, cur: Reading) {
         name,
         rxBps: dt > 0 ? Math.round(Math.max(0, c.rx - p.rx) / (dt / 1000)) : 0,
         txBps: dt > 0 ? Math.round(Math.max(0, c.tx - p.tx) / (dt / 1000)) : 0,
-        up: read(`/sys/class/net/${name}/operstate`).trim() === "up",
+        up: read(`/sys/class/net/${name}/operstate`).trim() === 'up',
         speedMbps: speed && speed > 0 ? speed : null,
         mac: read(`/sys/class/net/${name}/address`).trim() || null,
         addrs: (addrs[name] ?? []).filter(a => !a.internal).map(a => ({ addr: a.address, family: a.family as string })),
@@ -239,7 +239,7 @@ let procLast: ProcessRow[] | null = null
 export async function processSnapshot(): Promise<ProcessRow[]> {
   const now = Date.now()
   if (procLast && now - procAt < MIN_WINDOW_MS) return procLast
-  const list = await requestSync<RawProcess[]>("root.process.list", {}, 15_000)
+  const list = await requestSync<RawProcess[]>('root.process.list', {}, 15_000)
   const r = processRates(seen, list, procAt ? (now - procAt) / 1000 : 0, os.cpus().length)
   seen = r.seen
   procAt = now
@@ -248,6 +248,6 @@ export async function processSnapshot(): Promise<ProcessRow[]> {
 }
 
 export async function endProcess(pid: number, start: string, force: boolean) {
-  await requestSync("root.process.kill", { pid, start, force })
+  await requestSync('root.process.kill', { pid, start, force })
   procLast = null
 }

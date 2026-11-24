@@ -1,5 +1,5 @@
-import type { VNode } from "vue"
-import { createTextVNode, Fragment } from "vue"
+import type { VNode } from 'vue'
+import { createTextVNode, Fragment } from 'vue'
 
 /**
  * Slot content as a flat list of vnodes. A fragment is replaced by its
@@ -8,11 +8,11 @@ import { createTextVNode, Fragment } from "vue"
  */
 export function flatten(nodes: unknown): VNode[] {
   if (!Array.isArray(nodes))
-    return nodes === undefined || nodes === null || typeof nodes === "boolean" ? [] : flatten([nodes])
+    return nodes === undefined || nodes === null || typeof nodes === 'boolean' ? [] : flatten([nodes])
   return nodes.flatMap((node): VNode[] => {
-    if (node === undefined || node === null || typeof node === "boolean")
+    if (node === undefined || node === null || typeof node === 'boolean')
       return []
-    if (typeof node === "string" || typeof node === "number")
+    if (typeof node === 'string' || typeof node === 'number')
       return [createTextVNode(String(node))]
     if (Array.isArray(node))
       return flatten(node)

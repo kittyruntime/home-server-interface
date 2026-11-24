@@ -2,13 +2,13 @@
 // they run, and the summary of an executed plan kept in the audit log.
 
 export const PLAN_OPS = [
-  "format", "part.init", "part.create", "part.delete",
-  "pv.create", "vg.create", "lv.create", "lv.remove", "vg.remove",
-  "mount", "umount", "raid.create", "raid.stop",
-  "raid.fail", "raid.remove", "raid.add", "import.assemble", "import.activate",
-  "volume.expand", "storage.reapply", "storage.accept", "system.identity", "network.ipv4",
-  "tls.enable", "tls.useLocal", "tls.import", "tls.proxy", "tls.standardPorts",
-  "backup.plan.save", "backup.plan.remove", "backup.repository.save", "backup.repository.remove", "backup.restore",
+  'format', 'part.init', 'part.create', 'part.delete',
+  'pv.create', 'vg.create', 'lv.create', 'lv.remove', 'vg.remove',
+  'mount', 'umount', 'raid.create', 'raid.stop',
+  'raid.fail', 'raid.remove', 'raid.add', 'import.assemble', 'import.activate',
+  'volume.expand', 'storage.reapply', 'storage.accept', 'system.identity', 'network.ipv4',
+  'tls.enable', 'tls.useLocal', 'tls.import', 'tls.proxy', 'tls.standardPorts',
+  'backup.plan.save', 'backup.plan.remove', 'backup.repository.save', 'backup.repository.remove', 'backup.restore',
 ] as const
 
 export type PlanOp = typeof PLAN_OPS[number]
@@ -39,10 +39,10 @@ export function planAuditMeta(op: string, steps: PlanStep[], results: StepResult
       kind: s.kind,
       target: s.target,
       summary: s.summary,
-      ...(s.command ? { command: s.command.join(" ") } : {}),
+      ...(s.command ? { command: s.command.join(' ') } : {}),
       ...(s.diff ? { diff: s.diff } : {}),
       ...(s.destructive ? { destructive: true } : {}),
-      status: results[i]?.status ?? "not-run",
+      status: results[i]?.status ?? 'not-run',
       ...(results[i]?.error ? { error: results[i]!.error } : {}),
     })),
   }

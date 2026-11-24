@@ -7,7 +7,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
 const { t } = useI18n()
 
-
 // The page of one storage object (#40): a header with the object's name, its
 // chips, its key figure and its actions, then Overview / Structure / Activity.
 

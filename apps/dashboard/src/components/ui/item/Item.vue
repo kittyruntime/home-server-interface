@@ -1,17 +1,17 @@
 <script setup lang="ts">
-import type { PrimitiveProps } from "../Primitive.vue"
-import type { HTMLAttributes } from "vue"
-import type { ItemVariants } from "."
-import { cn } from "@/lib/utils"
-import Primitive from "../Primitive.vue"
-import { itemVariants } from "."
+import type { PrimitiveProps } from '../Primitive.vue'
+import type { HTMLAttributes } from 'vue'
+import type { ItemVariants } from '.'
+import { cn } from '@/lib/utils'
+import Primitive from '../Primitive.vue'
+import { itemVariants } from '.'
 
 const props = withDefaults(defineProps<PrimitiveProps & {
-  class?: HTMLAttributes["class"]
-  variant?: ItemVariants["variant"]
-  size?: ItemVariants["size"]
+  class?: HTMLAttributes['class']
+  variant?: ItemVariants['variant']
+  size?: ItemVariants['size']
 }>(), {
-  as: "div",
+  as: 'div',
 })
 </script>
 

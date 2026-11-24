@@ -188,7 +188,6 @@ export default {
       readOnly: 'Read only',
       readWrite: 'Read and write',
       guest: 'Guest access',
-      hidden: 'Hidden',
       unavailable: 'Unavailable',
       allShared: 'Every place is already shared',
     },

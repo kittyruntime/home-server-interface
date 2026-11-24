@@ -1,25 +1,25 @@
-import { z } from "zod"
-import crypto from "node:crypto"
-import { basename, normalize } from "node:path"
-import bcrypt from "bcryptjs"
-import { TRPCError } from "@trpc/server"
-import { router, protectedProcedure, publicProcedure } from "../index"
-import { checkPathPerm } from "./fs"           // see Step 2: must be exported
-import { verifyShareToken, signShareToken } from "../auth"
-import { requestSync } from "../../nats"
+import { z } from 'zod'
+import crypto from 'node:crypto'
+import { basename, normalize } from 'node:path'
+import bcrypt from 'bcryptjs'
+import { TRPCError } from '@trpc/server'
+import { router, protectedProcedure, publicProcedure } from '../index'
+import { checkPathPerm } from './fs'           // see Step 2: must be exported
+import { verifyShareToken, signShareToken } from '../auth'
+import { requestSync } from '../../nats'
 
 // URL-safe random slug, ~22 chars, independent of the row uuid.
 export function randomToken(): string {
-  return crypto.randomBytes(16).toString("base64url")
+  return crypto.randomBytes(16).toString('base64url')
 }
 
-type LinkState = { ok: boolean; reason?: "disabled" | "expired" | "exhausted" }
+type LinkState = { ok: boolean; reason?: 'disabled' | 'expired' | 'exhausted' }
 export function resolveShareState(link: {
   disabled: boolean; expiresAt: Date | null; maxDownloads: number | null; downloads: number
 }): LinkState {
-  if (link.disabled) return { ok: false, reason: "disabled" }
-  if (link.expiresAt && link.expiresAt.getTime() < Date.now()) return { ok: false, reason: "expired" }
-  if (link.maxDownloads != null && link.downloads >= link.maxDownloads) return { ok: false, reason: "exhausted" }
+  if (link.disabled) return { ok: false, reason: 'disabled' }
+  if (link.expiresAt && link.expiresAt.getTime() < Date.now()) return { ok: false, reason: 'expired' }
+  if (link.maxDownloads != null && link.downloads >= link.maxDownloads) return { ok: false, reason: 'exhausted' }
   return { ok: true }
 }
 
@@ -35,9 +35,9 @@ export type LoadedLink = {
 // Returns the link + resolved creator context, or a typed failure. Does NOT
 // check the password (callers decide when a token is required).
 export async function loadLink(prisma: any, token: string):
-  Promise<{ ok: true; link: LoadedLink } | { ok: false; reason: "notfound" | "disabled" | "expired" | "exhausted" | "creator" }> {
+Promise<{ ok: true; link: LoadedLink } | { ok: false; reason: 'notfound' | 'disabled' | 'expired' | 'exhausted' | 'creator' }> {
   const row = await prisma.shareLink.findUnique({ where: { token } })
-  if (!row) return { ok: false, reason: "notfound" }
+  if (!row) return { ok: false, reason: 'notfound' }
   const state = resolveShareState(row)
   if (!state.ok) return { ok: false, reason: state.reason! }
 
@@ -45,10 +45,10 @@ export async function loadLink(prisma: any, token: string):
   const creator = await prisma.user.findUnique({
     where: { id: row.creatorId }, select: { username: true },
   })
-  if (!creator) return { ok: false, reason: "creator" }
+  if (!creator) return { ok: false, reason: 'creator' }
   // Authorization only: does not determine the worker containment root.
   const authRoot = await creatorAllowedRoot(prisma, row.creatorId, row.path)
-  if (authRoot === undefined) return { ok: false, reason: "creator" }
+  if (authRoot === undefined) return { ok: false, reason: 'creator' }
 
   return {
     ok: true,
@@ -68,7 +68,7 @@ async function creatorAllowedRoot(prisma: any, userId: string, path: string): Pr
   const u = await prisma.user.findUnique({ where: { id: userId }, select: { isAdmin: true } })
   if (u?.isAdmin) return null
   const places = await prisma.place.findMany()
-  const place = places.find((p: any) => path === p.path || path.startsWith(p.path + "/"))
+  const place = places.find((p: any) => path === p.path || path.startsWith(p.path + '/'))
   if (!place) return undefined
   const groupIds = (await prisma.userGroup.findMany({ where: { userId }, select: { groupId: true } })).map((g: any) => g.groupId)
   const [up, gp] = await Promise.all([
@@ -80,9 +80,9 @@ async function creatorAllowedRoot(prisma: any, userId: string, path: string): Pr
 
 // Validates a requested relative subPath stays within the shared dir root.
 export function resolveSubPath(link: LoadedLink, subPath: string): string | null {
-  const clean = normalize(subPath || "").replace(/^(\.\.(\/|\\|$))+/, "")
-  const abs = normalize(link.path + "/" + clean)
-  if (abs !== link.path && !abs.startsWith(link.path + "/")) return null
+  const clean = normalize(subPath || '').replace(/^(\.\.(\/|\\|$))+/, '')
+  const abs = normalize(link.path + '/' + clean)
+  if (abs !== link.path && !abs.startsWith(link.path + '/')) return null
   return abs
 }
 
@@ -98,18 +98,18 @@ export const shareLinkRouter = router({
       const p = normalize(input.path)
 
       // Authorize: caller must have canShare on the place containing `path`.
-      const allowedRoot = await checkPathPerm(ctx, p, "canShare")
+      const allowedRoot = await checkPathPerm(ctx, p, 'canShare')
 
       // Determine file vs dir via the privileged stat (same channel fs uses).
       const linuxUser = await ctx.prisma.user
         .findUnique({ where: { id: ctx.user.userId }, select: { username: true } })
-        .then((u: { username: string | null } | null) => u?.username ?? "")
+        .then((u: { username: string | null } | null) => u?.username ?? '')
       let isDir: boolean
       try {
-        const s = await requestStat(p, linuxUser, allowedRoot ?? "")
-        isDir = s.type === "dir"
+        const s = await requestStat(p, linuxUser, allowedRoot ?? '')
+        isDir = s.type === 'dir'
       } catch {
-        throw new TRPCError({ code: "NOT_FOUND", message: "Path not found" })
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'Path not found' })
       }
 
       const token = randomToken()
@@ -132,7 +132,7 @@ export const shareLinkRouter = router({
   listMine: protectedProcedure.query(async ({ ctx }) => {
     const links = await ctx.prisma.shareLink.findMany({
       where: ctx.user.isAdmin ? {} : { creatorId: ctx.user.userId },
-      orderBy: { createdAt: "desc" },
+      orderBy: { createdAt: 'desc' },
     })
     return links.map((l: any) => ({
       id: l.id, token: l.token, path: l.path, isDir: l.isDir,
@@ -165,7 +165,7 @@ export const shareLinkRouter = router({
     .input(z.object({ token: z.string().max(200), accessToken: z.string().max(4096).optional() }))
     .query(async ({ ctx, input }) => {
       const res = await loadLink(ctx.prisma, input.token)
-      if (!res.ok) return { needsPassword: false, state: res.reason === "creator" ? "notfound" as const : res.reason }
+      if (!res.ok) return { needsPassword: false, state: res.reason === 'creator' ? 'notfound' as const : res.reason }
       const { link } = res
       if (link.passwordHash) {
         // Only reveal metadata once the caller proves they unlocked this link.
@@ -173,11 +173,11 @@ export const shareLinkRouter = router({
         if (input.accessToken) {
           try { unlocked = verifyShareToken(input.accessToken).shareLinkId === link.id } catch { unlocked = false }
         }
-        if (!unlocked) return { needsPassword: true, state: "ok" as const }
+        if (!unlocked) return { needsPassword: true, state: 'ok' as const }
       }
       return {
-        needsPassword: false, state: "ok" as const,
-        kind: link.isDir ? "dir" as const : "file" as const,
+        needsPassword: false, state: 'ok' as const,
+        kind: link.isDir ? 'dir' as const : 'file' as const,
         name: basename(link.path),
         ...(link.isDir ? {} : { size: await statSize(link) }),
       }
@@ -192,38 +192,38 @@ export const shareLinkRouter = router({
       // auth.login: every attempt against a password-protected link, success or
       // not, since this is the one write path on a public share link that isn't
       // otherwise attributable to anyone.
-      const ip = ctx.req.ip ?? ctx.req.headers["x-forwarded-for"]?.toString()
+      const ip = ctx.req.ip ?? ctx.req.headers['x-forwarded-for']?.toString()
       const logAttempt = (success: boolean) => {
         void ctx.prisma.auditLog.create({
-          data: { action: "shareLink.unlock", target: input.token, ip, success },
+          data: { action: 'shareLink.unlock', target: input.token, ip, success },
         }).catch(() => {})
       }
 
       const res = await loadLink(ctx.prisma, input.token)
-      if (!res.ok) { logAttempt(false); throw new TRPCError({ code: "NOT_FOUND", message: "Link unavailable" }) }
+      if (!res.ok) { logAttempt(false); throw new TRPCError({ code: 'NOT_FOUND', message: 'Link unavailable' }) }
       if (!res.link.passwordHash) { logAttempt(true); return { accessToken: signShareToken(res.link.id) } }
       const ok = await bcrypt.compare(input.password, res.link.passwordHash)
       logAttempt(ok)
-      if (!ok) throw new TRPCError({ code: "UNAUTHORIZED", message: "Wrong password" })
+      if (!ok) throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Wrong password' })
       return { accessToken: signShareToken(res.link.id) }
     }),
 
   browse: publicProcedure
-    .input(z.object({ token: z.string().max(200), subPath: z.string().max(4096).default(""), accessToken: z.string().max(4096).optional() }))
+    .input(z.object({ token: z.string().max(200), subPath: z.string().max(4096).default(''), accessToken: z.string().max(4096).optional() }))
     .query(async ({ ctx, input }) => {
       const res = await loadLink(ctx.prisma, input.token)
-      if (!res.ok || !res.link.isDir) throw new TRPCError({ code: "NOT_FOUND", message: "Not a folder" })
+      if (!res.ok || !res.link.isDir) throw new TRPCError({ code: 'NOT_FOUND', message: 'Not a folder' })
       requireAccess(res.link, input.accessToken)
       const abs = resolveSubPath(res.link, input.subPath)
-      if (!abs) throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid path" })
-      let entries: { name: string; type: "dir" | "file"; size: number | null }[]
+      if (!abs) throw new TRPCError({ code: 'BAD_REQUEST', message: 'Invalid path' })
+      let entries: { name: string; type: 'dir' | 'file'; size: number | null }[]
       try {
-        entries = await requestSync<{ name: string; type: "dir" | "file"; size: number | null }[]>(
-          "root.fs.list",
-          { path: abs, linuxUsername: res.link.linuxUser, allowedRoot: res.link.allowedRoot ?? "" },
+        entries = await requestSync<{ name: string; type: 'dir' | 'file'; size: number | null }[]>(
+          'root.fs.list',
+          { path: abs, linuxUsername: res.link.linuxUser, allowedRoot: res.link.allowedRoot ?? '' },
         )
       } catch {
-        throw new TRPCError({ code: "NOT_FOUND", message: "Not available" })
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'Not available' })
       }
       return { entries }
     }),
@@ -232,39 +232,39 @@ export const shareLinkRouter = router({
 // Enforces the share access token on password-protected links.
 function requireAccess(link: LoadedLink, accessToken?: string) {
   if (!link.passwordHash) return
-  if (!accessToken) throw new TRPCError({ code: "UNAUTHORIZED", message: "Password required" })
+  if (!accessToken) throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Password required' })
   let payload: ReturnType<typeof verifyShareToken>
   try {
     payload = verifyShareToken(accessToken)
   } catch {
-    throw new TRPCError({ code: "UNAUTHORIZED", message: "Invalid token" })
+    throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Invalid token' })
   }
-  if (payload.shareLinkId !== link.id) throw new TRPCError({ code: "UNAUTHORIZED", message: "Invalid token" })
+  if (payload.shareLinkId !== link.id) throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Invalid token' })
 }
 
 async function statSize(link: LoadedLink): Promise<number | null> {
   try {
     const s = await requestSync<{ type: string; size: number | null }>(
-      "root.fs.stat", { path: link.path, linuxUsername: link.linuxUser, allowedRoot: link.allowedRoot ?? "" },
+      'root.fs.stat', { path: link.path, linuxUsername: link.linuxUser, allowedRoot: link.allowedRoot ?? '' },
     )
     return s.size
   } catch {
-    throw new TRPCError({ code: "NOT_FOUND", message: "Not available" })
+    throw new TRPCError({ code: 'NOT_FOUND', message: 'Not available' })
   }
 }
 
 async function assertOwnerOrAdmin(ctx: any, id: string) {
   const link = await ctx.prisma.shareLink.findUnique({ where: { id }, select: { creatorId: true } })
-  if (!link) throw new TRPCError({ code: "NOT_FOUND", message: "Link not found" })
+  if (!link) throw new TRPCError({ code: 'NOT_FOUND', message: 'Link not found' })
   if (!ctx.user.isAdmin && link.creatorId !== ctx.user.userId)
-    throw new TRPCError({ code: "FORBIDDEN", message: "Not your link" })
+    throw new TRPCError({ code: 'FORBIDDEN', message: 'Not your link' })
 }
 
 // Privileged stat helper (mirrors fs.ts readText's stat call).
 async function requestStat(path: string, linuxUsername: string, allowedRoot: string): Promise<{ type: string; size: number | null }> {
-  const { requestSync } = await import("../../nats")
+  const { requestSync } = await import('../../nats')
   return requestSync<{ type: string; size: number | null }>(
-    "root.fs.stat",
+    'root.fs.stat',
     { path, linuxUsername, allowedRoot },
   )
 }

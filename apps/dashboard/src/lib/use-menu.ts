@@ -132,7 +132,7 @@ export function useMenuContent(ctx: MenuContext, options: MenuContentOptions) {
     ignorePointerdown: event =>
       ctx.kind === 'context' && !ctx.isSub && event.button === 2
       && !!ctx.trigger.value && ctx.trigger.value.contains(event.target as Node),
-    onPlaced: (el) => {
+    onPlaced: el => {
       if (ctx.focus === 'first') menuItems(el).find(item => !isMenuItemDisabled(item))?.focus({ preventScroll: true })
       else if (ctx.focus === 'content') el.focus({ preventScroll: true })
     },

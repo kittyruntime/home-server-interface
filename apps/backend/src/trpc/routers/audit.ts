@@ -1,5 +1,5 @@
-import { z } from "zod"
-import { router, adminProcedure } from "../index"
+import { z } from 'zod'
+import { router, adminProcedure } from '../index'
 
 export const auditRouter = router({
   list: adminProcedure
@@ -8,7 +8,7 @@ export const auditRouter = router({
       limit:  z.number().int().min(1).max(200).default(50),
       userId: z.string().optional(),
       action: z.string().optional(),
-      via:    z.enum(["dashboard", "mcp", "assistant"]).optional(),
+      via:    z.enum(['dashboard', 'mcp', 'assistant']).optional(),
     }))
     .query(async ({ ctx, input: asked }) => {
       // A wall display reads what the Journal widget shows: the latest entries.
@@ -22,7 +22,7 @@ export const auditRouter = router({
         ctx.prisma.auditLog.count({ where }),
         ctx.prisma.auditLog.findMany({
           where,
-          orderBy: { createdAt: "desc" },
+          orderBy: { createdAt: 'desc' },
           skip:  input.page * input.limit,
           take:  input.limit,
           include: {

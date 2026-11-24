@@ -80,7 +80,7 @@ let standaloneMod: typeof import('prettier/standalone') | null = null
 export async function formatContent(
   filename: string,
   content: string,
-  cursorOffset = 0
+  cursorOffset = 0,
 ): Promise<{ formatted: string; cursorOffset: number }> {
   const entry = getFormatter(filename)
   if (!entry) throw new Error(`No formatter for ${filename}`)

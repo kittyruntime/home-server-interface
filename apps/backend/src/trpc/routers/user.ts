@@ -1,26 +1,26 @@
-import { z } from "zod"
-import { TRPCError } from "@trpc/server"
-import { router, protectedProcedure, userManagerProcedure, adminProcedure, CAPABILITIES } from "../index"
-import { userSelect, changePassword, reLinuxUsername, getIdentityStatus, assertCreatable, createUserRecord } from "../../services/user.service"
-import { requestSync } from "../../nats"
-import { currentSmbSettings, desiredNfsExports, desiredSftpUsers, desiredShareDefs, syncPlaceAccess, withShareLock } from "../../services/sharing.service"
-import { planAuditMeta } from "../../services/storage-plan"
+import { z } from 'zod'
+import { TRPCError } from '@trpc/server'
+import { router, protectedProcedure, userManagerProcedure, adminProcedure, CAPABILITIES } from '../index'
+import { userSelect, changePassword, reLinuxUsername, getIdentityStatus, assertCreatable, createUserRecord } from '../../services/user.service'
+import { requestSync } from '../../nats'
+import { currentSmbSettings, desiredNfsExports, desiredSftpUsers, desiredShareDefs, syncPlaceAccess, withShareLock } from '../../services/sharing.service'
+import { planAuditMeta } from '../../services/storage-plan'
 import {
   USER_OPS, applyUserCreate, applyUserDelete, previewUserCreate, previewUserDelete,
   type UserOp, type UserPlanDeps,
-} from "../../services/user-plan"
-import type { Context } from "../context"
-import { syncSharesBestEffort } from "../../services/sharing.service"
-import { signToken } from "../auth"
+} from '../../services/user-plan'
+import type { Context } from '../context'
+import { syncSharesBestEffort } from '../../services/sharing.service'
+import { signToken } from '../auth'
 
 // Per-account UI preferences, synced across a user's browsers/devices. Kept to the
 // cross-device-meaningful prefs (theme/accent/sidebar order); device-specific ones
 // like desktop mode stay in localStorage. Stored as a JSON blob on the user row.
 const zPreferences = z.object({
-  theme:        z.enum(["auto", "light", "dark"]).optional(),
-  accent:       z.enum(["orange", "blue", "green", "purple"]).optional(),
+  theme:        z.enum(['auto', 'light', 'dark']).optional(),
+  accent:       z.enum(['orange', 'blue', 'green', 'purple']).optional(),
   sidebarOrder: z.array(z.string()).optional(),
-  locale:       z.enum(["en", "fr"]).optional(),
+  locale:       z.enum(['en', 'fr']).optional(),
   confirmFileDelete: z.boolean().optional(),
   appearance: z.object({
     theme: z.string().max(32).optional().catch(undefined),
@@ -31,14 +31,14 @@ const zPreferences = z.object({
   // File manager display (#196). Each field falls back on its own, so one bad
   // value never drops the others.
   fileManager: z.object({
-    sortField: z.enum(["name", "modified", "size", "type"]).optional().catch(undefined),
-    sortDir: z.enum(["asc", "desc"]).optional().catch(undefined),
-    columns: z.array(z.enum(["size", "modified", "type"])).max(3).optional().catch(undefined),
+    sortField: z.enum(['name', 'modified', 'size', 'type']).optional().catch(undefined),
+    sortDir: z.enum(['asc', 'desc']).optional().catch(undefined),
+    columns: z.array(z.enum(['size', 'modified', 'type'])).max(3).optional().catch(undefined),
     showHidden: z.boolean().optional().catch(undefined),
     showRoot: z.boolean().optional().catch(undefined),
     // Properties window sections folded away.
-    foldedSections: z.array(z.enum(["storage", "general", "dates", "permissions", "details"])).max(5).optional().catch(undefined),
-    view: z.enum(["list", "grid"]).optional().catch(undefined),
+    foldedSections: z.array(z.enum(['storage', 'general', 'dates', 'permissions', 'details'])).max(5).optional().catch(undefined),
+    view: z.enum(['list', 'grid']).optional().catch(undefined),
     // Bookmarked folders (#199), in the user's order.
     bookmarks: z.array(z.object({
       path: z.string().min(1).max(4096),
@@ -70,16 +70,16 @@ export function mergePrefs(stored: Prefs, input: Prefs): Prefs {
 const zCreateInput = z.object({
   username: z.string().regex(
     reLinuxUsername,
-    "Username must be lowercase letters, digits, - or _, starting with a letter or _ (max 32) so it can back a Linux/SMB account.",
+    'Username must be lowercase letters, digits, - or _, starting with a letter or _ (max 32) so it can back a Linux/SMB account.',
   ),
-  password: z.string().min(6).max(128).regex(/^[^\r\n]*$/, "A password cannot contain line breaks"),
+  password: z.string().min(6).max(128).regex(/^[^\r\n]*$/, 'A password cannot contain line breaks'),
   displayName: z.string().max(64).optional(),
 })
 const zDeleteInput = z.object({ userId: z.string() })
 
 function parsed<T extends z.ZodTypeAny>(schema: T, input: unknown): z.infer<T> {
   const r = schema.safeParse(input)
-  if (!r.success) throw new TRPCError({ code: "BAD_REQUEST", message: r.error.issues[0]?.message ?? "Invalid input" })
+  if (!r.success) throw new TRPCError({ code: 'BAD_REQUEST', message: r.error.issues[0]?.message ?? 'Invalid input' })
   return r.data
 }
 
@@ -89,7 +89,7 @@ type Caller = { userId: string; isAdmin: boolean }
 async function prepareUserPlan(ctx: Context, caller: Caller, op: UserOp, raw: unknown, timeout: number) {
   const deps = (username: string, commit: () => Promise<unknown>): UserPlanDeps => ({
     worker: <T>(subject: string, payload: Record<string, unknown>) => requestSync<T>(subject, payload, timeout),
-    smbdInstalled: () => requestSync<{ smbdInstalled: boolean }>("root.sharing.checkPrereqs", {}).then(r => r.smbdInstalled),
+    smbdInstalled: () => requestSync<{ smbdInstalled: boolean }>('root.sharing.checkPrereqs', {}).then(r => r.smbdInstalled),
     shareDefs: () => desiredShareDefs(ctx.prisma, undefined, { withoutUser: username }),
     currentShareDefs: () => desiredShareDefs(ctx.prisma),
     nfsExports: () => desiredNfsExports(ctx.prisma, undefined, { withoutUser: username }),
@@ -101,11 +101,11 @@ async function prepareUserPlan(ctx: Context, caller: Caller, op: UserOp, raw: un
     resync: () => syncSharesBestEffort(ctx.prisma),
     commit,
   })
-  if (op === "user.create") {
+  if (op === 'user.create') {
     const input = parsed(zCreateInput, raw)
     // The first administrator (#12) is created as such in the same write, so
     // no non-admin account is left if a later step fails.
-    const isAdmin = (raw as { isAdmin?: unknown }).isAdmin === true && caller.userId === ""
+    const isAdmin = (raw as { isAdmin?: unknown }).isAdmin === true && caller.userId === ''
     await assertCreatable(ctx.prisma, input.username)
     let created: unknown = null
     const d = deps(input.username, async () => { created = await createUserRecord(ctx.prisma, input, { isAdmin }) })
@@ -119,11 +119,11 @@ async function prepareUserPlan(ctx: Context, caller: Caller, op: UserOp, raw: un
   }
   const input = parsed(zDeleteInput, raw)
   if (input.userId === caller.userId)
-    throw new TRPCError({ code: "FORBIDDEN", message: "You cannot delete your own account" })
+    throw new TRPCError({ code: 'FORBIDDEN', message: 'You cannot delete your own account' })
   const target = await ctx.prisma.user.findUnique({ where: { id: input.userId }, select: { isAdmin: true, username: true } })
-  if (!target) throw new TRPCError({ code: "NOT_FOUND" })
+  if (!target) throw new TRPCError({ code: 'NOT_FOUND' })
   if (target.isAdmin && !caller.isAdmin)
-    throw new TRPCError({ code: "FORBIDDEN", message: "Cannot delete admin users" })
+    throw new TRPCError({ code: 'FORBIDDEN', message: 'Cannot delete admin users' })
   const d = deps(target.username, async () => {
     // Their task notifications go with them (no foreign key to cascade).
     await ctx.prisma.$transaction([
@@ -145,12 +145,12 @@ async function prepareUserPlan(ctx: Context, caller: Caller, op: UserOp, raw: un
  * first-run setup (#12) for the administrator.
  */
 export async function createUserThroughPlan(ctx: Context, input: { username: string; password: string }, flags: { isAdmin?: boolean } = {}) {
-  const p = await prepareUserPlan(ctx, { userId: "", isAdmin: true }, "user.create", { ...input, ...flags }, 180_000)
+  const p = await prepareUserPlan(ctx, { userId: '', isAdmin: true }, 'user.create', { ...input, ...flags }, 180_000)
   const preview = await p.preview()
   const { res, reply } = await p.apply(preview.fingerprint)
-  if (!res.ok) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: res.error ?? "Could not create the account" })
+  if (!res.ok) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: res.error ?? 'Could not create the account' })
   const user = (reply as { user?: { id: string; username: string } | null }).user
-  if (!user) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "The account was created on the server but not recorded in HSI" })
+  if (!user) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'The account was created on the server but not recorded in HSI' })
   return user
 }
 
@@ -177,7 +177,7 @@ export const userRouter = router({
     }),
 
   list: protectedProcedure.query(({ ctx }) => {
-    return ctx.prisma.user.findMany({ select: userSelect, orderBy: { createdAt: "asc" } })
+    return ctx.prisma.user.findMany({ select: userSelect, orderBy: { createdAt: 'asc' } })
   }),
 
   preferences: protectedProcedure.query(async ({ ctx }) => {
@@ -222,15 +222,15 @@ export const userRouter = router({
         where: { id: input.userId },
         select: { isAdmin: true },
       })
-      if (!target) throw new TRPCError({ code: "NOT_FOUND" })
+      if (!target) throw new TRPCError({ code: 'NOT_FOUND' })
       if (target.isAdmin && !ctx.user.isAdmin)
-        throw new TRPCError({ code: "FORBIDDEN", message: "Cannot edit admin users" })
+        throw new TRPCError({ code: 'FORBIDDEN', message: 'Cannot edit admin users' })
       if ((input.isAdmin !== undefined || input.isUserManager !== undefined) && !ctx.user.isAdmin)
-        throw new TRPCError({ code: "FORBIDDEN" })
+        throw new TRPCError({ code: 'FORBIDDEN' })
       // An admin may not strip their own admin flag: the UI disables this, but
       // a direct API call could otherwise lock out the last administrator.
       if (input.isAdmin === false && input.userId === ctx.user.userId)
-        throw new TRPCError({ code: "FORBIDDEN", message: "You can't remove your own admin access" })
+        throw new TRPCError({ code: 'FORBIDDEN', message: "You can't remove your own admin access" })
       const result = await ctx.prisma.user.update({
         where: { id: input.userId },
         data: {
@@ -279,9 +279,9 @@ export const userRouter = router({
     .input(z.object({ userId: z.string(), sambaEnabled: z.boolean() }))
     .mutation(async ({ ctx, input }) => {
       const target = await ctx.prisma.user.findUnique({ where: { id: input.userId }, select: { isAdmin: true } })
-      if (!target) throw new TRPCError({ code: "NOT_FOUND" })
+      if (!target) throw new TRPCError({ code: 'NOT_FOUND' })
       if (target.isAdmin && !ctx.user.isAdmin)
-        throw new TRPCError({ code: "FORBIDDEN", message: "Cannot edit admin users" })
+        throw new TRPCError({ code: 'FORBIDDEN', message: 'Cannot edit admin users' })
       const updated = await ctx.prisma.user.update({
         where: { id: input.userId },
         data: { sambaEnabled: input.sambaEnabled },
@@ -303,7 +303,7 @@ export const userRouter = router({
         where: { id: input.userId },
         select: { id: true },
       })
-      if (!target) throw new TRPCError({ code: "NOT_FOUND" })
+      if (!target) throw new TRPCError({ code: 'NOT_FOUND' })
       if (input.granted) {
         await ctx.prisma.userCapability.upsert({
           where: { userId_capability: { userId: input.userId, capability: input.capability } },

@@ -1,8 +1,8 @@
-import bcrypt from "bcryptjs"
-import { TRPCError } from "@trpc/server"
-import type { PrismaClient } from "@app/database"
-import { signToken } from "../trpc/auth"
-import { syncSystemPassword } from "./user.service"
+import bcrypt from 'bcryptjs'
+import { TRPCError } from '@trpc/server'
+import type { PrismaClient } from '@app/database'
+import { signToken } from '../trpc/auth'
+import { syncSystemPassword } from './user.service'
 
 export async function loginUser(
   prisma: PrismaClient,
@@ -22,7 +22,7 @@ export async function loginUser(
   })
 
   if (!user || !(await bcrypt.compare(password, user.password))) {
-    throw new TRPCError({ code: "UNAUTHORIZED", message: "Invalid credentials" })
+    throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Invalid credentials' })
   }
 
   // Fire-and-forget: keeps Linux/Samba passwords in sync for accounts that

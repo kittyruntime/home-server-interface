@@ -3,10 +3,10 @@
    "dark" would match daisyUI's own [data-theme] selectors and reset the
    palette on the toaster, so the default is "system" (no daisyUI theme of that
    name); the colors come from the CSS variables below. */
-import type { ToasterProps } from "vue-sonner"
-import { CircleCheckIcon, InfoIcon, Loader2Icon, OctagonXIcon, TriangleAlertIcon, XIcon } from "@lucide/vue"
-import { cn } from "@/lib/utils"
-import { Toaster as Sonner } from "vue-sonner"
+import type { ToasterProps } from 'vue-sonner'
+import { CircleCheckIcon, InfoIcon, Loader2Icon, OctagonXIcon, TriangleAlertIcon, XIcon } from '@lucide/vue'
+import { cn } from '@/lib/utils'
+import { Toaster as Sonner } from 'vue-sonner'
 
 const props = defineProps<ToasterProps>()
 </script>

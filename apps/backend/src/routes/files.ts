@@ -1,23 +1,23 @@
-import type { FastifyInstance } from "fastify"
-import { assertVolumeAvailable } from "../services/volume-guard"
-import { createReadStream } from "node:fs"
-import { stat } from "node:fs/promises"
-import { Readable } from "node:stream"
-import { join, basename, normalize } from "node:path"
-import { verifyFileToken, verifyWallpaperToken } from "../trpc/auth"
-import { prisma } from "@app/database"
-import { jobEndSignal, publishJob, requestReadChunk, requestSync, writeChunk } from "../nats"
-import { isWithinRoot } from "../utils/fs-guard"
-import { guessMime, isInlineSafe } from "../utils/mime"
+import type { FastifyInstance } from 'fastify'
+import { assertVolumeAvailable } from '../services/volume-guard'
+import { createReadStream } from 'node:fs'
+import { stat } from 'node:fs/promises'
+import { Readable } from 'node:stream'
+import { join, basename, normalize } from 'node:path'
+import { verifyFileToken, verifyWallpaperToken } from '../trpc/auth'
+import { prisma } from '@app/database'
+import { jobEndSignal, publishJob, requestReadChunk, requestSync, writeChunk } from '../nats'
+import { isWithinRoot } from '../utils/fs-guard'
+import { guessMime, isInlineSafe } from '../utils/mime'
 import {
   getUpload, getUploadForOwner, claimUpload, markUploadActive, hasUploadFinalizationStarted,
   beginUploadWrite, endUploadWrite, waitForUploadWrites, cancelUpload,
   deleteUploadIfSame, markUploadCancellationPending, isUploadCancellationPending,
   clearUploadCancellation, resolveUploadTotalBytes, getUploadPhase, startUploadGc,
   MAX_CHUNKS, type UploadState,
-} from "../services/upload.service"
-import { wallpaperPath } from "../services/wallpaper-storage"
-import { authenticateRequest } from "../utils/request-auth"
+} from '../services/upload.service'
+import { wallpaperPath } from '../services/wallpaper-storage'
+import { authenticateRequest } from '../utils/request-auth'
 
 const UPLOAD_ID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 const CANCEL_CLEANUP_WAIT_MS = 3_000
@@ -59,11 +59,11 @@ async function resolveAllowedRoot(
   userId: string,
   isAdmin: boolean,
   path: string,
-  flag: "canRead" | "canWrite",
+  flag: 'canRead' | 'canWrite',
 ): Promise<string | null | undefined> {
   if (isAdmin) return null
   const places = await prisma.place.findMany()
-  const place  = places.find(p => path === p.path || path.startsWith(p.path + "/"))
+  const place  = places.find(p => path === p.path || path.startsWith(p.path + '/'))
   if (!place) return undefined
   const groupIds = (
     await prisma.userGroup.findMany({ where: { userId }, select: { groupId: true } })
@@ -87,7 +87,7 @@ class UploadFinalizeHttpError extends Error {
     readonly statusCode: number,
     readonly responseBody: unknown,
   ) {
-    super(typeof responseBody === "string" ? responseBody : "Upload finalization failed")
+    super(typeof responseBody === 'string' ? responseBody : 'Upload finalization failed')
   }
 }
 
@@ -99,7 +99,7 @@ async function finalizeUploadState(
   if (state.received.size !== state.totalChunks) {
     const missing = Array.from({ length: state.totalChunks }, (_, i) => i)
       .filter(i => !state.received.has(i))
-    throw new UploadFinalizeHttpError(409, { error: "Upload incomplete", missing })
+    throw new UploadFinalizeHttpError(409, { error: 'Upload incomplete', missing })
   }
 
   // Permissions and the Linux identity can change during a long upload.
@@ -109,11 +109,11 @@ async function finalizeUploadState(
   } catch (e) {
     throw new UploadFinalizeHttpError(409, e instanceof Error ? e.message : String(e))
   }
-  const allowedRoot = await resolveAllowedRoot(user.userId, user.isAdmin, state.destDir, "canWrite")
-  if (allowedRoot === undefined) throw new UploadFinalizeHttpError(403, "Forbidden")
+  const allowedRoot = await resolveAllowedRoot(user.userId, user.isAdmin, state.destDir, 'canWrite')
+  if (allowedRoot === undefined) throw new UploadFinalizeHttpError(403, 'Forbidden')
   const linuxUser = await getLinuxUser(user.userId)
   if (!linuxUser) {
-    throw new UploadFinalizeHttpError(500, "User has no Linux account configured")
+    throw new UploadFinalizeHttpError(500, 'User has no Linux account configured')
   }
 
   // A lost HTTP response must not enqueue a second rename after the first
@@ -124,17 +124,17 @@ async function finalizeUploadState(
       where: { id: state.finalizeJobId },
       select: { status: true },
     })
-    if (!priorJob || priorJob.status !== "failed") return state.finalizeJobId
+    if (!priorJob || priorJob.status !== 'failed') return state.finalizeJobId
     state.finalizeJobId = undefined
   }
 
   const jobId = await publishJob(
-    "fs.finalize",
+    'fs.finalize',
     {
       linuxUsername: linuxUser,
       tempFile:      state.tempPath,
       destFile:      join(state.destDir, state.fileName),
-      allowedRoot:   allowedRoot ?? "",
+      allowedRoot:   allowedRoot ?? '',
       expectedSha,
     },
     user.userId,
@@ -142,7 +142,7 @@ async function finalizeUploadState(
   )
   state.finalizeJobId = jobId
   state.linuxUser = linuxUser
-  state.allowedRoot = allowedRoot ?? ""
+  state.allowedRoot = allowedRoot ?? ''
   return jobId
 }
 
@@ -155,7 +155,7 @@ async function waitForCleanupCompletion(jobId: string): Promise<boolean> {
         where: { id: jobId },
         select: { status: true },
       })
-      if (job?.status === "completed") return true
+      if (job?.status === 'completed') return true
       // A failed attempt can still be redelivered by JetStream, so keep waiting
       // within the bounded window. If it never completes, the caller retains the
       // cancelled state/tombstone and a late retry cannot hit a reused id.
@@ -176,7 +176,7 @@ async function uploadFinalizationIsActive(state: UploadState): Promise<boolean> 
   })
   // Missing state is ambiguous and therefore treated as active; only an
   // observed terminal job makes deletion of the staging path safe.
-  return !job || job.status === "pending" || job.status === "running"
+  return !job || job.status === 'pending' || job.status === 'running'
 }
 
 // Pulls one 4 MB chunk at a time from the worker via requestReadChunk and
@@ -225,22 +225,22 @@ export function chunkedReadStream(
 
 export async function fileRoutes(app: FastifyInstance) {
   app.addContentTypeParser(
-    "application/octet-stream",
-    { parseAs: "buffer" },
+    'application/octet-stream',
+    { parseAs: 'buffer' },
     (_req, body, done) => done(null, body),
   )
 
   // Clean up uploads that have been silent for more than UPLOAD_TTL_MS.
   startUploadGc((id, state) => {
-    app.log.warn({ uploadId: id }, "Stale upload evicted by GC")
+    app.log.warn({ uploadId: id }, 'Stale upload evicted by GC')
     markUploadCancellationPending(id, state.ownerUserId)
-    publishJob("fs.delete", { linuxUsername: state.linuxUser, path: state.tempPath, allowedRoot: state.allowedRoot }, undefined, { internal: true })
+    publishJob('fs.delete', { linuxUsername: state.linuxUser, path: state.tempPath, allowedRoot: state.allowedRoot }, undefined, { internal: true })
       .then(async jobId => {
         if (await waitForCleanupCompletion(jobId)) {
           clearUploadCancellation(id, state.ownerUserId)
         }
       })
-      .catch(err => app.log.error(err, "Failed to clean up stale upload temp file"))
+      .catch(err => app.log.error(err, 'Failed to clean up stale upload temp file'))
   })
 
   // ── GET /files/download?path=<path>&token=<file-token>[&inline=1] ────────
@@ -257,18 +257,18 @@ export async function fileRoutes(app: FastifyInstance) {
   // (image/video/audio tags): it sets a real Content-Type and an `inline`
   // disposition, and both branches below support HTTP Range so `<video>`
   // seeking works.
-  app.get("/files/download", async (req, reply) => {
+  app.get('/files/download', async (req, reply) => {
     const { path: rawPath, token, inline } = req.query as Record<string, string>
-    if (!token || !rawPath) return reply.status(400).send("Missing params")
+    if (!token || !rawPath) return reply.status(400).send('Missing params')
     const filePath = normalize(rawPath)
 
     let userId: string
     try {
       const payload = verifyFileToken(token)
-      if (payload.path !== filePath) return reply.status(403).send("Forbidden")
+      if (payload.path !== filePath) return reply.status(403).send('Forbidden')
       userId = payload.userId
     } catch {
-      return reply.status(401).send("Unauthorized")
+      return reply.status(401).send('Unauthorized')
     }
 
     // File tokens are short-lived and path-scoped, but account deletion and
@@ -278,10 +278,10 @@ export async function fileRoutes(app: FastifyInstance) {
       where: { id: userId },
       select: { isAdmin: true },
     })
-    if (!currentUser) return reply.status(401).send("Unauthorized")
+    if (!currentUser) return reply.status(401).send('Unauthorized')
 
-    const allowedRoot = await resolveAllowedRoot(userId, currentUser.isAdmin, filePath, "canRead")
-    if (allowedRoot === undefined) return reply.status(403).send("Forbidden")
+    const allowedRoot = await resolveAllowedRoot(userId, currentUser.isAdmin, filePath, 'canRead')
+    if (allowedRoot === undefined) return reply.status(403).send('Forbidden')
 
     const linuxUser = await getLinuxUser(userId)
     const name = basename(filePath)
@@ -290,82 +290,82 @@ export async function fileRoutes(app: FastifyInstance) {
     // (image/video/audio and PDF, excluding SVG); anything else silently falls
     // back to a forced attachment download, regardless of what the caller
     // requested. See isInlineSafe() for why.
-    const isInline = inline === "1" && isInlineSafe(mime)
+    const isInline = inline === '1' && isInlineSafe(mime)
 
     reply.header(
-      "Content-Disposition",
+      'Content-Disposition',
       isInline
         ? `inline; filename*=UTF-8''${encodeURIComponent(name)}`
         : `attachment; filename*=UTF-8''${encodeURIComponent(name)}`,
     )
-    reply.header("Content-Type", isInline ? mime : "application/octet-stream")
-    reply.header("Accept-Ranges", "bytes")
+    reply.header('Content-Type', isInline ? mime : 'application/octet-stream')
+    reply.header('Accept-Ranges', 'bytes')
     if (isInline) {
       // Defense in depth even within the allowlisted media types: stop the
       // browser from MIME-sniffing its way into treating the response as
       // HTML, and stop it from ever executing scripts/loading subresources
       // if it's framed or navigated to directly.
-      reply.header("X-Content-Type-Options", "nosniff")
-      reply.header("Content-Security-Policy", "sandbox; default-src 'none'; img-src 'self'; media-src 'self'")
-      reply.header("Cross-Origin-Resource-Policy", "same-origin")
+      reply.header('X-Content-Type-Options', 'nosniff')
+      reply.header('Content-Security-Policy', "sandbox; default-src 'none'; img-src 'self'; media-src 'self'")
+      reply.header('Cross-Origin-Resource-Policy', 'same-origin')
     }
 
     if (linuxUser) {
       let fileSize: number
       try {
         const s = await requestSync<{ type: string; size: number | null }>(
-          "root.fs.stat",
-          { path: filePath, linuxUsername: linuxUser, allowedRoot: allowedRoot ?? "" },
+          'root.fs.stat',
+          { path: filePath, linuxUsername: linuxUser, allowedRoot: allowedRoot ?? '' },
         )
-        if (s.type !== "file" || s.size == null) return reply.status(400).send("Not a file")
+        if (s.type !== 'file' || s.size == null) return reply.status(400).send('Not a file')
         fileSize = s.size
       } catch (e: any) {
-        if (e?.code === "EACCES") return reply.status(403).send("Permission denied")
-        if (e?.code === "ENOENT") return reply.status(404).send("Not found")
-        return reply.status(500).send(e?.message ?? "Stat failed")
+        if (e?.code === 'EACCES') return reply.status(403).send('Permission denied')
+        if (e?.code === 'ENOENT') return reply.status(404).send('Not found')
+        return reply.status(500).send(e?.message ?? 'Stat failed')
       }
 
       const range = parseRange(req.headers.range, fileSize)
       if (range && !range.satisfiable) {
-        reply.header("Content-Range", `bytes */${fileSize}`)
+        reply.header('Content-Range', `bytes */${fileSize}`)
         return reply.status(416).send()
       }
 
       const start = range ? range.start : 0
       const end   = range ? range.end   : fileSize - 1
       if (range) {
-        reply.header("Content-Range", `bytes ${start}-${end}/${fileSize}`)
-        reply.header("Content-Length", String(end - start + 1))
+        reply.header('Content-Range', `bytes ${start}-${end}/${fileSize}`)
+        reply.header('Content-Length', String(end - start + 1))
         reply.status(206)
       } else {
-        reply.header("Content-Length", String(fileSize))
+        reply.header('Content-Length', String(fileSize))
       }
-      return reply.send(chunkedReadStream(filePath, linuxUser, allowedRoot ?? "", start, end))
+      return reply.send(chunkedReadStream(filePath, linuxUser, allowedRoot ?? '', start, end))
     }
 
     if (allowedRoot && !(await isWithinRoot(filePath, allowedRoot)))
-      return reply.status(403).send("Forbidden")
+      return reply.status(403).send('Forbidden')
 
     let fileSize: number
     try {
       const s = await stat(filePath)
-      if (!s.isFile()) return reply.status(400).send("Not a file")
+      if (!s.isFile()) return reply.status(400).send('Not a file')
       fileSize = s.size
     } catch {
-      return reply.status(404).send("Not found")
+      return reply.status(404).send('Not found')
     }
 
     const range = parseRange(req.headers.range, fileSize)
     if (range && !range.satisfiable) {
-      reply.header("Content-Range", `bytes */${fileSize}`)
+      reply.header('Content-Range', `bytes */${fileSize}`)
       return reply.status(416).send()
     }
     if (range) {
-      reply.header("Content-Range", `bytes ${range.start}-${range.end}/${fileSize}`)
-      reply.header("Content-Length", String(range.end - range.start + 1))
+      reply.header('Content-Range', `bytes ${range.start}-${range.end}/${fileSize}`)
+      reply.header('Content-Length', String(range.end - range.start + 1))
       return reply.status(206).send(createReadStream(filePath, { start: range.start, end: range.end }))
     }
-    reply.header("Content-Length", String(fileSize))
+    reply.header('Content-Length', String(fileSize))
     return reply.send(createReadStream(filePath))
   })
 
@@ -375,20 +375,20 @@ export async function fileRoutes(app: FastifyInstance) {
   // can't carry an Authorization header, so this is gated by a short-lived
   // (15m) token scoped to exactly "this user's wallpaper", minted via
   // wallpaper.createImageToken, never the long-lived session JWT.
-  app.get("/files/wallpaper-image", async (req, reply) => {
+  app.get('/files/wallpaper-image', async (req, reply) => {
     const { token } = req.query as Record<string, string>
-    if (!token) return reply.status(400).send("Missing token")
+    if (!token) return reply.status(400).send('Missing token')
 
     let userId: string
     try {
       userId = verifyWallpaperToken(token).userId
     } catch {
-      return reply.status(401).send("Unauthorized")
+      return reply.status(401).send('Unauthorized')
     }
 
     const user = await prisma.user.findUnique({ where: { id: userId }, select: { wallpaper: true } })
     const w = user?.wallpaper as { kind: string; ext?: string } | null
-    if (w?.kind !== "image" || !w.ext) return reply.status(404).send("Not found")
+    if (w?.kind !== 'image' || !w.ext) return reply.status(404).send('Not found')
 
     const filePath = wallpaperPath(userId, w.ext)
     let fileSize: number
@@ -396,13 +396,13 @@ export async function fileRoutes(app: FastifyInstance) {
       const s = await stat(filePath)
       fileSize = s.size
     } catch {
-      return reply.status(404).send("Not found")
+      return reply.status(404).send('Not found')
     }
 
-    const mime = w.ext === "jpg" ? "image/jpeg" : `image/${w.ext}`
-    reply.header("Content-Type", mime)
-    reply.header("Cache-Control", "private, max-age=300")
-    reply.header("Content-Length", String(fileSize))
+    const mime = w.ext === 'jpg' ? 'image/jpeg' : `image/${w.ext}`
+    reply.header('Content-Type', mime)
+    reply.header('Cache-Control', 'private, max-age=300')
+    reply.header('Content-Length', String(fileSize))
     return reply.send(createReadStream(filePath))
   })
 
@@ -435,42 +435,42 @@ export async function fileRoutes(app: FastifyInstance) {
   // requests inside a minute: request-count throttling doesn't apply to an
   // already-authenticated, already-permission-checked transfer whose volume
   // scales with file size by design.
-  app.post("/files/upload/chunk", { config: { rateLimit: false } }, async (req, reply) => {
+  app.post('/files/upload/chunk', { config: { rateLimit: false } }, async (req, reply) => {
     const user = await authenticateRequest(req)
-    if (!user) return reply.status(401).send("Unauthorized")
+    if (!user) return reply.status(401).send('Unauthorized')
 
-    const uploadId    = req.headers["x-upload-id"] as string
-    const chunkIndex  = Number(req.headers["x-chunk-index"])
-    const totalChunks = Number(req.headers["x-total-chunks"])
-    const chunkOffset = Number(req.headers["x-chunk-offset"])
+    const uploadId    = req.headers['x-upload-id'] as string
+    const chunkIndex  = Number(req.headers['x-chunk-index'])
+    const totalChunks = Number(req.headers['x-total-chunks'])
+    const chunkOffset = Number(req.headers['x-chunk-offset'])
     let rawFileName: string
     let destDir: string
     try {
-      rawFileName = decodeURIComponent(req.headers["x-file-name"] as string ?? "")
-      destDir = normalize(decodeURIComponent(req.headers["x-dest-dir"] as string ?? ""))
+      rawFileName = decodeURIComponent(req.headers['x-file-name'] as string ?? '')
+      destDir = normalize(decodeURIComponent(req.headers['x-dest-dir'] as string ?? ''))
     } catch {
-      return reply.status(400).send("Invalid upload metadata encoding")
+      return reply.status(400).send('Invalid upload metadata encoding')
     }
     const fileName = basename(rawFileName)
-    const totalBytesHeader = req.headers["x-total-bytes"] as string | undefined
+    const totalBytesHeader = req.headers['x-total-bytes'] as string | undefined
 
     if (!uploadId || !Number.isSafeInteger(chunkIndex) || !Number.isSafeInteger(totalChunks) ||
-        !Number.isSafeInteger(chunkOffset) || !fileName || fileName === "." || fileName === ".." || fileName.includes("\0") ||
-        !destDir.startsWith("/") || destDir.includes("\0"))
-      return reply.status(400).send("Missing upload metadata")
+        !Number.isSafeInteger(chunkOffset) || !fileName || fileName === '.' || fileName === '..' || fileName.includes('\0') ||
+        !destDir.startsWith('/') || destDir.includes('\0'))
+      return reply.status(400).send('Missing upload metadata')
 
     // uploadId ends up in a filename on disk: enforce an opaque-token shape.
     if (!UPLOAD_ID_RE.test(uploadId))
-      return reply.status(400).send("Invalid upload id")
+      return reply.status(400).send('Invalid upload id')
 
     if (chunkOffset < 0 || (chunkIndex === 0 && chunkOffset !== 0))
-      return reply.status(400).send("Invalid chunk offset")
+      return reply.status(400).send('Invalid chunk offset')
 
     if (totalChunks < 1 || totalChunks > MAX_CHUNKS)
       return reply.status(400).send(`totalChunks exceeds maximum of ${MAX_CHUNKS}`)
 
     if (chunkIndex < 0 || chunkIndex >= totalChunks)
-      return reply.status(400).send("chunkIndex out of range")
+      return reply.status(400).send('chunkIndex out of range')
 
     // Resolve existing state before parsing X-Total-Bytes: the header is
     // required to initialize an upload, but remains optional on later chunks
@@ -478,19 +478,19 @@ export async function fileRoutes(app: FastifyInstance) {
     let state = getUpload(uploadId)
     if (state && state.ownerUserId !== user.userId) {
       // Do not reveal whether another user's opaque upload id exists.
-      return reply.status(404).send("Unknown upload")
+      return reply.status(404).send('Unknown upload')
     }
     if (state) markUploadActive(state)
     if (state?.cancelled || isUploadCancellationPending(uploadId, user.userId)) {
-      return reply.status(409).send("Upload is being cancelled")
+      return reply.status(409).send('Upload is being cancelled')
     }
     if (state && hasUploadFinalizationStarted(state)) {
-      return reply.status(409).send("Upload finalization has already started")
+      return reply.status(409).send('Upload finalization has already started')
     }
 
     const totalBytes = resolveUploadTotalBytes(totalBytesHeader, state)
     if (totalBytes === null) {
-      return reply.status(400).send("Missing or invalid X-Total-Bytes")
+      return reply.status(400).send('Missing or invalid X-Total-Bytes')
     }
 
     try {
@@ -498,25 +498,25 @@ export async function fileRoutes(app: FastifyInstance) {
     } catch (e) {
       return reply.status(409).send(e instanceof Error ? e.message : String(e))
     }
-    const allowedRoot = await resolveAllowedRoot(user.userId, user.isAdmin, destDir, "canWrite")
-    if (allowedRoot === undefined) return reply.status(403).send("Forbidden")
+    const allowedRoot = await resolveAllowedRoot(user.userId, user.isAdmin, destDir, 'canWrite')
+    if (allowedRoot === undefined) return reply.status(403).send('Forbidden')
     const linuxUser = await getLinuxUser(user.userId)
-    if (!linuxUser) return reply.status(500).send("User has no Linux account configured")
+    if (!linuxUser) return reply.status(500).send('User has no Linux account configured')
 
     // Resolve state (init on first chunk).
     if (!state) {
       // Disk preflight: only done once, when the upload state is created.
       try {
         const { free } = await requestSync<{ total: number; free: number }>(
-          "root.fs.diskusage",
-          { path: destDir, allowedRoot: allowedRoot ?? "" },
+          'root.fs.diskusage',
+          { path: destDir, allowedRoot: allowedRoot ?? '' },
         )
         if (free < totalBytes * 1.02)
-          return reply.status(507).send("Not enough disk space for this upload")
+          return reply.status(507).send('Not enough disk space for this upload')
       } catch (e: any) {
-        if (e?.code === "EACCES") return reply.status(403).send("Permission denied")
-        if (e?.code === "ENOENT") return reply.status(404).send("Not found")
-        return reply.status(500).send(e?.message ?? "Disk usage check failed")
+        if (e?.code === 'EACCES') return reply.status(403).send('Permission denied')
+        if (e?.code === 'ENOENT') return reply.status(404).send('Not found')
+        return reply.status(500).send(e?.message ?? 'Disk usage check failed')
       }
 
       // Temp file lives directly inside destDir: same filesystem, so the
@@ -525,29 +525,29 @@ export async function fileRoutes(app: FastifyInstance) {
       const newState: UploadState = {
         ownerUserId: user.userId,
         received: new Set(), totalChunks, fileName, destDir, tempPath,
-        linuxUser, allowedRoot: allowedRoot ?? "", createdAt: Date.now(), lastActivityAt: Date.now(),
+        linuxUser, allowedRoot: allowedRoot ?? '', createdAt: Date.now(), lastActivityAt: Date.now(),
         totalBytes, activeWrites: 0, cancelled: false, writeIdleWaiters: [],
       }
       // A concurrent first chunk or cancellation may have won during the
       // asynchronous preflight. Claim checks both atomically in this process.
       const claim = claimUpload(uploadId, newState)
-      if (claim.cancelled) return reply.status(409).send("Upload is being cancelled")
+      if (claim.cancelled) return reply.status(409).send('Upload is being cancelled')
       state = claim.state
-      if (state.ownerUserId !== user.userId) return reply.status(404).send("Unknown upload")
+      if (state.ownerUserId !== user.userId) return reply.status(404).send('Unknown upload')
     }
     if (
       state.totalChunks !== totalChunks || state.totalBytes !== totalBytes ||
       state.fileName !== fileName || state.destDir !== destDir
     ) {
-      return reply.status(409).send("Upload metadata does not match the existing upload")
+      return reply.status(409).send('Upload metadata does not match the existing upload')
     }
 
     const body = req.body as Buffer
-    if (!Buffer.isBuffer(body)) return reply.status(400).send("Missing chunk data")
+    if (!Buffer.isBuffer(body)) return reply.status(400).send('Missing chunk data')
     if (chunkOffset + body.length > state.totalBytes)
-      return reply.status(400).send("Chunk exceeds declared upload size")
+      return reply.status(400).send('Chunk exceeds declared upload size')
     if (!beginUploadWrite(state)) {
-      return reply.status(409).send("Upload no longer accepts chunks")
+      return reply.status(409).send('Upload no longer accepts chunks')
     }
 
     // Delegate the write to the worker: it writes the binary data at the
@@ -558,20 +558,20 @@ export async function fileRoutes(app: FastifyInstance) {
         offset:        chunkOffset,
         destDir:       state.destDir,
         linuxUsername: linuxUser,
-        allowedRoot:   allowedRoot ?? "",
+        allowedRoot:   allowedRoot ?? '',
         data:          body,
       })
       state.received.add(chunkIndex)
       state.linuxUser = linuxUser
-      state.allowedRoot = allowedRoot ?? ""
+      state.allowedRoot = allowedRoot ?? ''
     } catch (e: any) {
       // Keep the state: a timeout may happen after the worker wrote the bytes,
       // and retrying the same offset safely overwrites them. Dropping the state
       // here would forget all earlier chunks and make resume/finalize fail.
       markUploadActive(state)
-      if (e?.code === "EACCES") return reply.status(403).send("Permission denied")
-      if (e?.code === "ENOSPC") return reply.status(507).send("Insufficient storage")
-      return reply.status(500).send(e?.message ?? "Chunk write failed")
+      if (e?.code === 'EACCES') return reply.status(403).send('Permission denied')
+      if (e?.code === 'ENOSPC') return reply.status(507).send('Insufficient storage')
+      return reply.status(500).send(e?.message ?? 'Chunk write failed')
     } finally {
       endUploadWrite(state)
       markUploadActive(state)
@@ -598,19 +598,19 @@ export async function fileRoutes(app: FastifyInstance) {
   //
   // Body: { uploadId: string, sha256: string }; sha256 is passed through to
   // the worker as expectedSha so the write is verified end-to-end.
-  app.post("/files/upload/complete", async (req, reply) => {
+  app.post('/files/upload/complete', async (req, reply) => {
     const user = await authenticateRequest(req)
-    if (!user) return reply.status(401).send("Unauthorized")
+    if (!user) return reply.status(401).send('Unauthorized')
 
     const { uploadId, sha256 } = (req.body ?? {}) as { uploadId?: string; sha256?: string }
-    if (!uploadId || !sha256) return reply.status(400).send("Missing uploadId or sha256")
+    if (!uploadId || !sha256) return reply.status(400).send('Missing uploadId or sha256')
 
     const state = getUploadForOwner(uploadId, user.userId)
-    if (!state) return reply.status(404).send("Unknown upload")
-    if (state.cancelled) return reply.status(404).send("Unknown upload")
+    if (!state) return reply.status(404).send('Unknown upload')
+    if (state.cancelled) return reply.status(404).send('Unknown upload')
 
-    if (typeof sha256 !== "string" || !/^[a-fA-F0-9]{64}$/.test(sha256)) {
-      return reply.status(400).send("Invalid sha256")
+    if (typeof sha256 !== 'string' || !/^[a-fA-F0-9]{64}$/.test(sha256)) {
+      return reply.status(400).send('Invalid sha256')
     }
     const expectedSha = sha256.toLowerCase()
 
@@ -618,10 +618,10 @@ export async function fileRoutes(app: FastifyInstance) {
     // This is both the write lock and the idempotency primitive: concurrent
     // completion requests with the same checksum await the exact same work.
     if (state.activeWrites > 0) {
-      return reply.status(409).send("Upload still has chunk writes in progress")
+      return reply.status(409).send('Upload still has chunk writes in progress')
     }
     if (state.finalizeSha && state.finalizeSha !== expectedSha) {
-      return reply.status(409).send("Upload is already being finalized with a different checksum")
+      return reply.status(409).send('Upload is already being finalized with a different checksum')
     }
     let finalizePromise = state.finalizePromise
     if (!finalizePromise) {
@@ -639,13 +639,13 @@ export async function fileRoutes(app: FastifyInstance) {
       const jobId = await finalizePromise
       markUploadActive(state)
       void prisma.auditLog.create({
-        data: { userId: user.userId, action: "files.upload", target: uploadTarget, ip: req.ip, success: true },
+        data: { userId: user.userId, action: 'files.upload', target: uploadTarget, ip: req.ip, success: true },
       }).catch(() => {})
       return reply.send({ jobId })
     } catch (error) {
       if (!state.finalizeJobId) state.finalizeSha = undefined
       void prisma.auditLog.create({
-        data: { userId: user.userId, action: "files.upload", target: uploadTarget, ip: req.ip, success: false },
+        data: { userId: user.userId, action: 'files.upload', target: uploadTarget, ip: req.ip, success: false },
       }).catch(() => {})
       if (error instanceof UploadFinalizeHttpError) {
         return reply.status(error.statusCode).send(error.responseBody)
@@ -669,12 +669,12 @@ export async function fileRoutes(app: FastifyInstance) {
   // written by a crash was never acked, so it's correctly NOT reported as
   // staged (a disk listing could otherwise report a truncated `.part`, and a
   // resuming client would skip it → corrupt assembly).
-  app.get("/files/upload/status", async (req, reply) => {
+  app.get('/files/upload/status', async (req, reply) => {
     const user = await authenticateRequest(req)
-    if (!user) return reply.status(401).send("Unauthorized")
+    if (!user) return reply.status(401).send('Unauthorized')
 
     const { uploadId } = req.query as Record<string, string>
-    if (!uploadId) return reply.status(400).send("Missing uploadId")
+    if (!uploadId) return reply.status(400).send('Missing uploadId')
 
     const state = getUploadForOwner(uploadId, user.userId)
     if (!state) return reply.send({ known: false, staged: [] })
@@ -684,9 +684,9 @@ export async function fileRoutes(app: FastifyInstance) {
     const staged = [...state.received].sort((a, b) => a - b)
     const finalizeJob = state.finalizeJobId
       ? await prisma.job.findUnique({
-          where: { id: state.finalizeJobId },
-          select: { status: true, error: true },
-        })
+        where: { id: state.finalizeJobId },
+        select: { status: true, error: true },
+      })
       : null
     return reply.send({
       known: true,
@@ -700,13 +700,13 @@ export async function fileRoutes(app: FastifyInstance) {
   })
 
   // ── DELETE /files/upload/cancel ───────────────────────────────────────────
-  app.delete("/files/upload/cancel", async (req, reply) => {
+  app.delete('/files/upload/cancel', async (req, reply) => {
     const user = await authenticateRequest(req)
-    if (!user) return reply.status(401).send("Unauthorized")
+    if (!user) return reply.status(401).send('Unauthorized')
 
     const { uploadId } = (req.body ?? {}) as { uploadId?: string }
-    if (!uploadId) return reply.status(400).send("Missing uploadId")
-    if (!UPLOAD_ID_RE.test(uploadId)) return reply.status(400).send("Invalid upload id")
+    if (!uploadId) return reply.status(400).send('Missing uploadId')
+    if (!UPLOAD_ID_RE.test(uploadId)) return reply.status(400).send('Invalid upload id')
 
     // Tombstone before looking up state again: this also catches DELETE racing
     // the first chunk's async authorization/disk preflight, when no state has
@@ -722,7 +722,7 @@ export async function fileRoutes(app: FastifyInstance) {
     if (await uploadFinalizationIsActive(state)) {
       state.cancelled = false
       clearUploadCancellation(uploadId, user.userId)
-      return reply.status(409).send("Upload finalization is in progress")
+      return reply.status(409).send('Upload finalization is in progress')
     }
 
     // Wait for already-started writes before scheduling deletion. Keeping the
@@ -733,7 +733,7 @@ export async function fileRoutes(app: FastifyInstance) {
     if (!cleanupPromise) {
       cleanupPromise = (async () => {
         const cleanupJobId = await publishJob(
-          "fs.delete",
+          'fs.delete',
           { linuxUsername: state.linuxUser, path: state.tempPath, allowedRoot: state.allowedRoot },
           undefined,
           { internal: true },
@@ -748,8 +748,8 @@ export async function fileRoutes(app: FastifyInstance) {
       cleanupCompleted = await cleanupPromise
     } catch (error) {
       if (state.cleanupPromise === cleanupPromise) state.cleanupPromise = undefined
-      app.log.error(error, "Failed to schedule upload temp-file cleanup")
-      return reply.status(502).send("Could not schedule upload cleanup")
+      app.log.error(error, 'Failed to schedule upload temp-file cleanup')
+      return reply.status(502).send('Could not schedule upload cleanup')
     }
 
     if (cleanupCompleted) {

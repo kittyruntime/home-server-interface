@@ -6,15 +6,15 @@ import type { AppId } from '../../lib/desktop'
 // The glyph of an app (dock, launchpad, window title bars, sidebar), from the
 // lucide set used across the interface.
 const ICONS: Record<AppId, Component> = {
-  files: FolderIcon,
-  apps: ContainerIcon,
-  settings: SettingsIcon,
-  storage: HardDriveIcon,
-  monitor: ActivityIcon,
-  sharing: Share2Icon,
-  assistant: BotIcon,
+  'files': FolderIcon,
+  'apps': ContainerIcon,
+  'settings': SettingsIcon,
+  'storage': HardDriveIcon,
+  'monitor': ActivityIcon,
+  'sharing': Share2Icon,
+  'assistant': BotIcon,
   'file-preview': FileTextIcon,
-  activity: BellIcon,
+  'activity': BellIcon,
 }
 
 withDefaults(defineProps<{ app: AppId; strokeWidth?: number }>(), { strokeWidth: 1.75 })

@@ -1,4 +1,4 @@
-import { z } from "zod"
+import { z } from 'zod'
 
 // Dashboards: each account keeps its own tabs of widgets; an admin can publish a
 // set every account without its own starts from. Widgets are validated loosely
@@ -12,9 +12,9 @@ const MAX_SETTINGS = 4000
 const zWidget = z.object({
   id: z.string().min(1).max(64),
   type: z.string().min(1).max(48).regex(/^[a-z][a-z0-9.-]*$/),
-  size: z.enum(["s", "m", "l"]).catch("s"),
+  size: z.enum(['s', 'm', 'l']).catch('s'),
   settings: z.record(z.string(), z.unknown()).optional().catch(undefined)
-    .refine(s => s === undefined || JSON.stringify(s).length <= MAX_SETTINGS, "Widget settings are too large"),
+    .refine(s => s === undefined || JSON.stringify(s).length <= MAX_SETTINGS, 'Widget settings are too large'),
 })
 export type BoardWidget = z.infer<typeof zWidget>
 

@@ -1,16 +1,16 @@
 <script setup lang="ts">
-import type { HTMLAttributes } from "vue"
-import MenuContent from "../menu/MenuContent.vue"
+import type { HTMLAttributes } from 'vue'
+import MenuContent from '../menu/MenuContent.vue'
 
 const props = withDefaults(defineProps<{
-  side?: "top" | "right" | "bottom" | "left"
-  align?: "start" | "center" | "end"
+  side?: 'top' | 'right' | 'bottom' | 'left'
+  align?: 'start' | 'center' | 'end'
   sideOffset?: number
   alignOffset?: number
-  class?: HTMLAttributes["class"]
+  class?: HTMLAttributes['class']
 }>(), {
-  side: "bottom",
-  align: "center",
+  side: 'bottom',
+  align: 'center',
   sideOffset: 4,
   alignOffset: 0,
 })

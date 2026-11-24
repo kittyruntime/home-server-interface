@@ -29,8 +29,8 @@ export interface DesktopWindow {
 
 // English names; i18n/labels.ts puts them in the interface language.
 export const APP_LABEL = reactive<Record<AppId, string>>({
-  files: 'Files', apps: 'Apps', settings: 'Settings', storage: 'Storage',
-  monitor: 'Monitor', sharing: 'Sharing', assistant: 'Assistant', 'file-preview': 'Preview', activity: 'Activity',
+  'files': 'Files', 'apps': 'Apps', 'settings': 'Settings', 'storage': 'Storage',
+  'monitor': 'Monitor', 'sharing': 'Sharing', 'assistant': 'Assistant', 'file-preview': 'Preview', 'activity': 'Activity',
 })
 
 const STORAGE_KEY = 'desktop'
@@ -41,15 +41,15 @@ const MIN_H = 240
 const MIN_VISIBLE = 80
 
 const DEFAULT_SIZE: Record<AppId, { w: number; h: number }> = {
-  files: { w: 860, h: 560 },
-  apps: { w: 960, h: 620 },
-  settings: { w: 860, h: 560 },
-  storage: { w: 900, h: 580 },
-  monitor: { w: 860, h: 580 },
-  sharing: { w: 860, h: 560 },
-  assistant: { w: 820, h: 600 },
+  'files': { w: 860, h: 560 },
+  'apps': { w: 960, h: 620 },
+  'settings': { w: 860, h: 560 },
+  'storage': { w: 900, h: 580 },
+  'monitor': { w: 860, h: 580 },
+  'sharing': { w: 860, h: 560 },
+  'assistant': { w: 820, h: 600 },
   'file-preview': { w: 760, h: 560 },
-  activity: { w: 720, h: 560 },
+  'activity': { w: 720, h: 560 },
 }
 
 function loadWindows(): DesktopWindow[] {

@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import type { Ref } from "vue"
-import { useVModel } from "@vueuse/core"
-import { inject, provide, ref, shallowRef, useId } from "vue"
-import { DEFAULT_DELAY, tooltipKey, tooltipProviderKey } from "./context"
+import type { Ref } from 'vue'
+import { useVModel } from '@vueuse/core'
+import { inject, provide, ref, shallowRef, useId } from 'vue'
+import { DEFAULT_DELAY, tooltipKey, tooltipProviderKey } from './context'
 
 const props = withDefaults(defineProps<{
   open?: boolean
@@ -17,9 +17,9 @@ const props = withDefaults(defineProps<{
   defaultOpen: false,
   delayDuration: undefined,
 })
-const emit = defineEmits<{ "update:open": [value: boolean] }>()
+const emit = defineEmits<{ 'update:open': [value: boolean] }>()
 
-const open = useVModel(props, "open", emit, { passive: true, defaultValue: props.defaultOpen }) as Ref<boolean>
+const open = useVModel(props, 'open', emit, { passive: true, defaultValue: props.defaultOpen }) as Ref<boolean>
 const provider = inject(tooltipProviderKey, null)
 const trigger = shallowRef<HTMLElement | null>(null)
 

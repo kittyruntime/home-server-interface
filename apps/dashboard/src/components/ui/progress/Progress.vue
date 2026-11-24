@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import type { HTMLAttributes, StyleValue } from "vue"
-import { computed } from "vue"
-import { cn } from "@/lib/utils"
+import type { HTMLAttributes, StyleValue } from 'vue'
+import { computed } from 'vue'
+import { cn } from '@/lib/utils'
 
 // A native <progress> cannot take the callers' indicator classes (bg-*,
 // width, transform for the indeterminate sweep), so the bar stays a div pair.
@@ -10,8 +10,8 @@ const props = withDefaults(
     /** Percentage of `max`. null renders the indeterminate state. */
     modelValue?: number | null
     max?: number
-    class?: HTMLAttributes["class"]
-    indicatorClass?: HTMLAttributes["class"]
+    class?: HTMLAttributes['class']
+    indicatorClass?: HTMLAttributes['class']
     indicatorStyle?: StyleValue
   }>(),
   {
@@ -28,8 +28,8 @@ const percent = computed(() => {
 })
 const state = computed(() => {
   if (indeterminate.value)
-    return "indeterminate"
-  return percent.value >= 100 ? "complete" : "loading"
+    return 'indeterminate'
+  return percent.value >= 100 ? 'complete' : 'loading'
 })
 </script>
 

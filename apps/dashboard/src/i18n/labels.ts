@@ -9,8 +9,8 @@ import { ROLE_LABELS } from '../components/storage/disk-list'
 // Names kept in plain modules (shared with tests run outside the browser),
 // put in the interface language whenever it changes.
 const APPS: Record<AppId, string> = {
-  files: 'files', apps: 'apps', settings: 'settings', storage: 'storage',
-  monitor: 'monitor', sharing: 'sharing', assistant: 'assistant', 'file-preview': 'filePreview', activity: 'activity',
+  'files': 'files', 'apps': 'apps', 'settings': 'settings', 'storage': 'storage',
+  'monitor': 'monitor', 'sharing': 'sharing', 'assistant': 'assistant', 'file-preview': 'filePreview', 'activity': 'activity',
 }
 
 watchEffect(() => {

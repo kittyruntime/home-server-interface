@@ -23,9 +23,10 @@
     "test:shell:base": "bash scripts/tests/restic-download.test.sh && bash scripts/tests/backup-units.test.sh && bash scripts/tests/signing-key-copies.test.sh && bash scripts/tests/install-verify.test.sh && bash scripts/tests/sign-release.test.sh && bash scripts/tests/install-layout.test.sh",
     "test:shell:cutover": "bash scripts/tests/database-baseline.test.sh && bash scripts/tests/database-compose-staging.test.sh && bash scripts/tests/database-old-container.test.sh",
     "check:go": "test -z \"$(gofmt -l apps/root-worker)\" && cd apps/root-worker && go vet ./...",
-    "verify": "pnpm lint && scripts/check-i18n.sh && scripts/check-no-em-dash.sh && pnpm test:shell && pnpm check:go && pnpm typecheck && pnpm test && pnpm build && pnpm smoke:backend",
+    "verify": "pnpm lint && pnpm knip && scripts/check-i18n.sh && scripts/check-no-em-dash.sh && pnpm test:shell && pnpm check:go && pnpm typecheck && pnpm test && pnpm build && pnpm smoke:backend",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
+    "knip": "knip --no-progress",
     "dev": "pnpm -r dev",
     "build": "pnpm --filter @app/backend build && pnpm --filter @app/dashboard build",
     "start": "pnpm -r start"
@@ -60,9 +61,11 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@stylistic/eslint-plugin": "^5.10.0",
     "eslint": "^10.13.0",
     "eslint-plugin-vue": "^10.11.1",
     "globals": "^17.13.0",
+    "knip": "^5.88.1",
     "typescript-eslint": "^8.72.0"
   }
 }

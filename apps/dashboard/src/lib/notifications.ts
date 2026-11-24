@@ -58,7 +58,7 @@ export function useNotifications() {
   /** Run multiple operations in parallel, showing batched progress. */
   async function trackBatch<T>(
     title: string,
-    ops: Array<() => Promise<T>>
+    ops: Array<() => Promise<T>>,
   ): Promise<PromiseSettledResult<T>[]> {
     if (ops.length === 0) return []
     const id = push({ type: 'progress', title: `${title} (0 / ${ops.length})`, progress: 0 })
@@ -67,9 +67,9 @@ export function useNotifications() {
       ops.map(op =>
         op().then(
           r  => { done++; update(id, { title: `${title} (${done} / ${ops.length})`, progress: Math.round(done / ops.length * 100) }); return r },
-          e  => { done++; update(id, { title: `${title} (${done} / ${ops.length})`, progress: Math.round(done / ops.length * 100) }); throw e }
-        )
-      )
+          e  => { done++; update(id, { title: `${title} (${done} / ${ops.length})`, progress: Math.round(done / ops.length * 100) }); throw e },
+        ),
+      ),
     )
     const failed = results.filter(r => r.status === 'rejected').length
     if (failed === 0) {

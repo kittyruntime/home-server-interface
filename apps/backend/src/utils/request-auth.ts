@@ -1,5 +1,5 @@
-import { prisma } from "@app/database"
-import { authenticateSession } from "../trpc/session"
+import { prisma } from '@app/database'
+import { authenticateSession } from '../trpc/session'
 
 export async function loadCurrentUserAuthorization(userId: string) {
   return prisma.user.findUnique({

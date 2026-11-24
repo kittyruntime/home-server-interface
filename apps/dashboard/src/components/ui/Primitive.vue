@@ -1,7 +1,7 @@
 <script lang="ts">
-import type { PropType } from "vue"
-import { cloneVNode, Comment, defineComponent, h, mergeProps } from "vue"
-import { flatten } from "./flatten"
+import type { PropType } from 'vue'
+import { cloneVNode, Comment, defineComponent, h, mergeProps } from 'vue'
+import { flatten } from './flatten'
 
 export interface PrimitiveProps {
   /** Render the first slot vnode instead of a wrapper, merging attrs into it. */
@@ -10,19 +10,19 @@ export interface PrimitiveProps {
   as?: string | object
 }
 
-const SELF_CLOSING_TAGS = ["area", "img", "input"]
+const SELF_CLOSING_TAGS = ['area', 'img', 'input']
 
 export default defineComponent({
-  name: "Primitive",
+  name: 'Primitive',
   inheritAttrs: false,
   props: {
     asChild: { type: Boolean, default: false },
-    as: { type: [String, Object] as PropType<string | object>, default: "div" },
+    as: { type: [String, Object] as PropType<string | object>, default: 'div' },
   },
   setup(props, { attrs, slots }) {
     return () => {
       if (!props.asChild) {
-        if (typeof props.as === "string" && SELF_CLOSING_TAGS.includes(props.as))
+        if (typeof props.as === 'string' && SELF_CLOSING_TAGS.includes(props.as))
           return h(props.as, attrs)
         return h(props.as as string, attrs, { default: slots.default })
       }

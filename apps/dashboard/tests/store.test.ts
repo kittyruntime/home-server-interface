@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { catalogVersion, filterChips, isNew, keptFilter, matchesSearch, versionLabel, visibleApps, type StoreApp } from '../src/lib/store.ts'
+import { catalogVersion, filterChips, isNew, keptFilter, matchesSearch, visibleApps, type StoreApp } from '../src/lib/store.ts'
 
 const app = (name: string, category: string, extra: Partial<StoreApp> = {}): StoreApp => ({
   name, category, tagline: `${name} tagline`, description: `${name} description`, image: `x/${name.toLowerCase()}:1.0`, installedApp: null, ...extra,
@@ -60,14 +60,6 @@ test('keptFilter falls back to All once its chip is gone, so it never comes back
   const chips = filterChips([app('Jellyfin', 'Media')])
   assert.equal(keptFilter(chips, 'Updates'), 'All')
   assert.equal(keptFilter(chips, 'Media'), 'Media')
-})
-
-test('versionLabel names the installed version, or the catalog one only for an app not installed', () => {
-  const kuma = app('Kuma', 'Utilities', { image: 'louislam/uptime-kuma:1.23.16' })
-  assert.equal(versionLabel(kuma), 'catalog 1.23.16')
-  assert.equal(versionLabel({ ...kuma, installedApp: { update: null, image: 'louislam/uptime-kuma:1.23.15' } }), 'installed 1.23.15')
-  // A viewer who is not an admin does not get the installed image: no version rather than a wrong one.
-  assert.equal(versionLabel({ ...kuma, installedApp: { update: null, image: null } }), null)
 })
 
 test('visibleApps sorts by name or by the day apps joined the catalog', () => {

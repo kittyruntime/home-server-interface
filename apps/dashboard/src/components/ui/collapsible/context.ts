@@ -1,4 +1,4 @@
-import type { ComputedRef, InjectionKey } from "vue"
+import type { ComputedRef, InjectionKey } from 'vue'
 
 export interface CollapsibleContext {
   contentId: string
@@ -7,4 +7,4 @@ export interface CollapsibleContext {
   toggle: () => void
 }
 
-export const collapsibleKey: InjectionKey<CollapsibleContext> = Symbol("collapsible")
+export const collapsibleKey: InjectionKey<CollapsibleContext> = Symbol('collapsible')

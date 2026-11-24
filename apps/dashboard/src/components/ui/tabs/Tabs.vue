@@ -1,31 +1,31 @@
 <script setup lang="ts">
-import type { HTMLAttributes } from "vue"
-import type { PrimitiveProps } from "../Primitive.vue"
-import { computed, provide, ref, useId } from "vue"
-import { cn } from "@/lib/utils"
-import Primitive from "../Primitive.vue"
-import { keepFocused, tabsKey } from "./context"
+import type { HTMLAttributes } from 'vue'
+import type { PrimitiveProps } from '../Primitive.vue'
+import { computed, provide, ref, useId } from 'vue'
+import { cn } from '@/lib/utils'
+import Primitive from '../Primitive.vue'
+import { keepFocused, tabsKey } from './context'
 
 type TabValue = string | undefined
 
 interface TabsProps extends PrimitiveProps {
   modelValue?: TabValue
   defaultValue?: TabValue
-  orientation?: "horizontal" | "vertical"
-  activationMode?: "automatic" | "manual"
-  class?: HTMLAttributes["class"]
+  orientation?: 'horizontal' | 'vertical'
+  activationMode?: 'automatic' | 'manual'
+  class?: HTMLAttributes['class']
 }
 
 const props = withDefaults(defineProps<TabsProps>(), {
   modelValue: undefined,
   defaultValue: undefined,
-  orientation: "horizontal",
-  activationMode: "automatic",
-  as: "div",
+  orientation: 'horizontal',
+  activationMode: 'automatic',
+  as: 'div',
 })
 
 const emits = defineEmits<{
-  "update:modelValue": [value: string]
+  'update:modelValue': [value: string]
 }>()
 
 const baseId = `tabs-${useId()}`
@@ -36,7 +36,7 @@ function select(value: string) {
   if (value === model.value)
     return
   local.value = value
-  emits("update:modelValue", value)
+  emits('update:modelValue', value)
 }
 
 // Triggers found in the tablist: the enabled ones in order, and every value
@@ -46,12 +46,12 @@ const enabled = ref<string[]>([])
 const focused = ref<string | null>(null)
 
 function refresh() {
-  const all = Array.from(listEl.value?.querySelectorAll<HTMLElement>("[data-tab-trigger]:not(:disabled)") ?? [])
-  const values = all.map(item => item.dataset.value ?? "")
-  if (values.join("\u0000") !== enabled.value.join("\u0000"))
+  const all = Array.from(listEl.value?.querySelectorAll<HTMLElement>('[data-tab-trigger]:not(:disabled)') ?? [])
+  const values = all.map(item => item.dataset.value ?? '')
+  if (values.join('\u0000') !== enabled.value.join('\u0000'))
     enabled.value = values
   // Include the disabled ones: a trigger that merely became disabled is still there.
-  focused.value = keepFocused(focused.value, Array.from(listEl.value?.querySelectorAll<HTMLElement>("[data-tab-trigger]") ?? [], item => item.dataset.value ?? ""))
+  focused.value = keepFocused(focused.value, Array.from(listEl.value?.querySelectorAll<HTMLElement>('[data-tab-trigger]') ?? [], item => item.dataset.value ?? ''))
   const head = values[0] ?? null
   if (head !== first.value)
     first.value = head

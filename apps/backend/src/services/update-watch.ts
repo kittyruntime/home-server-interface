@@ -1,8 +1,8 @@
-import { readFile, rm, access, writeFile } from "node:fs/promises"
-import { join } from "node:path"
-import { log } from "../utils/log"
-import { requestSync, natsSubscribe } from "../nats"
-import { dispatchEvent, type NotificationEvent } from "./notifications"
+import { readFile, rm, access, writeFile } from 'node:fs/promises'
+import { join } from 'node:path'
+import { log } from '../utils/log'
+import { requestSync, natsSubscribe } from '../nats'
+import { dispatchEvent, type NotificationEvent } from './notifications'
 
 // Detects HSI updates that did not land. update.apply records the attempt next
 // to the .pending-update marker; the update unit removes the marker when it
@@ -12,33 +12,33 @@ import { dispatchEvent, type NotificationEvent } from "./notifications"
 // progress, or an installer that died before restarting anything) waits much
 // longer. Checked at boot and periodically.
 
-export const ATTEMPT_FILE = ".update-attempt.json"
-const PENDING_FILE = ".pending-update"
+export const ATTEMPT_FILE = '.update-attempt.json'
+const PENDING_FILE = '.pending-update'
 export const FAILURE_AFTER_MS = 15 * 60_000
 export const RESTART_GRACE_MS = 5 * 60_000
 export const NO_RESTART_FAILURE_AFTER_MS = 60 * 60_000
 export const CHECK_EVERY_MS = 5 * 60_000
 
-export const NOTIFIED_FILE = ".update-result-notified.json"
+export const NOTIFIED_FILE = '.update-result-notified.json'
 
 export interface UpdateAttempt { from: string; target: string; requestedAt: string }
 
 export function evaluateUpdateAttempt(attempt: UpdateAttempt, current: string, pendingExists: boolean, now: Date, startedAt: Date):
-  { kind: "wait" } | { kind: "succeeded" } | { kind: "failed"; event: NotificationEvent } {
-  if (current === attempt.target) return { kind: "succeeded" }
-  if (pendingExists) return { kind: "wait" }
+  { kind: 'wait' } | { kind: 'succeeded' } | { kind: 'failed'; event: NotificationEvent } {
+  if (current === attempt.target) return { kind: 'succeeded' }
+  if (pendingExists) return { kind: 'wait' }
   const requested = Date.parse(attempt.requestedAt)
   if (Number.isFinite(requested)) {
     const elapsed = now.getTime() - requested
-    if (elapsed < FAILURE_AFTER_MS) return { kind: "wait" }
+    if (elapsed < FAILURE_AFTER_MS) return { kind: 'wait' }
     const restartedSince = startedAt.getTime() > requested
-    if (restartedSince && now.getTime() - startedAt.getTime() < RESTART_GRACE_MS) return { kind: "wait" }
-    if (!restartedSince && elapsed < NO_RESTART_FAILURE_AFTER_MS) return { kind: "wait" }
+    if (restartedSince && now.getTime() - startedAt.getTime() < RESTART_GRACE_MS) return { kind: 'wait' }
+    if (!restartedSince && elapsed < NO_RESTART_FAILURE_AFTER_MS) return { kind: 'wait' }
   }
   return {
-    kind: "failed",
+    kind: 'failed',
     event: {
-      type: "update.failed", severity: "critical", source: "system.update", target: attempt.target,
+      type: 'update.failed', severity: 'critical', source: 'system.update', target: attempt.target,
       message: `Update to ${attempt.target} failed, still running ${current}`, time: now.toISOString(),
     },
   }
@@ -46,13 +46,13 @@ export function evaluateUpdateAttempt(attempt: UpdateAttempt, current: string, p
 
 function isAttempt(v: unknown): v is UpdateAttempt {
   const a = v as UpdateAttempt
-  return !!a && typeof a.from === "string" && typeof a.target === "string" && typeof a.requestedAt === "string"
+  return !!a && typeof a.from === 'string' && typeof a.target === 'string' && typeof a.requestedAt === 'string'
 }
 
 /** The update in progress, if one was requested and not yet judged. */
 export async function readUpdateAttempt(dir: string): Promise<UpdateAttempt | null> {
   try {
-    const attempt: unknown = JSON.parse(await readFile(join(dir, ATTEMPT_FILE), "utf8"))
+    const attempt: unknown = JSON.parse(await readFile(join(dir, ATTEMPT_FILE), 'utf8'))
     return isAttempt(attempt) ? attempt : null
   } catch {
     return null
@@ -61,13 +61,13 @@ export async function readUpdateAttempt(dir: string): Promise<UpdateAttempt | nu
 
 export async function checkUpdateAttempt(
   dir: string, current: string, now: Date, dispatch: (e: NotificationEvent) => unknown, startedAt: Date,
-): Promise<"none" | "wait" | "succeeded" | "failed" | "corrupt"> {
+): Promise<'none' | 'wait' | 'succeeded' | 'failed' | 'corrupt'> {
   const file = join(dir, ATTEMPT_FILE)
   let raw: string
   try {
-    raw = await readFile(file, "utf8")
+    raw = await readFile(file, 'utf8')
   } catch {
-    return "none"
+    return 'none'
   }
   let attempt: unknown
   try {
@@ -77,15 +77,15 @@ export async function checkUpdateAttempt(
   }
   if (!isAttempt(attempt)) {
     await rm(file, { force: true })
-    log.warn({ file }, "update-watch: unreadable update attempt record removed")
-    return "corrupt"
+    log.warn({ file }, 'update-watch: unreadable update attempt record removed')
+    return 'corrupt'
   }
   const pendingExists = await access(join(dir, PENDING_FILE)).then(() => true, () => false)
   const decision = evaluateUpdateAttempt(attempt, current, pendingExists, now, startedAt)
-  if (decision.kind === "wait") return "wait"
+  if (decision.kind === 'wait') return 'wait'
   await rm(file, { force: true })
-  if (decision.kind === "failed") {
-    log.warn({ target: attempt.target, current }, "update-watch: update failed")
+  if (decision.kind === 'failed') {
+    log.warn({ target: attempt.target, current }, 'update-watch: update failed')
     dispatch(decision.event)
   }
   return decision.kind
@@ -112,7 +112,7 @@ export async function readWorkerUpdateStatus(
   let timer: ReturnType<typeof setTimeout> | undefined
   try {
     return await Promise.race([
-      request<WorkerUpdateStatus>("root.update.status", {}, timeoutMs),
+      request<WorkerUpdateStatus>('root.update.status', {}, timeoutMs),
       new Promise<null>(resolve => { timer = setTimeout(() => resolve(null), timeoutMs) }),
     ])
   } catch {
@@ -123,16 +123,9 @@ export async function readWorkerUpdateStatus(
 }
 
 const ALERTING_STATUSES: Record<string, string> = {
-  "rolled-back": "rolled back",
-  "rollback-failed": "rollback failed",
-  "refused": "refused",
-}
-
-// One result (the last.json of a worker before results.jsonl): notifyUpdateResults.
-export async function notifyUpdateResult(
-  dir: string, last: UpdateResult | null, dispatch: (e: NotificationEvent) => unknown,
-): Promise<"none" | "notified"> {
-  return (await notifyUpdateResults(dir, last ? [last] : [], dispatch)) > 0 ? "notified" : "none"
+  'rolled-back': 'rolled back',
+  'rollback-failed': 'rollback failed',
+  'refused': 'refused',
 }
 
 // Notifies, oldest first, each rolled-back (except by hand), rollback-failed or refused
@@ -145,28 +138,28 @@ export async function notifyUpdateResults(
   const file = join(dir, NOTIFIED_FILE)
   let notified = -Infinity
   try {
-    const at = Date.parse((JSON.parse(await readFile(file, "utf8")) as { at?: string }).at ?? "")
+    const at = Date.parse((JSON.parse(await readFile(file, 'utf8')) as { at?: string }).at ?? '')
     if (Number.isFinite(at)) notified = at
   } catch { /* never notified, or an unreadable record */ }
   const fresh = results
-    .filter(r => r && typeof r.at === "string" && Number.isFinite(Date.parse(r.at)) && Date.parse(r.at) > notified)
+    .filter(r => r && typeof r.at === 'string' && Number.isFinite(Date.parse(r.at)) && Date.parse(r.at) > notified)
     .sort((a, b) => Date.parse(a.at) - Date.parse(b.at))
   if (fresh.length === 0) return 0
   let count = 0
   for (const r of fresh) {
     const outcome = ALERTING_STATUSES[r.status]
-    if (!outcome || (r.status === "rolled-back" && r.step === "manual")) continue
+    if (!outcome || (r.status === 'rolled-back' && r.step === 'manual')) continue
     dispatch({
-      type: "update.failed", severity: "critical", source: "system.update", target: r.to,
+      type: 'update.failed', severity: 'critical', source: 'system.update', target: r.to,
       message: `Update from ${r.from} to ${r.to} ${outcome} at step ${r.step}: ${r.reason}`,
       time: new Date().toISOString(),
     })
     count++
   }
   try {
-    await writeFile(file, JSON.stringify({ at: fresh[fresh.length - 1]!.at }), "utf8")
+    await writeFile(file, JSON.stringify({ at: fresh[fresh.length - 1]!.at }), 'utf8')
   } catch (err) {
-    log.error({ err, file }, "update-watch: could not record the notified update result")
+    log.error({ err, file }, 'update-watch: could not record the notified update result')
   }
   return count
 }
@@ -188,7 +181,7 @@ export function watchUpdateResults(opts: {
     await notifyUpdateResults(opts.dir(), results, opts.dispatch)
   }
   const check = () => {
-    running = running.then(once).catch(err => log.error({ err }, "update-watch: result check failed"))
+    running = running.then(once).catch(err => log.error({ err }, 'update-watch: result check failed'))
     return running
   }
   opts.subscribe(() => { void check() })
@@ -196,7 +189,7 @@ export function watchUpdateResults(opts: {
 }
 
 // The worker announces each new result on this subject (best effort).
-export const UPDATE_RESULT_SUBJECT = "events.update.result"
+export const UPDATE_RESULT_SUBJECT = 'events.update.result'
 
 export function startUpdateWatch(opts: { dir: () => string; currentVersion: () => string }): void {
   const startedAt = new Date()
@@ -209,14 +202,14 @@ export function startUpdateWatch(opts: { dir: () => string; currentVersion: () =
         try {
           for await (const _msg of natsSubscribe(UPDATE_RESULT_SUBJECT)) onResult()
         } catch (err) {
-          log.error({ err }, "update-watch: the result subscription ended")
+          log.error({ err }, 'update-watch: the result subscription ended')
         }
       })()
     },
   })
   const run = () => {
     checkUpdateAttempt(opts.dir(), opts.currentVersion(), new Date(), e => void dispatchEvent(e), startedAt)
-      .catch(err => log.error({ err }, "update-watch: check failed"))
+      .catch(err => log.error({ err }, 'update-watch: check failed'))
     void results.check()
   }
   run()

@@ -50,7 +50,7 @@ async function togglePlace(placeId: string) {
 
 function getPerm(placeId: string, subjectType: string, subjectId: string): Perm | undefined {
   return permsByPlace.value[placeId]?.find(
-    p => p.subjectType === subjectType && p.subjectId === subjectId
+    p => p.subjectType === subjectType && p.subjectId === subjectId,
   )
 }
 

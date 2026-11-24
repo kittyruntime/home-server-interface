@@ -1,11 +1,11 @@
-import { createCipheriv, createDecipheriv, randomBytes, scrypt as scryptCallback } from "node:crypto"
-import { createReadStream, createWriteStream } from "node:fs"
-import { chmod, copyFile, link, mkdtemp, open, readdir, rename, rm, stat, unlink, writeFile } from "node:fs/promises"
-import path from "node:path"
-import { once } from "node:events"
-import { pipeline } from "node:stream/promises"
-import { prisma, createPrismaClient } from "@app/database"
-import { requestSync } from "../nats"
+import { createCipheriv, createDecipheriv, randomBytes, scrypt as scryptCallback } from 'node:crypto'
+import { createReadStream, createWriteStream } from 'node:fs'
+import { chmod, copyFile, link, mkdtemp, open, readdir, rename, rm, stat, unlink, writeFile } from 'node:fs/promises'
+import path from 'node:path'
+import { once } from 'node:events'
+import { pipeline } from 'node:stream/promises'
+import { prisma, createPrismaClient } from '@app/database'
+import { requestSync } from '../nats'
 
 // Encrypted configuration backups. Format 1 holds the database only; format 2
 // (#1) is a tar the root worker builds, with the database, the secrets key and
@@ -13,8 +13,8 @@ import { requestSync } from "../nats"
 // maintenance schedule). The envelope is the same: magic, salt, IV, AES-256-GCM
 // ciphertext and tag, the key derived from the password with scrypt.
 
-export const MAGIC_V1 = Buffer.from("HSI-CONFIG-V1\0", "ascii")
-export const MAGIC_V2 = Buffer.from("HSI-CONFIG-V2\0", "ascii")
+export const MAGIC_V1 = Buffer.from('HSI-CONFIG-V1\0', 'ascii')
+export const MAGIC_V2 = Buffer.from('HSI-CONFIG-V2\0', 'ascii')
 const MAGIC_SIZE = MAGIC_V1.length
 const HEADER_SIZE = MAGIC_SIZE + 16 + 12
 const AUTH_TAG_SIZE = 16
@@ -33,7 +33,7 @@ function deriveKey(password: string, salt: Buffer): Promise<Buffer> {
 }
 
 async function writeChunk(stream: ReturnType<typeof createWriteStream>, chunk: Buffer) {
-  if (!stream.write(chunk)) await once(stream, "drain")
+  if (!stream.write(chunk)) await once(stream, 'drain')
 }
 
 /** Encrypts `src` into `dst` with the given format magic. */
@@ -42,9 +42,9 @@ export async function encryptToFile(src: string, dst: string, password: string, 
   const iv = randomBytes(12)
   const key = await deriveKey(password, salt)
   try {
-    const output = createWriteStream(dst, { flags: "wx", mode: 0o600 })
+    const output = createWriteStream(dst, { flags: 'wx', mode: 0o600 })
     await writeChunk(output, Buffer.concat([magic, salt, iv]))
-    const cipher = createCipheriv("aes-256-gcm", key, iv)
+    const cipher = createCipheriv('aes-256-gcm', key, iv)
     for await (const chunk of createReadStream(src)) {
       const encryptedChunk = cipher.update(chunk as Buffer)
       if (encryptedChunk.length) await writeChunk(output, encryptedChunk)
@@ -52,7 +52,7 @@ export async function encryptToFile(src: string, dst: string, password: string, 
     await writeChunk(output, cipher.final())
     await writeChunk(output, cipher.getAuthTag())
     output.end()
-    await once(output, "close")
+    await once(output, 'close')
   } finally {
     key.fill(0)
   }
@@ -61,8 +61,8 @@ export async function encryptToFile(src: string, dst: string, password: string, 
 /** Decrypts a backup into `output`; returns its format (1 or 2). */
 export async function decryptToFile(encrypted: string, password: string, output: string): Promise<1 | 2> {
   const info = await stat(encrypted)
-  if (info.size <= HEADER_SIZE + AUTH_TAG_SIZE + 100) throw new Error("Invalid or truncated HSI backup")
-  const file = await open(encrypted, "r")
+  if (info.size <= HEADER_SIZE + AUTH_TAG_SIZE + 100) throw new Error('Invalid or truncated HSI backup')
+  const file = await open(encrypted, 'r')
   const header = Buffer.alloc(HEADER_SIZE)
   const tag = Buffer.alloc(AUTH_TAG_SIZE)
   try {
@@ -73,22 +73,22 @@ export async function decryptToFile(encrypted: string, password: string, output:
   }
   const magic = header.subarray(0, MAGIC_SIZE)
   const format = magic.equals(MAGIC_V2) ? 2 : magic.equals(MAGIC_V1) ? 1 : 0
-  if (!format) throw new Error("Unsupported HSI backup format")
+  if (!format) throw new Error('Unsupported HSI backup format')
 
   const salt = header.subarray(MAGIC_SIZE, MAGIC_SIZE + 16)
   const iv = header.subarray(MAGIC_SIZE + 16, HEADER_SIZE)
   const key = await deriveKey(password, salt)
   try {
-    const decipher = createDecipheriv("aes-256-gcm", key, iv)
+    const decipher = createDecipheriv('aes-256-gcm', key, iv)
     decipher.setAuthTag(tag)
     await pipeline(
       createReadStream(encrypted, { start: HEADER_SIZE, end: info.size - AUTH_TAG_SIZE - 1 }),
       decipher,
-      createWriteStream(output, { flags: "wx", mode: 0o600 }),
+      createWriteStream(output, { flags: 'wx', mode: 0o600 }),
     )
   } catch {
     await rm(output, { force: true })
-    throw new Error("Incorrect password or corrupted backup")
+    throw new Error('Incorrect password or corrupted backup')
   } finally {
     key.fill(0)
   }
@@ -97,29 +97,29 @@ export async function decryptToFile(encrypted: string, password: string, output:
 
 /** The staging root shared with the worker (created by it for this user). */
 export async function stagingRoot(): Promise<string> {
-  const r = await requestSync<{ dir: string }>("root.config.staging", { ownerUid: process.getuid?.() ?? 0 }, 10_000)
+  const r = await requestSync<{ dir: string }>('root.config.staging', { ownerUid: process.getuid?.() ?? 0 }, 10_000)
   return r.dir
 }
 
 export async function createEncryptedConfigBackup(password: string, hsiVersion: string) {
-  if (restoreInProgress) throw new Error("A configuration restore is in progress")
-  const dir = await mkdtemp(path.join(await stagingRoot(), "export-"))
+  if (restoreInProgress) throw new Error('A configuration restore is in progress')
+  const dir = await mkdtemp(path.join(await stagingRoot(), 'export-'))
   try {
     // VACUUM INTO produces a transactionally consistent standalone SQLite file
     // without pausing normal readers or copying a possibly active journal.
-    const snapshot = path.join(dir, "database.db")
+    const snapshot = path.join(dir, 'database.db')
     await prisma.$executeRawUnsafe(`VACUUM INTO '${snapshot.replaceAll("'", "''")}'`)
     const key = process.env.HSI_SECRETS_KEY?.trim()
-    if (key) await writeFile(path.join(dir, "secrets.json"), JSON.stringify({ HSI_SECRETS_KEY: key }), { mode: 0o600 })
+    if (key) await writeFile(path.join(dir, 'secrets.json'), JSON.stringify({ HSI_SECRETS_KEY: key }), { mode: 0o600 })
     const users = await prisma.user.findMany({ select: { username: true } })
-    const { path: tarPath } = await requestSync<{ path: string }>("root.config.export", {
+    const { path: tarPath } = await requestSync<{ path: string }>('root.config.export', {
       dir, usernames: users.map(u => u.username), hsiVersion, ownerUid: process.getuid?.() ?? 0,
     }, 120_000)
-    const encrypted = path.join(dir, "config.hsibak")
+    const encrypted = path.join(dir, 'config.hsibak')
     await encryptToFile(tarPath, encrypted, password, MAGIC_V2)
     // Only the encrypted file is left while it downloads.
-    for (const f of ["database.db", "secrets.json", "backup.tar"]) await rm(path.join(dir, f), { force: true })
-    const stamp = new Date().toISOString().replaceAll(":", "-").replace(/\.\d{3}Z$/, "Z")
+    for (const f of ['database.db', 'secrets.json', 'backup.tar']) await rm(path.join(dir, f), { force: true })
+    const stamp = new Date().toISOString().replaceAll(':', '-').replace(/\.\d{3}Z$/, 'Z')
     return { path: encrypted, filename: `hsi-config-${stamp}.hsibak`, cleanup: () => rm(dir, { recursive: true, force: true }) }
   } catch (error) {
     await rm(dir, { recursive: true, force: true })
@@ -130,14 +130,14 @@ export async function createEncryptedConfigBackup(password: string, hsiVersion: 
 export async function validateRestoredDatabase(filename: string) {
   const restored = createPrismaClient(`file:${filename}`)
   try {
-    const integrity = await restored.$queryRawUnsafe<Array<Record<string, string>>>("PRAGMA integrity_check")
-    if (integrity.length !== 1 || Object.values(integrity[0] ?? {})[0] !== "ok") throw new Error("Backup database integrity check failed")
+    const integrity = await restored.$queryRawUnsafe<Array<Record<string, string>>>('PRAGMA integrity_check')
+    if (integrity.length !== 1 || Object.values(integrity[0] ?? {})[0] !== 'ok') throw new Error('Backup database integrity check failed')
 
     const objects = await restored.$queryRawUnsafe<Array<{ name: string; type: string }>>(
       "SELECT name, type FROM sqlite_master WHERE type IN ('table', 'view', 'trigger')",
     )
-    if (objects.some(item => item.type === "view" || item.type === "trigger")) throw new Error("Backup contains unsupported database objects")
-    const tables = new Set(objects.filter(item => item.type === "table").map(item => item.name))
+    if (objects.some(item => item.type === 'view' || item.type === 'trigger')) throw new Error('Backup contains unsupported database objects')
+    const tables = new Set(objects.filter(item => item.type === 'table').map(item => item.name))
     const activeTables = await prisma.$queryRawUnsafe<Array<{ name: string }>>(
       "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'",
     )
@@ -146,7 +146,7 @@ export async function validateRestoredDatabase(filename: string) {
       // assistant reads as finished (the router tolerates the missing table)
       // until the next update creates it. The other tables must be there.
       if (!tables.has(name)) {
-        if (name === "SetupState") continue
+        if (name === 'SetupState') continue
         throw new Error(`Backup is missing required table ${name}`)
       }
       const quoted = name.replaceAll('"', '""')
@@ -179,19 +179,19 @@ export async function countRestoredDatabase(filename: string) {
 }
 
 async function currentDatabasePath() {
-  const databases = await prisma.$queryRawUnsafe<Array<{ name: string; file: string }>>("PRAGMA database_list")
-  const filename = databases.find(database => database.name === "main")?.file
-  if (!filename || !path.isAbsolute(filename)) throw new Error("Unable to resolve the active database path")
+  const databases = await prisma.$queryRawUnsafe<Array<{ name: string; file: string }>>('PRAGMA database_list')
+  const filename = databases.find(database => database.name === 'main')?.file
+  if (!filename || !path.isAbsolute(filename)) throw new Error('Unable to resolve the active database path')
   return filename
 }
 
 async function pruneRollbackCopies(databasePath: string) {
   const directory = path.dirname(databasePath)
   const prefix = `${path.basename(databasePath)}.pre-restore-`
-  const sidecar = (name: string) => ["-journal", "-wal", "-shm"].some(suffix => name.endsWith(suffix))
+  const sidecar = (name: string) => ['-journal', '-wal', '-shm'].some(suffix => name.endsWith(suffix))
   const copies = (await readdir(directory)).filter(name => name.startsWith(prefix) && !sidecar(name)).sort().reverse()
   for (const old of copies.slice(3)) {
-    for (const suffix of ["", "-journal", "-wal", "-shm"]) {
+    for (const suffix of ['', '-journal', '-wal', '-shm']) {
       await unlink(path.join(directory, `${old}${suffix}`)).catch(() => {})
     }
   }
@@ -199,7 +199,7 @@ async function pruneRollbackCopies(databasePath: string) {
 
 // Flushes a file, or a folder's entries (a rename), to the disk.
 async function fsyncPath(p: string): Promise<void> {
-  const fh = await open(p, "r")
+  const fh = await open(p, 'r')
   try { await fh.sync() } finally { await fh.close() }
 }
 
@@ -210,11 +210,11 @@ async function fsyncPath(p: string): Promise<void> {
 export async function swapDatabase(restoredFile: string, auditUserId: string, auditIp: string) {
   const active = await currentDatabasePath()
   // Next to the active database: rename() cannot cross filesystems (EXDEV).
-  const dir = await mkdtemp(path.join(path.dirname(active), ".hsi-config-restore-"))
+  const dir = await mkdtemp(path.join(path.dirname(active), '.hsi-config-restore-'))
   let disconnected = false
   let replaced = false
   try {
-    const local = path.join(dir, "restored.db")
+    const local = path.join(dir, 'restored.db')
     await copyFile(restoredFile, local)
 
     // Add the successful restore to the database that will become active. The
@@ -222,12 +222,12 @@ export async function swapDatabase(restoredFile: string, auditUserId: string, au
     const restored = createPrismaClient(`file:${local}`)
     try {
       const actor = await restored.user.findUnique({ where: { id: auditUserId }, select: { id: true } })
-      await restored.auditLog.create({ data: { userId: actor?.id, action: "system.configRestore", ip: auditIp, success: true } })
+      await restored.auditLog.create({ data: { userId: actor?.id, action: 'system.configRestore', ip: auditIp, success: true } })
     } finally {
       await restored.$disconnect()
     }
 
-    const stamp = new Date().toISOString().replaceAll(":", "-").replace(/\.\d{3}Z$/, "Z")
+    const stamp = new Date().toISOString().replaceAll(':', '-').replace(/\.\d{3}Z$/, 'Z')
     const rollback = `${active}.pre-restore-${stamp}`
     // On disk before it can replace anything: a power cut must not leave a
     // half-written database in place.
@@ -235,7 +235,7 @@ export async function swapDatabase(restoredFile: string, auditUserId: string, au
     await chmod(local, 0o600)
     // The old database's last writes go into its main file, so its WAL can
     // be set aside with it.
-    await prisma.$queryRawUnsafe("PRAGMA wal_checkpoint(TRUNCATE)").catch(() => {})
+    await prisma.$queryRawUnsafe('PRAGMA wal_checkpoint(TRUNCATE)').catch(() => {})
     await prisma.$disconnect()
     disconnected = true
 
@@ -246,7 +246,7 @@ export async function swapDatabase(restoredFile: string, auditUserId: string, au
     await link(active, rollback).catch(() => copyFile(active, rollback))
     // SQLite sidecar files belong to the database they were written for: move
     // them with the rollback copy so they are never applied to the restored one.
-    const sidecars = ["-journal", "-wal", "-shm"]
+    const sidecars = ['-journal', '-wal', '-shm']
     for (const suffix of sidecars) await rename(active + suffix, rollback + suffix).catch(() => {})
     try {
       await rename(local, active)

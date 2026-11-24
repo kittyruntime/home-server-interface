@@ -1,6 +1,6 @@
-import { z } from "zod"
-import { router, storageProcedure } from "../index"
-import { dispatchEvent, type Severity } from "../../services/notifications"
+import { z } from 'zod'
+import { router, storageProcedure } from '../index'
+import { dispatchEvent, type Severity } from '../../services/notifications'
 
 const DEFAULT_THRESHOLDS = { diskUsageWarningPercent: 80, diskUsageCriticalPercent: 90 }
 
@@ -14,7 +14,7 @@ async function clearAlerts(rows: AlertRow[], deleteRows: () => Promise<unknown>)
   const time = new Date().toISOString()
   for (const a of rows) {
     void dispatchEvent({
-      type: "alert.cleared", severity: a.severity as Severity, source: a.source, target: a.target,
+      type: 'alert.cleared', severity: a.severity as Severity, source: a.source, target: a.target,
       message: `${a.message} (cleared manually)`, time,
     })
   }
@@ -37,8 +37,8 @@ export const alertRouter = router({
   }),
 
   thresholds: storageProcedure.query(async ({ ctx }) => {
-    const row = await ctx.prisma.alertThreshold.findUnique({ where: { id: "default" } })
-    return row ?? { id: "default", ...DEFAULT_THRESHOLDS }
+    const row = await ctx.prisma.alertThreshold.findUnique({ where: { id: 'default' } })
+    return row ?? { id: 'default', ...DEFAULT_THRESHOLDS }
   }),
 
   updateThresholds: storageProcedure
@@ -46,13 +46,13 @@ export const alertRouter = router({
       diskUsageWarningPercent: z.number().int().min(1).max(99),
       diskUsageCriticalPercent: z.number().int().min(1).max(99),
     }).refine(v => v.diskUsageCriticalPercent > v.diskUsageWarningPercent, {
-      message: "Critical threshold must be higher than the warning threshold",
+      message: 'Critical threshold must be higher than the warning threshold',
     }))
     .mutation(({ ctx, input }) =>
       ctx.prisma.alertThreshold.upsert({
-        where:  { id: "default" },
+        where:  { id: 'default' },
         update: input,
-        create: { id: "default", ...input },
-      })
+        create: { id: 'default', ...input },
+      }),
     ),
 })

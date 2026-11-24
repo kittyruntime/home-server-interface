@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import type { PrimitiveProps } from "../Primitive.vue"
-import { computed, provide, ref, useId } from "vue"
-import Primitive from "../Primitive.vue"
-import { collapsibleKey } from "./context"
+import type { PrimitiveProps } from '../Primitive.vue'
+import { computed, provide, ref, useId } from 'vue'
+import Primitive from '../Primitive.vue'
+import { collapsibleKey } from './context'
 
 interface CollapsibleProps extends PrimitiveProps {
   open?: boolean
@@ -14,11 +14,11 @@ const props = withDefaults(defineProps<CollapsibleProps>(), {
   open: undefined,
   defaultOpen: false,
   disabled: false,
-  as: "div",
+  as: 'div',
 })
 
 const emits = defineEmits<{
-  "update:open": [value: boolean]
+  'update:open': [value: boolean]
 }>()
 
 const local = ref(props.defaultOpen)
@@ -28,7 +28,7 @@ function toggle() {
   if (props.disabled)
     return
   local.value = !open.value
-  emits("update:open", local.value)
+  emits('update:open', local.value)
 }
 
 provide(collapsibleKey, {

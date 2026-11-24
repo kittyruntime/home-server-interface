@@ -105,14 +105,6 @@ export default {
     cancel: 'Annuler',
     noNetworkInterfaceFound: 'Aucune interface réseau trouvée.',
   },
-  NotificationMenu: {
-    activity: 'Activité',
-    closeActivityPanel: 'Fermer le panneau d’activité',
-    viewLogs: 'Voir les journaux',
-    dismissOperation: 'Masquer l’opération',
-    noNotifications: 'Aucune notification',
-    markAllRead: 'Tout marquer comme lu',
-  },
   NotificationsSection: {
     disableConnector: 'Désactiver le connecteur',
     enableConnector: 'Activer le connecteur',
@@ -229,7 +221,6 @@ export default {
     readTheFullGuide: 'Lire le guide complet',
   },
   SharedLinksSection: {
-    sharedLinks: 'Liens partagés',
     publicLinksYouHaveCreated: 'Les liens publics que vous avez créés pour des fichiers et des dossiers. Toute personne qui a le lien y accède jusqu’à son expiration, sa limite de téléchargements, ou sa révocation.',
     noSharedLinksYet: 'Aucun lien partagé pour l’instant.',
     shareAFileOrFolder: 'Partagez un fichier ou un dossier depuis le gestionnaire de fichiers pour en créer un.',

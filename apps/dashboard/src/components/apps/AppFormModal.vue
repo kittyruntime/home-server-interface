@@ -120,7 +120,7 @@ const DEPLOYMENT_DEADLINE_MS = 10 * 60 * 1000
 let activePollController: AbortController | null = null
 onUnmounted(() => activePollController?.abort())
 
-watch(() => props.editName, async (name) => {
+watch(() => props.editName, async name => {
   error.value = ''
   deployError.value = ''
   deployment.value = null
@@ -411,179 +411,179 @@ function rawSaved(raw: string) {
 
     <div v-else class="flex min-h-0 flex-1 flex-col">
 
-    <p class="px-5 pt-2 text-xs text-base-content/70">
-      {{ editing ? t('ui.apps.AppFormModal.editSummary') : t('ui.apps.AppFormModal.createSummary') }}
-    </p>
-
-    <!-- Multi-service notice -->
-    <div v-if="multiSvc" class="px-4 sm:px-6 py-3 border-b border-base-300 bg-warning/10 shrink-0">
-      <p class="text-xs text-base-content/80">{{ t('ui.apps.AppFormModal.thisAppHasSeveralServices') }}</p>
-    </div>
-
-    <!-- Saved - apply prompt -->
-    <div v-if="savedWithoutStarting" class="px-4 sm:px-6 py-2.5 border-b border-base-300 bg-success/10 text-sm shrink-0" role="status">
-      <div class="flex flex-wrap items-center justify-between gap-2">
-        <span>{{ t('ui.apps.AppFormModal.savedNotStarted') }}</span>
-        <Button size="sm" variant="outline" @click="applyNow" :disabled="applying || loading">
-          {{ t('ui.apps.AppFormModal.applyChanges') }}
-        </Button>
-      </div>
-    </div>
-    <div v-else-if="savedName && !configurationDirty && !editName" class="px-4 sm:px-6 py-2.5 border-b border-base-300 bg-primary/5 flex items-center gap-3 shrink-0">
-      <p class="text-xs text-base-content/80 flex-1">{{ t('ui.apps.AppFormModal.changesSavedApplyNow') }}</p>
-      <Button size="sm" @click="applyNow" :disabled="applying || loading">
-        {{ applying ? t('ui.apps.AppFormModal.applying') : t('ui.apps.AppFormModal.apply2') }}
-      </Button>
-    </div>
-    <div v-else-if="savedName" class="px-4 sm:px-6 py-2.5 border-b border-base-300 bg-primary/5 flex items-center gap-3 shrink-0">
-      <p class="text-xs text-base-content/80 flex-1">
-        <template v-if="applyState === 'applied'">{{ t('ui.apps.AppFormModal.changesSavedAndApplied') }}</template>
-        <template v-else-if="applyState === 'error'">{{ t('ui.apps.AppFormModal.changesSavedButApplyFailed') }} <span class="text-primary">{{ applyError }}</span></template>
-        <template v-else>{{ t('ui.apps.AppFormModal.changesSavedApplyNow') }}</template>
+      <p class="px-5 pt-2 text-xs text-base-content/70">
+        {{ editing ? t('ui.apps.AppFormModal.editSummary') : t('ui.apps.AppFormModal.createSummary') }}
       </p>
-      <Button size="sm" v-if="applyState !== 'applied'" @click="applyNow" :disabled="applying || loading">
-        {{ applying ? t('ui.apps.AppFormModal.applying') : t('ui.apps.AppFormModal.applyChanges') }}
-      </Button>
-    </div>
 
-    <!-- Tabs -->
-    <Tabs :model-value="activeTab" class="shrink-0 border-b border-base-300 px-5 py-2" @update:model-value="v => activeTab = v as Tab">
-      <TabsList class="scroll-fade-x">
-        <TabsTrigger v-for="tab in visibleTabs" :key="tab.id" :value="tab.id">{{ tab.label }}</TabsTrigger>
-      </TabsList>
-    </Tabs>
+      <!-- Multi-service notice -->
+      <div v-if="multiSvc" class="px-4 sm:px-6 py-3 border-b border-base-300 bg-warning/10 shrink-0">
+        <p class="text-xs text-base-content/80">{{ t('ui.apps.AppFormModal.thisAppHasSeveralServices') }}</p>
+      </div>
 
-    <!-- Tab content -->
-    <div class="grid min-h-0 flex-1 grid-cols-1 gap-5 overflow-y-auto px-4 py-5 sm:px-6 lg:grid-cols-[minmax(0,1fr)_16rem]">
-
-      <!-- Basic -->
-      <div v-if="activeTab === 'basic'" class="space-y-4">
-        <div class="space-y-1.5">
-          <label for="app-name" class="text-xs font-medium text-base-content/70 uppercase tracking-caps">{{ t('ui.apps.AppFormModal.containerName') }}</label>
-          <Input
-            id="app-name" v-model="form.name" placeholder="my-app" :disabled="editing"
-            class="w-full px-3 py-2 text-sm disabled:opacity-50"
-          />
-        </div>
-        <div class="space-y-1.5">
-          <label for="app-image" class="text-xs font-medium text-base-content/70 uppercase tracking-caps">{{ t('ui.apps.AppFormModal.image') }}</label>
-          <Input
-            id="app-image" v-model="form.image" :placeholder="t('ui.apps.AppFormModal.nginxAlpine')"
-            class="w-full px-3 py-2 text-sm font-mono"
-          />
-        </div>
-        <div v-if="!fromCatalog" class="space-y-1.5">
-          <span id="app-icon-label" class="text-xs font-medium text-base-content/70 uppercase tracking-caps">{{ t('ui.apps.AppFormModal.iconOptional') }}</span>
-          <AppIconPicker v-model="form.icon" :name="form.name" aria-labelledby="app-icon-label" />
-          <p class="text-xs text-base-content/70">{{ t('ui.apps.AppFormModal.iconHint') }}</p>
-        </div>
-        <div class="space-y-1.5 pt-3 border-t border-base-300">
-          <label for="app-pinned-url" class="text-xs font-medium text-base-content/70 uppercase tracking-caps">{{ t('ui.apps.AppFormModal.urlSidebarOptional') }}</label>
-          <Input
-            id="app-pinned-url" v-model="form.pinnedUrl" placeholder="http://192.168.1.x:8080"
-            class="w-full px-3 py-2 text-sm font-mono"
-          />
-          <p class="text-xs text-base-content/70">{{ t('ui.apps.AppFormModal.pinsTheAppInThe') }}</p>
+      <!-- Saved - apply prompt -->
+      <div v-if="savedWithoutStarting" class="px-4 sm:px-6 py-2.5 border-b border-base-300 bg-success/10 text-sm shrink-0" role="status">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <span>{{ t('ui.apps.AppFormModal.savedNotStarted') }}</span>
+          <Button size="sm" variant="outline" @click="applyNow" :disabled="applying || loading">
+            {{ t('ui.apps.AppFormModal.applyChanges') }}
+          </Button>
         </div>
       </div>
-
-      <!-- Ports -->
-      <div v-else-if="activeTab === 'ports'">
-        <PortsTable v-model="form.ports" :app-name="savedName ?? (editName ?? undefined)" />
-      </div>
-
-      <!-- Envs -->
-      <div v-else-if="activeTab === 'envs'">
-        <EnvsEditor v-model="form.envs" />
-      </div>
-
-      <!-- Volumes -->
-      <div v-else-if="activeTab === 'volumes'">
-        <VolumesTable v-model="form.volumes" :places="places" />
-      </div>
-
-      <!-- Networks -->
-      <div v-else-if="activeTab === 'networks'" class="space-y-3">
-        <p class="text-xs text-base-content/70">{{ t('ui.apps.AppFormModal.enterContainerNetworkNamesTo') }} <span>bridge</span>, <span>host</span>{{ t('ui.apps.AppFormModal.orACustomNetwork') }}</p>
-        <div class="flex gap-2">
-          <Input
-            v-model="networkInput" :placeholder="t('ui.apps.AppFormModal.networkName')"
-            @keydown.enter.prevent="addNetwork"
-            class="flex-1 px-2 py-1.5 text-sm font-mono"
-          />
-          <Button variant="secondary" size="sm"
-            @click="addNetwork"
-            class="bg-primary/10 text-primary"
-          >{{ t('ui.apps.AppFormModal.add') }}</Button>
-        </div>
-        <div class="flex flex-wrap gap-1.5">
-          <Badge variant="outline"
-            v-for="n in form.networkNames" :key="n"
-            class="gap-1 rounded-sm text-xs bg-primary/10 text-primary border border-base-300 font-mono"
-          >
-            {{ n }}
-            <Button variant="ghost" size="icon-xs" :aria-label="`Remove network ${n}`" class="-mr-1 size-4 rounded-sm text-current opacity-70 hover:bg-transparent hover:text-current hover:opacity-100" @click="form.networkNames = form.networkNames.filter(x => x !== n)"><XIcon class="size-3" aria-hidden="true" /></Button>
-          </Badge>
-          <span v-if="form.networkNames.length === 0" class="text-xs text-base-content/70">{{ t('ui.apps.AppFormModal.noNetworksAttached') }}</span>
-        </div>
-      </div>
-
-      <!-- Labels -->
-      <div v-else-if="activeTab === 'labels'">
-        <LabelsTable v-model="form.labels" />
-      </div>
-
-      <!-- Advanced -->
-      <div v-else-if="activeTab === 'advanced'">
-        <AdvancedSection
-          v-model="advanced"
-          :app-name="editName || (savedName ?? null)"
-          :unknown-fields="unknownFields"
-          :raw-yaml="rawYaml"
-          @raw-saved="rawSaved"
-        />
-      </div>
-
-      <aside v-if="!editing && !multiSvc" class="h-fit rounded-xl border border-base-300 bg-base-200/60 p-4 lg:sticky lg:top-0">
-        <h3 class="font-semibold">{{ t('ui.apps.AppFormModal.deploymentSummaryTitle') }}</h3>
-        <ol class="mt-3 space-y-2 text-sm text-base-content/80">
-          <li class="flex gap-2"><span class="text-primary">1.</span>{{ t('ui.apps.AppFormModal.deploymentStepSave') }}</li>
-          <li v-if="startAfterCreate" class="flex gap-2"><span class="text-primary">2.</span>{{ t('ui.apps.AppFormModal.deploymentStepDownload') }}</li>
-          <li v-if="startAfterCreate" class="flex gap-2"><span class="text-primary">3.</span>{{ t('ui.apps.AppFormModal.deploymentStepStart') }}</li>
-        </ol>
-        <p class="mt-3 text-xs text-base-content/70">{{ t('ui.apps.AppFormModal.deploymentSummaryDetail') }}</p>
-      </aside>
-
-    </div>
-
-    <!-- Footer -->
-    <div v-if="!multiSvc" class="flex flex-wrap items-center justify-end gap-2 px-4 py-3 border-t border-base-300 shrink-0 sm:px-5 sm:gap-3">
-      <Alert v-if="error || deployError" variant="destructive" role="alert" class="w-full sm:mr-auto sm:w-auto">
-        <AlertDescription>{{ error || deployError }}</AlertDescription>
-      </Alert>
-      <div v-else class="flex-1" />
-      <Button variant="ghost" @click="emit('close')" :disabled="loading || applying">{{ t('ui.apps.AppFormModal.cancel') }}</Button>
-      <template v-if="!editing">
-        <label class="flex w-full items-center gap-2 text-sm sm:w-auto">
-          <Checkbox v-model="startAfterCreate" :disabled="loading" />{{ t('ui.apps.AppFormModal.startAfterCreate') }}
-        </label>
-        <Button class="w-full sm:w-auto" @click="save()" :disabled="loading || !form.name || !form.image">
-          {{ loading ? t('ui.apps.AppFormModal.saving') : t('ui.apps.AppFormModal.create') }}
+      <div v-else-if="savedName && !configurationDirty && !editName" class="px-4 sm:px-6 py-2.5 border-b border-base-300 bg-primary/5 flex items-center gap-3 shrink-0">
+        <p class="text-xs text-base-content/80 flex-1">{{ t('ui.apps.AppFormModal.changesSavedApplyNow') }}</p>
+        <Button size="sm" @click="applyNow" :disabled="applying || loading">
+          {{ applying ? t('ui.apps.AppFormModal.applying') : t('ui.apps.AppFormModal.apply2') }}
         </Button>
-      </template>
-      <Button v-else class="w-full sm:w-auto" @click="save()" :disabled="loading || !form.name || !form.image">
-        {{ loading ? t('ui.apps.AppFormModal.saving') : t('ui.apps.AppFormModal.saveChanges') }}
-      </Button>
-    </div>
-    <div v-else class="flex flex-wrap items-center justify-end gap-2 px-4 py-3 border-t border-base-300 shrink-0 sm:px-5 sm:gap-3">
-      <Alert v-if="error || deployError" variant="destructive" role="alert" class="w-full sm:mr-auto sm:w-auto">
-        <AlertDescription>{{ error || deployError }}</AlertDescription>
-      </Alert>
-      <div v-else class="flex-1" />
-      <Button variant="ghost" @click="emit('close')">{{ t('ui.apps.AppFormModal.close') }}</Button>
-    </div>
+      </div>
+      <div v-else-if="savedName" class="px-4 sm:px-6 py-2.5 border-b border-base-300 bg-primary/5 flex items-center gap-3 shrink-0">
+        <p class="text-xs text-base-content/80 flex-1">
+          <template v-if="applyState === 'applied'">{{ t('ui.apps.AppFormModal.changesSavedAndApplied') }}</template>
+          <template v-else-if="applyState === 'error'">{{ t('ui.apps.AppFormModal.changesSavedButApplyFailed') }} <span class="text-primary">{{ applyError }}</span></template>
+          <template v-else>{{ t('ui.apps.AppFormModal.changesSavedApplyNow') }}</template>
+        </p>
+        <Button size="sm" v-if="applyState !== 'applied'" @click="applyNow" :disabled="applying || loading">
+          {{ applying ? t('ui.apps.AppFormModal.applying') : t('ui.apps.AppFormModal.applyChanges') }}
+        </Button>
+      </div>
 
-  </div>
-  <ContainerLogsPanel v-if="containerLogsName" :name="containerLogsName" @close="containerLogsName = null" />
+      <!-- Tabs -->
+      <Tabs :model-value="activeTab" class="shrink-0 border-b border-base-300 px-5 py-2" @update:model-value="v => activeTab = v as Tab">
+        <TabsList class="scroll-fade-x">
+          <TabsTrigger v-for="tab in visibleTabs" :key="tab.id" :value="tab.id">{{ tab.label }}</TabsTrigger>
+        </TabsList>
+      </Tabs>
+
+      <!-- Tab content -->
+      <div class="grid min-h-0 flex-1 grid-cols-1 gap-5 overflow-y-auto px-4 py-5 sm:px-6 lg:grid-cols-[minmax(0,1fr)_16rem]">
+
+        <!-- Basic -->
+        <div v-if="activeTab === 'basic'" class="space-y-4">
+          <div class="space-y-1.5">
+            <label for="app-name" class="text-xs font-medium text-base-content/70 uppercase tracking-caps">{{ t('ui.apps.AppFormModal.containerName') }}</label>
+            <Input
+              id="app-name" v-model="form.name" placeholder="my-app" :disabled="editing"
+              class="w-full px-3 py-2 text-sm disabled:opacity-50"
+            />
+          </div>
+          <div class="space-y-1.5">
+            <label for="app-image" class="text-xs font-medium text-base-content/70 uppercase tracking-caps">{{ t('ui.apps.AppFormModal.image') }}</label>
+            <Input
+              id="app-image" v-model="form.image" :placeholder="t('ui.apps.AppFormModal.nginxAlpine')"
+              class="w-full px-3 py-2 text-sm font-mono"
+            />
+          </div>
+          <div v-if="!fromCatalog" class="space-y-1.5">
+            <span id="app-icon-label" class="text-xs font-medium text-base-content/70 uppercase tracking-caps">{{ t('ui.apps.AppFormModal.iconOptional') }}</span>
+            <AppIconPicker v-model="form.icon" :name="form.name" aria-labelledby="app-icon-label" />
+            <p class="text-xs text-base-content/70">{{ t('ui.apps.AppFormModal.iconHint') }}</p>
+          </div>
+          <div class="space-y-1.5 pt-3 border-t border-base-300">
+            <label for="app-pinned-url" class="text-xs font-medium text-base-content/70 uppercase tracking-caps">{{ t('ui.apps.AppFormModal.urlSidebarOptional') }}</label>
+            <Input
+              id="app-pinned-url" v-model="form.pinnedUrl" placeholder="http://192.168.1.x:8080"
+              class="w-full px-3 py-2 text-sm font-mono"
+            />
+            <p class="text-xs text-base-content/70">{{ t('ui.apps.AppFormModal.pinsTheAppInThe') }}</p>
+          </div>
+        </div>
+
+        <!-- Ports -->
+        <div v-else-if="activeTab === 'ports'">
+          <PortsTable v-model="form.ports" :app-name="savedName ?? (editName ?? undefined)" />
+        </div>
+
+        <!-- Envs -->
+        <div v-else-if="activeTab === 'envs'">
+          <EnvsEditor v-model="form.envs" />
+        </div>
+
+        <!-- Volumes -->
+        <div v-else-if="activeTab === 'volumes'">
+          <VolumesTable v-model="form.volumes" :places="places" />
+        </div>
+
+        <!-- Networks -->
+        <div v-else-if="activeTab === 'networks'" class="space-y-3">
+          <p class="text-xs text-base-content/70">{{ t('ui.apps.AppFormModal.enterContainerNetworkNamesTo') }} <span>bridge</span>, <span>host</span>{{ t('ui.apps.AppFormModal.orACustomNetwork') }}</p>
+          <div class="flex gap-2">
+            <Input
+              v-model="networkInput" :placeholder="t('ui.apps.AppFormModal.networkName')"
+              @keydown.enter.prevent="addNetwork"
+              class="flex-1 px-2 py-1.5 text-sm font-mono"
+            />
+            <Button variant="secondary" size="sm"
+              @click="addNetwork"
+              class="bg-primary/10 text-primary"
+            >{{ t('ui.apps.AppFormModal.add') }}</Button>
+          </div>
+          <div class="flex flex-wrap gap-1.5">
+            <Badge variant="outline"
+              v-for="n in form.networkNames" :key="n"
+              class="gap-1 rounded-sm text-xs bg-primary/10 text-primary border border-base-300 font-mono"
+            >
+              {{ n }}
+              <Button variant="ghost" size="icon-xs" :aria-label="`Remove network ${n}`" class="-mr-1 size-4 rounded-sm text-current opacity-70 hover:bg-transparent hover:text-current hover:opacity-100" @click="form.networkNames = form.networkNames.filter(x => x !== n)"><XIcon class="size-3" aria-hidden="true" /></Button>
+            </Badge>
+            <span v-if="form.networkNames.length === 0" class="text-xs text-base-content/70">{{ t('ui.apps.AppFormModal.noNetworksAttached') }}</span>
+          </div>
+        </div>
+
+        <!-- Labels -->
+        <div v-else-if="activeTab === 'labels'">
+          <LabelsTable v-model="form.labels" />
+        </div>
+
+        <!-- Advanced -->
+        <div v-else-if="activeTab === 'advanced'">
+          <AdvancedSection
+            v-model="advanced"
+            :app-name="editName || (savedName ?? null)"
+            :unknown-fields="unknownFields"
+            :raw-yaml="rawYaml"
+            @raw-saved="rawSaved"
+          />
+        </div>
+
+        <aside v-if="!editing && !multiSvc" class="h-fit rounded-xl border border-base-300 bg-base-200/60 p-4 lg:sticky lg:top-0">
+          <h3 class="font-semibold">{{ t('ui.apps.AppFormModal.deploymentSummaryTitle') }}</h3>
+          <ol class="mt-3 space-y-2 text-sm text-base-content/80">
+            <li class="flex gap-2"><span class="text-primary">1.</span>{{ t('ui.apps.AppFormModal.deploymentStepSave') }}</li>
+            <li v-if="startAfterCreate" class="flex gap-2"><span class="text-primary">2.</span>{{ t('ui.apps.AppFormModal.deploymentStepDownload') }}</li>
+            <li v-if="startAfterCreate" class="flex gap-2"><span class="text-primary">3.</span>{{ t('ui.apps.AppFormModal.deploymentStepStart') }}</li>
+          </ol>
+          <p class="mt-3 text-xs text-base-content/70">{{ t('ui.apps.AppFormModal.deploymentSummaryDetail') }}</p>
+        </aside>
+
+      </div>
+
+      <!-- Footer -->
+      <div v-if="!multiSvc" class="flex flex-wrap items-center justify-end gap-2 px-4 py-3 border-t border-base-300 shrink-0 sm:px-5 sm:gap-3">
+        <Alert v-if="error || deployError" variant="destructive" role="alert" class="w-full sm:mr-auto sm:w-auto">
+          <AlertDescription>{{ error || deployError }}</AlertDescription>
+        </Alert>
+        <div v-else class="flex-1" />
+        <Button variant="ghost" @click="emit('close')" :disabled="loading || applying">{{ t('ui.apps.AppFormModal.cancel') }}</Button>
+        <template v-if="!editing">
+          <label class="flex w-full items-center gap-2 text-sm sm:w-auto">
+            <Checkbox v-model="startAfterCreate" :disabled="loading" />{{ t('ui.apps.AppFormModal.startAfterCreate') }}
+          </label>
+          <Button class="w-full sm:w-auto" @click="save()" :disabled="loading || !form.name || !form.image">
+            {{ loading ? t('ui.apps.AppFormModal.saving') : t('ui.apps.AppFormModal.create') }}
+          </Button>
+        </template>
+        <Button v-else class="w-full sm:w-auto" @click="save()" :disabled="loading || !form.name || !form.image">
+          {{ loading ? t('ui.apps.AppFormModal.saving') : t('ui.apps.AppFormModal.saveChanges') }}
+        </Button>
+      </div>
+      <div v-else class="flex flex-wrap items-center justify-end gap-2 px-4 py-3 border-t border-base-300 shrink-0 sm:px-5 sm:gap-3">
+        <Alert v-if="error || deployError" variant="destructive" role="alert" class="w-full sm:mr-auto sm:w-auto">
+          <AlertDescription>{{ error || deployError }}</AlertDescription>
+        </Alert>
+        <div v-else class="flex-1" />
+        <Button variant="ghost" @click="emit('close')">{{ t('ui.apps.AppFormModal.close') }}</Button>
+      </div>
+
+    </div>
+    <ContainerLogsPanel v-if="containerLogsName" :name="containerLogsName" @close="containerLogsName = null" />
   </div>
 </template>

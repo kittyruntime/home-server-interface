@@ -1,7 +1,7 @@
 // What a background job works on, stored with its row so the Activity panel
 // can say "Copying Films to Archives" without the worker payload.
 
-export type JobKind = "copy" | "move" | "delete" | "zip" | "unzip" | "finalize" | "container" | "other"
+export type JobKind = 'copy' | 'move' | 'delete' | 'zip' | 'unzip' | 'finalize' | 'container' | 'other'
 
 export interface JobMeta {
   kind: JobKind
@@ -14,19 +14,19 @@ export interface JobMeta {
 }
 
 const FS_KINDS: Record<string, JobKind> = {
-  "fs.copy": "copy",
-  "fs.move": "move",
-  "fs.delete": "delete",
-  "fs.zip": "zip",
-  "fs.unzip": "unzip",
-  "fs.finalize": "finalize",
+  'fs.copy': 'copy',
+  'fs.move': 'move',
+  'fs.delete': 'delete',
+  'fs.zip': 'zip',
+  'fs.unzip': 'unzip',
+  'fs.finalize': 'finalize',
 }
 
 const MAX_TEXT = 1024
 
 export function jobKind(action: string): JobKind {
-  if (action.startsWith("container.")) return "container"
-  return FS_KINDS[action] ?? "other"
+  if (action.startsWith('container.')) return 'container'
+  return FS_KINDS[action] ?? 'other'
 }
 
 const cap = (s: string | undefined) => (s === undefined ? undefined : s.slice(0, MAX_TEXT))
@@ -46,12 +46,12 @@ export function decodeJobMeta(raw: string | null, action: string): JobMeta {
   if (!raw) return fallback
   try {
     const v = JSON.parse(raw) as Partial<JobMeta> | null
-    if (!v || typeof v !== "object") return fallback
+    if (!v || typeof v !== 'object') return fallback
     const out: JobMeta = { kind: jobKind(action) }
-    if (typeof v.src === "string") out.src = cap(v.src)
-    if (typeof v.dst === "string") out.dst = cap(v.dst)
-    if (typeof v.name === "string") out.name = cap(v.name)
-    if (typeof v.count === "number") out.count = v.count
+    if (typeof v.src === 'string') out.src = cap(v.src)
+    if (typeof v.dst === 'string') out.dst = cap(v.dst)
+    if (typeof v.name === 'string') out.name = cap(v.name)
+    if (typeof v.count === 'number') out.count = v.count
     if (v.internal === true) out.internal = true
     return out
   } catch {

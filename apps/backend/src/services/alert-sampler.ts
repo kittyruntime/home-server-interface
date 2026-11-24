@@ -1,8 +1,8 @@
-import { prisma } from "@app/database"
-import { requestSync } from "../nats"
-import { dispatchEvent, type NotificationEvent, type Severity } from "./notifications"
-import { log } from "../utils/log"
-import { BACKUP_ALERT_SOURCE, backupFindings, backupTargets, type BackupStatus } from "./backup-status"
+import { prisma } from '@app/database'
+import { requestSync } from '../nats'
+import { dispatchEvent, type NotificationEvent, type Severity } from './notifications'
+import { log } from '../utils/log'
+import { BACKUP_ALERT_SOURCE, backupFindings, backupTargets, type BackupStatus } from './backup-status'
 
 type CheckResult = { target: string; message: string; severity: Severity }
 // authoritative: the check covers every target it can raise, so a target it
@@ -26,15 +26,15 @@ type RaidArray = {
 }
 
 async function checkRaid(): Promise<CheckOutcome> {
-  const res = await requestSync<{ raids: RaidArray[] }>("root.sys.blockdevices", {}, 15_000)
+  const res = await requestSync<{ raids: RaidArray[] }>('root.sys.blockdevices', {}, 15_000)
   const raids = res.raids ?? []
   const checked = raids.map(r => r.name)
   const found = raids
-    .filter(r => !((r.state === "active" || r.state === "clean") && r.active === r.total))
+    .filter(r => !((r.state === 'active' || r.state === 'clean') && r.active === r.total))
     .map((r): CheckResult => ({
       target: r.name,
       message: `${r.active}/${r.total} devices active (${r.state})`,
-      severity: r.active === 0 ? "critical" : "warning",
+      severity: r.active === 0 ? 'critical' : 'warning',
     }))
   return { found, checked }
 }
@@ -44,32 +44,32 @@ async function checkRaid(): Promise<CheckOutcome> {
 // mismatch means silent corruption or a failing disk; on RAID 1/10 small
 // counts can come from swap or unwritten areas, so it is only a warning.
 async function checkRaidConsistency(): Promise<CheckOutcome> {
-  const res = await requestSync<{ raids: Array<RaidArray & { mismatchCount?: number }> }>("root.sys.blockdevices", {}, 15_000)
+  const res = await requestSync<{ raids: Array<RaidArray & { mismatchCount?: number }> }>('root.sys.blockdevices', {}, 15_000)
   const withResult = (res.raids ?? []).filter(r => r.mismatchCount != null)
   const found = withResult
     .filter(r => (r.mismatchCount ?? 0) > 0)
     .map((r): CheckResult => ({
       target: r.name,
       message: `consistency check found ${r.mismatchCount} mismatched sectors`,
-      severity: r.level === "raid5" || r.level === "raid6" ? "critical" : "warning",
+      severity: r.level === 'raid5' || r.level === 'raid6' ? 'critical' : 'warning',
     }))
   return { found, checked: withResult.map(r => r.name) }
 }
 
 // Storage descriptions (#37): a volume that differs from its description.
 async function checkDescriptions(): Promise<CheckOutcome> {
-  const { descriptionFindings } = await import("./storage-descriptions")
-  const { descriptions } = await requestSync<{ descriptions: Parameters<typeof descriptionFindings>[0] }>("root.storage.descriptions", {}, 10_000)
+  const { descriptionFindings } = await import('./storage-descriptions')
+  const { descriptions } = await requestSync<{ descriptions: Parameters<typeof descriptionFindings>[0] }>('root.storage.descriptions', {}, 10_000)
   return descriptionFindings(descriptions)
 }
 
 // Expansions (#7): a finished one is announced once, then forgotten by the
 // worker; a failed one stays until it is retried.
 async function checkExpansions(): Promise<CheckOutcome> {
-  const { expansionFindings } = await import("./expand-options")
-  const { expansions } = await requestSync<{ expansions: Parameters<typeof expansionFindings>[0] }>("root.sys.expansions", {}, 10_000)
+  const { expansionFindings } = await import('./expand-options')
+  const { expansions } = await requestSync<{ expansions: Parameters<typeof expansionFindings>[0] }>('root.sys.expansions', {}, 10_000)
   const out = expansionFindings(expansions)
-  for (const uuid of out.ack) await requestSync("root.sys.expansions.ack", { uuid }, 10_000).catch(() => {})
+  for (const uuid of out.ack) await requestSync('root.sys.expansions.ack', { uuid }, 10_000).catch(() => {})
   return { found: out.found, checked: out.checked }
 }
 
@@ -80,7 +80,7 @@ type SmartResult = {
   available: boolean
   unsupported?: boolean
   healthPassed: boolean
-  health?: "passed" | "failed" | "unknown"
+  health?: 'passed' | 'failed' | 'unknown'
   warnings?: string[]
   attributes: SmartAttr[]
   nvme?: { criticalWarning: number; mediaErrors: number }
@@ -90,27 +90,27 @@ type SmartResult = {
 // classification over the same already-computed (root-worker-side) data,
 // duplicated here (not shared) since it's 6 lines and this is the only other
 // place that needs it.
-function deriveSmartStatus(s: SmartResult): "passed" | "warning" | "failed" | "unknown" {
-  if (!s.available) return "unknown"
+function deriveSmartStatus(s: SmartResult): 'passed' | 'warning' | 'failed' | 'unknown' {
+  if (!s.available) return 'unknown'
   // Only an explicit failed status is a failure: devices without an overall
   // SMART status (virtio, many USB bridges) report "unknown" and never alert.
-  const health = s.health ?? (s.healthPassed ? "passed" : "failed")
-  if (health === "failed") return "failed"
-  if (s.warnings?.length) return "warning"
-  if (s.attributes.some(a => a.isCritical && a.raw > 0)) return "warning"
-  if (s.nvme && (s.nvme.criticalWarning > 0 || s.nvme.mediaErrors > 0)) return "warning"
-  return health === "passed" ? "passed" : "unknown"
+  const health = s.health ?? (s.healthPassed ? 'passed' : 'failed')
+  if (health === 'failed') return 'failed'
+  if (s.warnings?.length) return 'warning'
+  if (s.attributes.some(a => a.isCritical && a.raw > 0)) return 'warning'
+  if (s.nvme && (s.nvme.criticalWarning > 0 || s.nvme.mediaErrors > 0)) return 'warning'
+  return health === 'passed' ? 'passed' : 'unknown'
 }
 
 async function checkSmart(): Promise<CheckOutcome> {
-  const { devices } = await requestSync<{ devices: BlockDevLite[] }>("root.sys.blockdevices", {}, 15_000)
-  const disks = (devices ?? []).filter(d => d.type === "disk")
+  const { devices } = await requestSync<{ devices: BlockDevLite[] }>('root.sys.blockdevices', {}, 15_000)
+  const disks = (devices ?? []).filter(d => d.type === 'disk')
   const found: CheckResult[] = []
   const checked: string[] = []
   for (const d of disks) {
     let smart: SmartResult
     try {
-      smart = await requestSync<SmartResult>("root.sys.smart", { device: d.name, noWake: true }, 15_000)
+      smart = await requestSync<SmartResult>('root.sys.smart', { device: d.name, noWake: true }, 15_000)
     } catch {
       continue // unreadable this tick: not checked, leave any existing alert alone
     }
@@ -123,15 +123,15 @@ async function checkSmart(): Promise<CheckOutcome> {
     }
     checked.push(d.name)
     const status = deriveSmartStatus(smart)
-    if (status === "warning" || status === "failed") {
-      found.push({ target: d.name, message: `SMART status: ${status}`, severity: status === "failed" ? "critical" : "warning" })
+    if (status === 'warning' || status === 'failed') {
+      found.push({ target: d.name, message: `SMART status: ${status}`, severity: status === 'failed' ? 'critical' : 'warning' })
     }
   }
   return { found, checked }
 }
 
 async function getThresholds(): Promise<{ warning: number; critical: number }> {
-  const row = await prisma.alertThreshold.findUnique({ where: { id: "default" } })
+  const row = await prisma.alertThreshold.findUnique({ where: { id: 'default' } })
   return {
     warning: row?.diskUsageWarningPercent ?? 80,
     critical: row?.diskUsageCriticalPercent ?? 90,
@@ -150,7 +150,7 @@ async function checkDiskUsage(): Promise<CheckOutcome> {
   for (const path of paths) {
     let usage: { total: number; free: number }
     try {
-      usage = await requestSync<{ total: number; free: number }>("root.fs.diskusage", { path, allowedRoot: "" }, 15_000)
+      usage = await requestSync<{ total: number; free: number }>('root.fs.diskusage', { path, allowedRoot: '' }, 15_000)
     } catch {
       continue // unreadable this tick (e.g. Place path temporarily gone): leave any existing alert alone
     }
@@ -158,26 +158,26 @@ async function checkDiskUsage(): Promise<CheckOutcome> {
     checked.push(path)
     const usedPercent = ((usage.total - usage.free) / usage.total) * 100
     if (usedPercent >= critical) {
-      found.push({ target: path, message: `Disk usage: ${usedPercent.toFixed(1)}% (critical, threshold ${critical}%)`, severity: "critical" })
+      found.push({ target: path, message: `Disk usage: ${usedPercent.toFixed(1)}% (critical, threshold ${critical}%)`, severity: 'critical' })
     } else if (usedPercent >= warning) {
-      found.push({ target: path, message: `Disk usage: ${usedPercent.toFixed(1)}% (warning, threshold ${warning}%)`, severity: "warning" })
+      found.push({ target: path, message: `Disk usage: ${usedPercent.toFixed(1)}% (warning, threshold ${warning}%)`, severity: 'warning' })
     }
   }
   return { found, checked }
 }
 
 async function checkBackups(): Promise<CheckOutcome> {
-  const status = await requestSync<BackupStatus>("root.backup.status", {}, 15_000)
+  const status = await requestSync<BackupStatus>('root.backup.status', {}, 15_000)
   return { found: backupFindings(status), checked: backupTargets(status), authoritative: true }
 }
 
 const checkers: Checker[] = [
-  { source: "storage.raid", check: checkRaid },
-  { source: "storage.smart", check: checkSmart },
-  { source: "storage.raid-check", check: checkRaidConsistency },
-  { source: "storage.disk-usage", check: checkDiskUsage },
-  { source: "storage.expand", check: checkExpansions },
-  { source: "storage.description", check: checkDescriptions },
+  { source: 'storage.raid', check: checkRaid },
+  { source: 'storage.smart', check: checkSmart },
+  { source: 'storage.raid-check', check: checkRaidConsistency },
+  { source: 'storage.disk-usage', check: checkDiskUsage },
+  { source: 'storage.expand', check: checkExpansions },
+  { source: 'storage.description', check: checkDescriptions },
   { source: BACKUP_ALERT_SOURCE, check: checkBackups },
 ]
 
@@ -197,12 +197,12 @@ export function diffAlerts(
   for (const f of found) {
     const was = prev.find(p => p.target === f.target)
     if (!was || was.severity !== f.severity) {
-      raised.push({ type: "alert.raised", severity: f.severity, source, target: f.target, message: f.message, time: now })
+      raised.push({ type: 'alert.raised', severity: f.severity, source, target: f.target, message: f.message, time: now })
     }
   }
   for (const p of prev) {
     if (!checkedSet.has(p.target) || foundByTarget.has(p.target)) continue
-    cleared.push({ type: "alert.cleared", severity: (p.severity as Severity), source, target: p.target, message: p.message, time: now })
+    cleared.push({ type: 'alert.cleared', severity: (p.severity as Severity), source, target: p.target, message: p.message, time: now })
   }
   return { raised, cleared }
 }
@@ -232,7 +232,7 @@ export async function reconcileSource(source: string, outcome: CheckOutcome): Pr
     }
     for (const evt of [...raised, ...cleared]) void dispatchEvent(evt)
   } catch (e) {
-    log.error({ err: e, source }, "alert-sampler: failed to persist alerts") // non-fatal: sampler errors must not crash the server
+    log.error({ err: e, source }, 'alert-sampler: failed to persist alerts') // non-fatal: sampler errors must not crash the server
   }
 }
 

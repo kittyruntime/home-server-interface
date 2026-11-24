@@ -236,7 +236,7 @@ function openNext(href: string) {
             :class="['absolute top-8 bottom-1.5 left-3 w-px transition-colors duration-(--dur-slow)', i < stepIndex ? 'bg-primary/60' : 'bg-base-300']" />
           <span aria-hidden="true"
             :class="['relative grid size-6 shrink-0 place-items-center rounded-full text-2xs font-semibold tabular-nums transition-colors duration-(--dur-slow)',
-              i < stepIndex ? 'bg-primary/15 text-primary' : i === stepIndex ? 'bg-primary text-primary-content ring-4 ring-primary/15' : 'border border-base-content/25 text-base-content/70']">
+                     i < stepIndex ? 'bg-primary/15 text-primary' : i === stepIndex ? 'bg-primary text-primary-content ring-4 ring-primary/15' : 'border border-base-content/25 text-base-content/70']">
             <CheckIcon v-if="i < stepIndex" class="size-3.5" stroke-width="3" />
             <template v-else>{{ i + 1 }}</template>
           </span>

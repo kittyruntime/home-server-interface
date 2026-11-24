@@ -72,7 +72,7 @@ function stepLabel(step: MaintenanceStep): string {
             <span
               :class="[
                 'flex size-10 shrink-0 items-center justify-center rounded-full transition-colors',
-                maintenanceStepState(maintenance.step, step) === 'done'   ? 'bg-success/15 text-success' :
+                maintenanceStepState(maintenance.step, step) === 'done' ? 'bg-success/15 text-success' :
                 maintenanceStepState(maintenance.step, step) === 'active' ? 'bg-primary/10 text-primary' :
                 'bg-base-200 text-base-content/70'
               ]"

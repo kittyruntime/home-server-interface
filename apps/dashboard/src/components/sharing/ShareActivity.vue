@@ -63,25 +63,25 @@ function when(r: Run): string {
     </div>
     <p v-if="events.length === 0" class="text-sm text-base-content/70">{{ t('sharing.detail.noActivity') }}</p>
     <template v-else>
-    <div v-for="(d, i) in days" :key="d.key" class="space-y-1" :class="i > 0 && 'pt-3'">
-      <h5 v-if="byDay" class="text-xs font-semibold text-base-content/70">{{ d.label }}</h5>
-      <ul class="divide-y divide-base-300/70">
-        <li v-for="r in d.runs" :key="r.first.id" class="flex items-start gap-3 py-1.5">
-          <component :is="icon(r.first)" class="mt-0.5 size-4 shrink-0" :class="r.first.result === 'refused' ? 'text-error' : 'text-base-content/50'" aria-hidden="true" />
-          <div class="min-w-0 flex-1">
-            <p class="text-sm text-base-content">
-              <template v-if="showUser && r.first.user"><span class="font-medium">{{ r.first.user }}</span><span class="text-base-content/50"> · </span></template>
-              <span>{{ t(eventKey(r.first), { share: r.first.share }) }}</span>
-              <template v-if="r.first.result === 'refused'"><span class="text-base-content/50"> · </span><span class="text-error">{{ t(reasonKey(r.first.reason)) }}</span></template>
-              <span v-if="machineLabel(r.first)" class="ml-2 whitespace-nowrap text-xs text-base-content/70">{{ t('sharing.event.fromLabel') }} <span class="font-mono">{{ machineLabel(r.first) }}</span></span>
-              <span v-if="ongoing(r)" class="badge badge-sm ml-2 align-text-bottom border-success/30 bg-success/10 text-success">{{ t('sharing.event.stillConnected') }}</span>
-              <span v-if="r.count > 1 && !isVisit(r.first)" class="badge badge-ghost badge-sm ml-2 align-text-bottom tabular-nums">{{ t('sharing.event.times', { n: r.count }, r.count) }}</span>
-            </p>
-          </div>
-          <time class="shrink-0 pt-0.5 text-xs text-base-content/70 tabular-nums" :datetime="(ongoing(r) ? r.earliest : r.latest).toISOString()" :title="formatDateTime(ongoing(r) ? r.earliest : r.latest)">{{ when(r) }}</time>
-        </li>
-      </ul>
-    </div>
+      <div v-for="(d, i) in days" :key="d.key" class="space-y-1" :class="i > 0 && 'pt-3'">
+        <h5 v-if="byDay" class="text-xs font-semibold text-base-content/70">{{ d.label }}</h5>
+        <ul class="divide-y divide-base-300/70">
+          <li v-for="r in d.runs" :key="r.first.id" class="flex items-start gap-3 py-1.5">
+            <component :is="icon(r.first)" class="mt-0.5 size-4 shrink-0" :class="r.first.result === 'refused' ? 'text-error' : 'text-base-content/50'" aria-hidden="true" />
+            <div class="min-w-0 flex-1">
+              <p class="text-sm text-base-content">
+                <template v-if="showUser && r.first.user"><span class="font-medium">{{ r.first.user }}</span><span class="text-base-content/50"> · </span></template>
+                <span>{{ t(eventKey(r.first), { share: r.first.share }) }}</span>
+                <template v-if="r.first.result === 'refused'"><span class="text-base-content/50"> · </span><span class="text-error">{{ t(reasonKey(r.first.reason)) }}</span></template>
+                <span v-if="machineLabel(r.first)" class="ml-2 whitespace-nowrap text-xs text-base-content/70">{{ t('sharing.event.fromLabel') }} <span class="font-mono">{{ machineLabel(r.first) }}</span></span>
+                <span v-if="ongoing(r)" class="badge badge-sm ml-2 align-text-bottom border-success/30 bg-success/10 text-success">{{ t('sharing.event.stillConnected') }}</span>
+                <span v-if="r.count > 1 && !isVisit(r.first)" class="badge badge-ghost badge-sm ml-2 align-text-bottom tabular-nums">{{ t('sharing.event.times', { n: r.count }, r.count) }}</span>
+              </p>
+            </div>
+            <time class="shrink-0 pt-0.5 text-xs text-base-content/70 tabular-nums" :datetime="(ongoing(r) ? r.earliest : r.latest).toISOString()" :title="formatDateTime(ongoing(r) ? r.earliest : r.latest)">{{ when(r) }}</time>
+          </li>
+        </ul>
+      </div>
     </template>
   </section>
 </template>

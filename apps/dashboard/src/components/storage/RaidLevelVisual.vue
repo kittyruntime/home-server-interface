@@ -39,7 +39,7 @@ const BLOCK_CLASS: Record<Block['kind'], string> = {
           :class="['flex h-5 w-6 items-center justify-center rounded-sm border text-2xs font-bold', BLOCK_CLASS[b.kind]]"
         >{{ b.label }}</div>
       </div>
-      <div class="h-1 w-7 rounded-full bg-base-300"/>
+      <div class="h-1 w-7 rounded-full bg-base-300" />
     </div>
   </div>
 </template>

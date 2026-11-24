@@ -1,8 +1,6 @@
 export default {
   DesktopShell: {
-    removeWidget: 'Retirer le widget',
     changeWallpaper: 'Changer le fond d’écran…',
-    addWidget: 'Ajouter un widget',
   },
   DesktopWindow: {
     newApp: 'Ajouter une app',

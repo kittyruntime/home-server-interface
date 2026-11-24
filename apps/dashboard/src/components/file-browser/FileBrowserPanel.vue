@@ -149,8 +149,8 @@ const sortDir = computed(() => filePrefs.value.sortDir)
 
 const activeUploads = computed(() =>
   uploads.tasks.value.filter(
-    t => t.destDir === currentPath.value && t.status !== 'done' && t.status !== 'cancelled'
-  )
+    t => t.destDir === currentPath.value && t.status !== 'done' && t.status !== 'cancelled',
+  ),
 )
 
 const sortedEntries = computed(() =>
@@ -302,19 +302,19 @@ function openFile(entry: Entry) {
 const VIRTUAL_ROOT: Place = { id: '__root__', name: 'Root', path: '/' }
 
 const allPlaces = computed((): Place[] =>
-  isAdmin.value ? [VIRTUAL_ROOT, ...dbPlaces.value] : dbPlaces.value
+  isAdmin.value ? [VIRTUAL_ROOT, ...dbPlaces.value] : dbPlaces.value,
 )
 // The places listed in the sidebar: an admin can leave the whole server out.
 // A bookmark or a link outside the places still opens through it.
 const listedPlaces = computed((): Place[] =>
-  filePrefs.value.showRoot ? allPlaces.value : allPlaces.value.filter(p => p.id !== VIRTUAL_ROOT.id)
+  filePrefs.value.showRoot ? allPlaces.value : allPlaces.value.filter(p => p.id !== VIRTUAL_ROOT.id),
 )
 watch(() => filePrefs.value.showRoot, show => {
   if (!show && activePlaceId.value === VIRTUAL_ROOT.id && listedPlaces.value.length > 0) selectPlace(listedPlaces.value[0]!)
 })
 
 const activePlace = computed(() =>
-  activePlaceId.value ? allPlaces.value.find(p => p.id === activePlaceId.value) ?? null : null
+  activePlaceId.value ? allPlaces.value.find(p => p.id === activePlaceId.value) ?? null : null,
 )
 
 // ── bookmarks (#199) ─────────────────────────────────────────────────────────
@@ -521,7 +521,7 @@ function clearSelection() {
 }
 
 const selectedEntries = computed(() =>
-  entries.value.filter(e => selected.value.has(e.path))
+  entries.value.filter(e => selected.value.has(e.path)),
 )
 
 // ── file operations ──────────────────────────────────────────────────────────
@@ -614,7 +614,7 @@ async function transfer(kind: 'copy' | 'move', paths: string[], dst: string) {
         // Long transfers go on in the background, followed in Activity.
         const result = await awaitJobResult(jobId, TRANSFER_WAIT_MS) as { dst?: string } | null
         moved.push({ from: src, to: result?.dst ?? `${dst === '/' ? '' : dst}/${src.split('/').pop()}` })
-      })
+      }),
     )
   } finally {
     pendingPaths.value = []
@@ -695,7 +695,7 @@ async function doDelete() {
         const r = await trpc.fs.delete.mutate({ path: p })
         if (r.trashed) trashed.push(r.trashed)
         if (r.jobId) await awaitJob(r.jobId)
-      })
+      }),
     )
   } finally {
     pendingPaths.value = []
@@ -712,8 +712,7 @@ async function doDelete() {
 
 async function undoTrash(items: Trashed[]) {
   for (const it of items) {
-    try { await trpc.trash.restore.mutate({ placeId: it.placeId, id: it.entry.id }) }
-    catch (e: unknown) { toast.error(e instanceof Error ? e.message : String(e)) }
+    try { await trpc.trash.restore.mutate({ placeId: it.placeId, id: it.entry.id }) } catch (e: unknown) { toast.error(e instanceof Error ? e.message : String(e)) }
   }
   refresh()
 }
@@ -992,257 +991,257 @@ watch(pendingFolder, path => {
       </template>
 
       <template v-else>
-      <FileToolbar
-        :current-path="currentPath"
-        :breadcrumbs="breadcrumbs"
-        :can-go-up="canGoUp"
-        :selected-count="selected.size"
-        :selected-entries="selectedEntries"
-        :clipboard="clipboard"
-        :view-mode="viewMode"
-        :sidebar-open="sidebarOpen"
-        @go-up="goUp"
-        @navigate="navigate"
-        @clear-selection="clearSelection"
-        @copy="doCopy"
-        @cut="doCut"
-        @open="openEntry"
-        @start-rename="startRename"
-        @download="downloadSelected"
-        @open-permissions="openPermissions"
-        @share="openShare"
-        @delete="doDelete()"
-        @create-folder="createFolder"
-        @create-file="createFile"
-        @upload-click="fileInput?.click()"
-        @paste="doPaste"
-        @refresh="refresh"
-        @update:view-mode="setFilePrefs({ view: $event })"
-        @open-display-settings="openSettings('display')"
-        :bookmarked="currentBookmarked"
-        :to-trash="selectionToTrash"
-        @toggle-bookmark="currentPath && toggleBookmarkAt(currentPath)"
-        @drop-into="moveInto"
-        @toggle-sidebar="sidebarOpen = !sidebarOpen"
-        @search="handleSearch"
-      />
+        <FileToolbar
+          :current-path="currentPath"
+          :breadcrumbs="breadcrumbs"
+          :can-go-up="canGoUp"
+          :selected-count="selected.size"
+          :selected-entries="selectedEntries"
+          :clipboard="clipboard"
+          :view-mode="viewMode"
+          :sidebar-open="sidebarOpen"
+          @go-up="goUp"
+          @navigate="navigate"
+          @clear-selection="clearSelection"
+          @copy="doCopy"
+          @cut="doCut"
+          @open="openEntry"
+          @start-rename="startRename"
+          @download="downloadSelected"
+          @open-permissions="openPermissions"
+          @share="openShare"
+          @delete="doDelete()"
+          @create-folder="createFolder"
+          @create-file="createFile"
+          @upload-click="fileInput?.click()"
+          @paste="doPaste"
+          @refresh="refresh"
+          @update:view-mode="setFilePrefs({ view: $event })"
+          @open-display-settings="openSettings('display')"
+          :bookmarked="currentBookmarked"
+          :to-trash="selectionToTrash"
+          @toggle-bookmark="currentPath && toggleBookmarkAt(currentPath)"
+          @drop-into="moveInto"
+          @toggle-sidebar="sidebarOpen = !sidebarOpen"
+          @search="handleSearch"
+        />
 
-      <!-- Content area -->
-      <ContextMenu @update:open="onMenuOpen">
-      <ContextMenuTrigger as-child :disabled="!currentPath && selected.size === 0" @pointerdown.capture="onMenuPointerDown">
-      <div
-        class="flex-1 overflow-auto relative"
-        @dragenter="handleDragEnter"
-        @dragleave="handleDragLeave"
-        @dragover.capture="clearDragHint"
-        @dragover="handleDragOver"
-        @drop.prevent="handleDrop"
-      >
-        <!-- Drag overlay -->
-        <div v-if="dragOver && currentPath && dragKind"
-          class="absolute inset-0 z-40 flex flex-col items-center justify-center gap-3 bg-primary/10 border-2 border-dashed border-primary rounded-sm pointer-events-none select-none">
-          <CopyIcon v-if="dragKind === 'copy'" class="w-10 h-10 text-primary opacity-80" aria-hidden="true" />
-          <FolderInputIcon v-else-if="dragKind === 'move'" class="w-10 h-10 text-primary opacity-80" aria-hidden="true" />
-          <UploadIcon v-else class="w-10 h-10 text-primary opacity-80" aria-hidden="true" />
-          <span class="text-sm text-primary font-medium">
-            {{ dragKind === 'copy' ? t('ui.files.FileBrowserPanel.dropToCopy') : dragKind === 'move' ? t('ui.files.FileBrowserPanel.dropToMove') : t('ui.files.FileBrowserPanel.dropToUpload') }}
-          </span>
-          <span v-if="dragKind === 'move'" class="text-xs text-primary/80">{{ t('ui.files.FileBrowserPanel.dropCopyHint') }}</span>
-        </div>
-
-        <!-- Loading -->
-        <LoadingState v-if="loading" variant="block" />
-
-        <!-- Error -->
-        <div v-else-if="error" class="flex items-center gap-2 text-primary text-sm p-6">
-          <TriangleAlertIcon class="w-4 h-4 shrink-0" aria-hidden="true" />
-          {{ error }}
-        </div>
-
-        <!-- No place selected -->
-        <div v-else-if="!currentPath" class="flex items-center justify-center h-full text-base-content/70 select-none">
-          <div class="text-center space-y-2">
-            <FolderGlyph class="w-10 h-10 mx-auto opacity-20" />
-            <p class="text-sm">{{ t('ui.files.FileBrowserPanel.selectAPlace') }}</p>
-          </div>
-        </div>
-
-        <!-- Search results -->
-        <div v-else-if="isSearchMode" class="p-4">
-          <div class="flex items-center justify-between mb-3">
-            <span class="text-sm text-base-content/80">
-              <span v-if="searchLoading">{{ t('ui.files.FileBrowserPanel.searching') }}</span>
-              <span v-else>{{ t('uip.files.FileBrowserPanel.resultFor', { p0: searchResults.length, p1: searchResults.length === 1 ? '' : 's' }) }}<span class="font-medium text-base-content">{{ searchQuery }}</span>"</span>
-            </span>
-          </div>
-          <LoadingState v-if="searchLoading" variant="compact" :label="LOADING.searching" />
-          <div v-else-if="!searchResults.length" class="text-center py-8 text-sm text-base-content/70">{{ t('ui.files.FileBrowserPanel.noResultsFound') }}</div>
-          <div v-else class="divide-y divide-base-300 rounded-box border border-base-300 overflow-hidden">
-            <Item v-for="r in searchResults" :key="r.path" as="button"
-              @click="navigateToSearchResult(r)"
-              class="w-full flex-nowrap gap-3 rounded-none px-4 py-2.5 text-left hover:bg-base-200">
-              <!-- directory icon -->
-              <FileTypeIcon v-if="r.isDir" :name="r.name" dir class="w-4 h-4 shrink-0" aria-hidden="true" />
-              <!-- file icon -->
-              <FileTypeIcon v-else :name="r.name" class="w-4 h-4 shrink-0" aria-hidden="true" />
-              <div class="flex-1 min-w-0">
-                <div class="text-sm text-base-content font-medium truncate">{{ r.name }}</div>
-                <div class="text-xs text-base-content/70 font-mono truncate">{{ r.relativePath }}</div>
+        <!-- Content area -->
+        <ContextMenu @update:open="onMenuOpen">
+          <ContextMenuTrigger as-child :disabled="!currentPath && selected.size === 0" @pointerdown.capture="onMenuPointerDown">
+            <div
+              class="flex-1 overflow-auto relative"
+              @dragenter="handleDragEnter"
+              @dragleave="handleDragLeave"
+              @dragover.capture="clearDragHint"
+              @dragover="handleDragOver"
+              @drop.prevent="handleDrop"
+            >
+              <!-- Drag overlay -->
+              <div v-if="dragOver && currentPath && dragKind"
+                class="absolute inset-0 z-40 flex flex-col items-center justify-center gap-3 bg-primary/10 border-2 border-dashed border-primary rounded-sm pointer-events-none select-none">
+                <CopyIcon v-if="dragKind === 'copy'" class="w-10 h-10 text-primary opacity-80" aria-hidden="true" />
+                <FolderInputIcon v-else-if="dragKind === 'move'" class="w-10 h-10 text-primary opacity-80" aria-hidden="true" />
+                <UploadIcon v-else class="w-10 h-10 text-primary opacity-80" aria-hidden="true" />
+                <span class="text-sm text-primary font-medium">
+                  {{ dragKind === 'copy' ? t('ui.files.FileBrowserPanel.dropToCopy') : dragKind === 'move' ? t('ui.files.FileBrowserPanel.dropToMove') : t('ui.files.FileBrowserPanel.dropToUpload') }}
+                </span>
+                <span v-if="dragKind === 'move'" class="text-xs text-primary/80">{{ t('ui.files.FileBrowserPanel.dropCopyHint') }}</span>
               </div>
-            </Item>
-          </div>
-        </div>
 
-        <!-- Empty directory (and no uploads in progress) -->
-        <div v-else-if="entries.length === 0 && activeUploads.length === 0" class="flex items-center justify-center h-full text-base-content/70 select-none">
-          <div class="text-center space-y-2">
-            <UploadIcon class="w-10 h-10 mx-auto opacity-20" aria-hidden="true" />
-            <p class="text-sm">{{ t('ui.files.FileBrowserPanel.thisFolderIsEmpty') }}</p>
-            <p class="text-xs">{{ t('ui.files.FileBrowserPanel.dragFilesHereOrUse') }} <strong class="text-base-content/80">{{ t('ui.files.FileBrowserPanel.upload') }}</strong> / <strong class="text-base-content/80">{{ t('ui.files.FileBrowserPanel.newFolder') }}</strong> above.</p>
-          </div>
-        </div>
+              <!-- Loading -->
+              <LoadingState v-if="loading" variant="block" />
 
-        <!-- Has entries (or uploads in progress) -->
-        <template v-else>
-          <!-- Filter bar (Cmd/Ctrl+K) -->
-          <div v-if="showFilter" class="sticky top-0 z-20 px-3 py-2 bg-base-100 border-b border-base-300 flex items-center gap-2">
-            <SearchIcon class="w-3.5 h-3.5 text-base-content/70 shrink-0" aria-hidden="true" />
-            <Input
-              ref="filterInput"
-              v-model="filterQuery"
-              :placeholder="t('ui.files.FileBrowserPanel.filterByName')"
-              :aria-label="t('ui.files.FileBrowserPanel.filterByName2')"
-              @keydown.escape="closeFilter"
-              class="h-7 flex-1 border-0 bg-transparent px-0 shadow-none focus-visible:ring-0"
-            />
-            <span v-if="filterQuery" class="text-2xs text-base-content/70">{{ displayEntries.length }} of {{ sortedEntries.length }}</span>
-            <Button variant="ghost" size="icon-xs" @click="closeFilter" class="text-base-content/70 hover:text-base-content">
-              <XIcon class="w-3.5 h-3.5" aria-hidden="true" />
-            </Button>
-          </div>
+              <!-- Error -->
+              <div v-else-if="error" class="flex items-center gap-2 text-primary text-sm p-6">
+                <TriangleAlertIcon class="w-4 h-4 shrink-0" aria-hidden="true" />
+                {{ error }}
+              </div>
 
-          <!-- Grid view -->
-          <FileGridView
-            ref="viewRef"
-            :key="currentPath ?? ''"
-            @drag-start="onEntryDragStart"
-            @drop-into="moveInto"
-            v-if="viewMode === 'grid'"
-            :entries="displayEntries"
-            :selected="selected"
-            :renaming-path="renamingPath"
-            :rename-value="renameValue"
-            :pending-paths="pendingPaths"
-            :creating-folder="creatingFolder"
-            :creating-file="creatingFile"
-            :upload-tasks="activeUploads"
-            @card-click="handleGridCardClick"
-            @card-dbl-click="handleGridCardDblClick"
-            @select-entry="selectEntry"
-            @contextmenu="selectForContextMenu"
-            @start-rename="startRename"
-            @commit-rename="commitRename"
-            @cancel-rename="cancelRename"
-            @update:rename-value="renameValue = $event"
-            @open-file="openFile"
-          />
+              <!-- No place selected -->
+              <div v-else-if="!currentPath" class="flex items-center justify-center h-full text-base-content/70 select-none">
+                <div class="text-center space-y-2">
+                  <FolderGlyph class="w-10 h-10 mx-auto opacity-20" />
+                  <p class="text-sm">{{ t('ui.files.FileBrowserPanel.selectAPlace') }}</p>
+                </div>
+              </div>
 
-          <!-- List view -->
-          <FileListView
-            ref="viewRef"
-            :key="currentPath ?? ''"
-            @drag-start="onEntryDragStart"
-            @drop-into="moveInto"
-            v-else
-            :entries="displayEntries"
-            :sort-field="sortField"
-            :sort-dir="sortDir"
-            :columns="filePrefs.columns"
-            @set-sort="onHeaderSort"
-            :selected="selected"
-            :renaming-path="renamingPath"
-            :rename-value="renameValue"
-            :pending-paths="pendingPaths"
-            :creating-folder="creatingFolder"
-            :creating-file="creatingFile"
-            :upload-tasks="activeUploads"
-            @row-click="handleRowClick"
-            @row-dbl-click="handleRowDblClick"
-            @select-entry="selectEntry"
-            @contextmenu="selectForContextMenu"
-            @start-rename="startRename"
-            @commit-rename="commitRename"
-            @cancel-rename="cancelRename"
-            @update:rename-value="renameValue = $event"
-            @select-all="selectAll"
-            @clear-selection="clearSelection"
-            @open-file="openFile"
-          />
-        </template>
-      </div>
-      </ContextMenuTrigger>
-      <ContextMenuContent class="min-w-[200px]">
-        <!-- Selection-dependent actions, in a desktop file manager's order:
+              <!-- Search results -->
+              <div v-else-if="isSearchMode" class="p-4">
+                <div class="flex items-center justify-between mb-3">
+                  <span class="text-sm text-base-content/80">
+                    <span v-if="searchLoading">{{ t('ui.files.FileBrowserPanel.searching') }}</span>
+                    <span v-else>{{ t('uip.files.FileBrowserPanel.resultFor', { p0: searchResults.length, p1: searchResults.length === 1 ? '' : 's' }) }}<span class="font-medium text-base-content">{{ searchQuery }}</span>"</span>
+                  </span>
+                </div>
+                <LoadingState v-if="searchLoading" variant="compact" :label="LOADING.searching" />
+                <div v-else-if="!searchResults.length" class="text-center py-8 text-sm text-base-content/70">{{ t('ui.files.FileBrowserPanel.noResultsFound') }}</div>
+                <div v-else class="divide-y divide-base-300 rounded-box border border-base-300 overflow-hidden">
+                  <Item v-for="r in searchResults" :key="r.path" as="button"
+                    @click="navigateToSearchResult(r)"
+                    class="w-full flex-nowrap gap-3 rounded-none px-4 py-2.5 text-left hover:bg-base-200">
+                    <!-- directory icon -->
+                    <FileTypeIcon v-if="r.isDir" :name="r.name" dir class="w-4 h-4 shrink-0" aria-hidden="true" />
+                    <!-- file icon -->
+                    <FileTypeIcon v-else :name="r.name" class="w-4 h-4 shrink-0" aria-hidden="true" />
+                    <div class="flex-1 min-w-0">
+                      <div class="text-sm text-base-content font-medium truncate">{{ r.name }}</div>
+                      <div class="text-xs text-base-content/70 font-mono truncate">{{ r.relativePath }}</div>
+                    </div>
+                  </Item>
+                </div>
+              </div>
+
+              <!-- Empty directory (and no uploads in progress) -->
+              <div v-else-if="entries.length === 0 && activeUploads.length === 0" class="flex items-center justify-center h-full text-base-content/70 select-none">
+                <div class="text-center space-y-2">
+                  <UploadIcon class="w-10 h-10 mx-auto opacity-20" aria-hidden="true" />
+                  <p class="text-sm">{{ t('ui.files.FileBrowserPanel.thisFolderIsEmpty') }}</p>
+                  <p class="text-xs">{{ t('ui.files.FileBrowserPanel.dragFilesHereOrUse') }} <strong class="text-base-content/80">{{ t('ui.files.FileBrowserPanel.upload') }}</strong> / <strong class="text-base-content/80">{{ t('ui.files.FileBrowserPanel.newFolder') }}</strong> above.</p>
+                </div>
+              </div>
+
+              <!-- Has entries (or uploads in progress) -->
+              <template v-else>
+                <!-- Filter bar (Cmd/Ctrl+K) -->
+                <div v-if="showFilter" class="sticky top-0 z-20 px-3 py-2 bg-base-100 border-b border-base-300 flex items-center gap-2">
+                  <SearchIcon class="w-3.5 h-3.5 text-base-content/70 shrink-0" aria-hidden="true" />
+                  <Input
+                    ref="filterInput"
+                    v-model="filterQuery"
+                    :placeholder="t('ui.files.FileBrowserPanel.filterByName')"
+                    :aria-label="t('ui.files.FileBrowserPanel.filterByName2')"
+                    @keydown.escape="closeFilter"
+                    class="h-7 flex-1 border-0 bg-transparent px-0 shadow-none focus-visible:ring-0"
+                  />
+                  <span v-if="filterQuery" class="text-2xs text-base-content/70">{{ displayEntries.length }} of {{ sortedEntries.length }}</span>
+                  <Button variant="ghost" size="icon-xs" @click="closeFilter" class="text-base-content/70 hover:text-base-content">
+                    <XIcon class="w-3.5 h-3.5" aria-hidden="true" />
+                  </Button>
+                </div>
+
+                <!-- Grid view -->
+                <FileGridView
+                  ref="viewRef"
+                  :key="currentPath ?? ''"
+                  @drag-start="onEntryDragStart"
+                  @drop-into="moveInto"
+                  v-if="viewMode === 'grid'"
+                  :entries="displayEntries"
+                  :selected="selected"
+                  :renaming-path="renamingPath"
+                  :rename-value="renameValue"
+                  :pending-paths="pendingPaths"
+                  :creating-folder="creatingFolder"
+                  :creating-file="creatingFile"
+                  :upload-tasks="activeUploads"
+                  @card-click="handleGridCardClick"
+                  @card-dbl-click="handleGridCardDblClick"
+                  @select-entry="selectEntry"
+                  @contextmenu="selectForContextMenu"
+                  @start-rename="startRename"
+                  @commit-rename="commitRename"
+                  @cancel-rename="cancelRename"
+                  @update:rename-value="renameValue = $event"
+                  @open-file="openFile"
+                />
+
+                <!-- List view -->
+                <FileListView
+                  ref="viewRef"
+                  :key="currentPath ?? ''"
+                  @drag-start="onEntryDragStart"
+                  @drop-into="moveInto"
+                  v-else
+                  :entries="displayEntries"
+                  :sort-field="sortField"
+                  :sort-dir="sortDir"
+                  :columns="filePrefs.columns"
+                  @set-sort="onHeaderSort"
+                  :selected="selected"
+                  :renaming-path="renamingPath"
+                  :rename-value="renameValue"
+                  :pending-paths="pendingPaths"
+                  :creating-folder="creatingFolder"
+                  :creating-file="creatingFile"
+                  :upload-tasks="activeUploads"
+                  @row-click="handleRowClick"
+                  @row-dbl-click="handleRowDblClick"
+                  @select-entry="selectEntry"
+                  @contextmenu="selectForContextMenu"
+                  @start-rename="startRename"
+                  @commit-rename="commitRename"
+                  @cancel-rename="cancelRename"
+                  @update:rename-value="renameValue = $event"
+                  @select-all="selectAll"
+                  @clear-selection="clearSelection"
+                  @open-file="openFile"
+                />
+              </template>
+            </div>
+          </ContextMenuTrigger>
+          <ContextMenuContent class="min-w-[200px]">
+            <!-- Selection-dependent actions, in a desktop file manager's order:
              open, move, change, remove, then the item's details. -->
-        <template v-if="selected.size > 0">
-          <template v-if="selected.size === 1">
-            <ContextMenuItem @select="openEntry(selectedEntries[0]!)">
-              <EyeIcon /> {{ selectedEntries[0]?.type === 'file' ? t('ui.files.FileBrowserPanel.view') : t('ui.files.FileBrowserPanel.open') }}<ContextMenuShortcut>Enter</ContextMenuShortcut>
-            </ContextMenuItem>
-            <ContextMenuItem v-if="selectedEntries[0]?.type === 'file'" @select="downloadSelected()"><DownloadIcon /> {{ t('ui.files.FileBrowserPanel.download') }}</ContextMenuItem>
-            <ContextMenuSeparator />
-          </template>
-          <ContextMenuItem @select="doCut()"><ScissorsIcon /> {{ t('ui.files.FileBrowserPanel.cut') }}<ContextMenuShortcut>Ctrl+X</ContextMenuShortcut></ContextMenuItem>
-          <ContextMenuItem @select="doCopy()"><CopyIcon /> {{ t('ui.files.FileBrowserPanel.copy') }}<ContextMenuShortcut>Ctrl+C</ContextMenuShortcut></ContextMenuItem>
-          <ContextMenuSeparator />
-          <template v-if="selected.size === 1">
-            <ContextMenuItem @select="startRename(selectedEntries[0]!)"><PencilIcon /> {{ t('ui.files.FileBrowserPanel.rename') }}<ContextMenuShortcut>F2</ContextMenuShortcut></ContextMenuItem>
-            <ContextMenuItem @select="openShare()"><Share2Icon /> {{ t('ui.files.FileBrowserPanel.share') }}</ContextMenuItem>
-          </template>
-          <ContextMenuItem @select="doZip()"><ArchiveIcon /> {{ t('ui.files.FileBrowserPanel.compressToZip') }}</ContextMenuItem>
-          <ContextMenuItem
-            v-if="selected.size === 1 && selectedEntries[0]?.type === 'file' && selectedEntries[0]?.name.toLowerCase().endsWith('.zip')"
-            @select="doUnzip()"
-          ><PackageOpenIcon /> {{ t('ui.files.FileBrowserPanel.extractHere') }}</ContextMenuItem>
-          <template v-if="selected.size === 1">
-            <ContextMenuItem v-if="selectedEntries[0]?.type === 'dir'" @select="toggleBookmarkAt(selectedEntries[0]!.path)">
-              <BookmarkIcon /> {{ isBookmarked(bookmarks, selectedEntries[0]!.path) ? t('files.bookmarks.remove') : t('files.bookmarks.add') }}
-            </ContextMenuItem>
-            <ContextMenuItem @select="copySelectedPath()"><ClipboardCopyIcon /> {{ t('files.copyPath.menu') }}</ContextMenuItem>
-          </template>
-          <ContextMenuSeparator />
-          <ContextMenuItem :variant="selectionToTrash ? undefined : 'destructive'" @select="doDelete()">
-            <Trash2Icon /> {{ selectionToTrash ? t('files.trash.moveToTrash') : t('ui.files.FileBrowserPanel.delete') }}<ContextMenuShortcut>Del</ContextMenuShortcut>
-          </ContextMenuItem>
-          <template v-if="selected.size === 1">
-            <ContextMenuSeparator />
-            <ContextMenuItem @select="openPermissions()"><KeyRoundIcon /> {{ t('ui.files.FileBrowserPanel.permissions') }}</ContextMenuItem>
-            <ContextMenuItem @select="openProperties()"><InfoIcon /> {{ t('ui.files.FileBrowserPanel.properties') }}<ContextMenuShortcut>Alt+Enter</ContextMenuShortcut></ContextMenuItem>
-          </template>
-          <ContextMenuSeparator v-if="currentPath" />
-        </template>
+            <template v-if="selected.size > 0">
+              <template v-if="selected.size === 1">
+                <ContextMenuItem @select="openEntry(selectedEntries[0]!)">
+                  <EyeIcon /> {{ selectedEntries[0]?.type === 'file' ? t('ui.files.FileBrowserPanel.view') : t('ui.files.FileBrowserPanel.open') }}<ContextMenuShortcut>Enter</ContextMenuShortcut>
+                </ContextMenuItem>
+                <ContextMenuItem v-if="selectedEntries[0]?.type === 'file'" @select="downloadSelected()"><DownloadIcon /> {{ t('ui.files.FileBrowserPanel.download') }}</ContextMenuItem>
+                <ContextMenuSeparator />
+              </template>
+              <ContextMenuItem @select="doCut()"><ScissorsIcon /> {{ t('ui.files.FileBrowserPanel.cut') }}<ContextMenuShortcut>Ctrl+X</ContextMenuShortcut></ContextMenuItem>
+              <ContextMenuItem @select="doCopy()"><CopyIcon /> {{ t('ui.files.FileBrowserPanel.copy') }}<ContextMenuShortcut>Ctrl+C</ContextMenuShortcut></ContextMenuItem>
+              <ContextMenuSeparator />
+              <template v-if="selected.size === 1">
+                <ContextMenuItem @select="startRename(selectedEntries[0]!)"><PencilIcon /> {{ t('ui.files.FileBrowserPanel.rename') }}<ContextMenuShortcut>F2</ContextMenuShortcut></ContextMenuItem>
+                <ContextMenuItem @select="openShare()"><Share2Icon /> {{ t('ui.files.FileBrowserPanel.share') }}</ContextMenuItem>
+              </template>
+              <ContextMenuItem @select="doZip()"><ArchiveIcon /> {{ t('ui.files.FileBrowserPanel.compressToZip') }}</ContextMenuItem>
+              <ContextMenuItem
+                v-if="selected.size === 1 && selectedEntries[0]?.type === 'file' && selectedEntries[0]?.name.toLowerCase().endsWith('.zip')"
+                @select="doUnzip()"
+              ><PackageOpenIcon /> {{ t('ui.files.FileBrowserPanel.extractHere') }}</ContextMenuItem>
+              <template v-if="selected.size === 1">
+                <ContextMenuItem v-if="selectedEntries[0]?.type === 'dir'" @select="toggleBookmarkAt(selectedEntries[0]!.path)">
+                  <BookmarkIcon /> {{ isBookmarked(bookmarks, selectedEntries[0]!.path) ? t('files.bookmarks.remove') : t('files.bookmarks.add') }}
+                </ContextMenuItem>
+                <ContextMenuItem @select="copySelectedPath()"><ClipboardCopyIcon /> {{ t('files.copyPath.menu') }}</ContextMenuItem>
+              </template>
+              <ContextMenuSeparator />
+              <ContextMenuItem :variant="selectionToTrash ? undefined : 'destructive'" @select="doDelete()">
+                <Trash2Icon /> {{ selectionToTrash ? t('files.trash.moveToTrash') : t('ui.files.FileBrowserPanel.delete') }}<ContextMenuShortcut>Del</ContextMenuShortcut>
+              </ContextMenuItem>
+              <template v-if="selected.size === 1">
+                <ContextMenuSeparator />
+                <ContextMenuItem @select="openPermissions()"><KeyRoundIcon /> {{ t('ui.files.FileBrowserPanel.permissions') }}</ContextMenuItem>
+                <ContextMenuItem @select="openProperties()"><InfoIcon /> {{ t('ui.files.FileBrowserPanel.properties') }}<ContextMenuShortcut>Alt+Enter</ContextMenuShortcut></ContextMenuItem>
+              </template>
+              <ContextMenuSeparator v-if="currentPath" />
+            </template>
 
-        <!-- General actions -->
-        <template v-if="currentPath">
-          <ContextMenuItem @select="createFolder()"><FolderPlusIcon /> {{ t('ui.files.FileBrowserPanel.newFolder') }}</ContextMenuItem>
-          <ContextMenuItem @select="createFile()"><FilePlusIcon /> {{ t('ui.files.FileBrowserPanel.newFile') }}</ContextMenuItem>
-          <ContextMenuItem @select="fileInput?.click()"><UploadIcon /> {{ t('ui.files.FileBrowserPanel.upload') }}</ContextMenuItem>
-          <ContextMenuItem v-if="clipboard" :class="clipboard.mode === 'cut' ? 'text-warning' : 'text-primary'" @select="doPaste()">
-            <ClipboardPasteIcon class="text-current" />
-            {{ t('uip.files.FileBrowserPanel.paste', { p0: clipboard.mode === 'cut' ? '(move)' : '' }) }}<ContextMenuShortcut>Ctrl+V</ContextMenuShortcut>
-          </ContextMenuItem>
-          <ContextMenuSeparator />
-          <ContextMenuItem @select="refresh()"><RefreshCwIcon /> {{ t('ui.files.FileBrowserPanel.refresh') }}</ContextMenuItem>
-        </template>
-      </ContextMenuContent>
-      </ContextMenu>
-      <FolderStatusBar :path="currentPath" :items="displayEntries.length" :selected="selected.size" />
+            <!-- General actions -->
+            <template v-if="currentPath">
+              <ContextMenuItem @select="createFolder()"><FolderPlusIcon /> {{ t('ui.files.FileBrowserPanel.newFolder') }}</ContextMenuItem>
+              <ContextMenuItem @select="createFile()"><FilePlusIcon /> {{ t('ui.files.FileBrowserPanel.newFile') }}</ContextMenuItem>
+              <ContextMenuItem @select="fileInput?.click()"><UploadIcon /> {{ t('ui.files.FileBrowserPanel.upload') }}</ContextMenuItem>
+              <ContextMenuItem v-if="clipboard" :class="clipboard.mode === 'cut' ? 'text-warning' : 'text-primary'" @select="doPaste()">
+                <ClipboardPasteIcon class="text-current" />
+                {{ t('uip.files.FileBrowserPanel.paste', { p0: clipboard.mode === 'cut' ? '(move)' : '' }) }}<ContextMenuShortcut>Ctrl+V</ContextMenuShortcut>
+              </ContextMenuItem>
+              <ContextMenuSeparator />
+              <ContextMenuItem @select="refresh()"><RefreshCwIcon /> {{ t('ui.files.FileBrowserPanel.refresh') }}</ContextMenuItem>
+            </template>
+          </ContextMenuContent>
+        </ContextMenu>
+        <FolderStatusBar :path="currentPath" :items="displayEntries.length" :selected="selected.size" />
       </template>
 
     </div>
   </div>
 
-  <input ref="fileInput" type="file" multiple class="hidden" @change="handleFileInput" />
+  <input ref="fileInput" type="file" multiple class="hidden" @change="handleFileInput">
 
   <FilePermissionsDialog
     v-if="permDialogPath"

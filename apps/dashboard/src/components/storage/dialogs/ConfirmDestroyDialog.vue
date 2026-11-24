@@ -50,7 +50,7 @@ const canConfirm = computed(() =>
           {{ t('ui.storage.ConfirmDestroyDialog.type') }} <span class="font-bold text-base-content">{{ confirmWord }}</span> {{ t('ui.storage.ConfirmDestroyDialog.toConfirm') }}
         </label>
         <Input v-model="typed" type="text" :placeholder="confirmWord"
-          class="w-full px-3 py-2 text-sm font-mono placeholder-base-content/70"/>
+          class="w-full px-3 py-2 text-sm font-mono placeholder-base-content/70" />
       </div>
       <p v-if="error" role="alert" class="status-text text-error"><span class="status-tag">[ERR]</span> {{ error }}</p>
       <div class="flex gap-2">

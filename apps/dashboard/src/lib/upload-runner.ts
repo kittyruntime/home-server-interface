@@ -86,7 +86,7 @@ interface UploadStatus {
 async function fetchUploadStatus(uploadId: string): Promise<UploadStatus | null> {
   try {
     const resp = await fetch(`${BASE_URL}/files/upload/status?uploadId=${encodeURIComponent(uploadId)}`, {
-      headers: { 'Authorization': `Bearer ${token.value}` },
+      headers: { Authorization: `Bearer ${token.value}` },
     })
     if (!resp.ok) return null
     return await resp.json() as UploadStatus

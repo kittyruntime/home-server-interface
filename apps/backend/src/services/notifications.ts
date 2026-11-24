@@ -1,18 +1,18 @@
-import { prisma } from "@app/database"
-import { log } from "../utils/log"
-import { enqueueDeliveries } from "./notification-queue"
+import { prisma } from '@app/database'
+import { log } from '../utils/log'
+import { enqueueDeliveries } from './notification-queue'
 
 // Notification engine core: pure functions (interpolation, rule matching,
 // webhook request rendering). Transport and persistence live in the
 // dispatcher section below; keeping the pure part separate makes it testable
 // without a database.
 
-export type Severity = "info" | "warning" | "critical"
+export type Severity = 'info' | 'warning' | 'critical'
 
 export interface NotificationEvent {
   // job.failed: a one-off failure (e.g. a backup run) with nothing to clear later.
   // update.failed: an HSI update that did not end on the requested version.
-  type: "alert.raised" | "alert.cleared" | "job.failed" | "update.failed"
+  type: 'alert.raised' | 'alert.cleared' | 'job.failed' | 'update.failed'
   severity: Severity
   source: string
   target: string
@@ -63,7 +63,7 @@ export function selectConnectorIds(
       const parsed = JSON.parse(rule.connectorIds) as unknown
       if (Array.isArray(parsed)) {
         for (const id of parsed) {
-          if (typeof id === "string") ids.add(id)
+          if (typeof id === 'string') ids.add(id)
         }
       }
     } catch { /* corrupted rule row: skip its targets */ }
@@ -74,19 +74,19 @@ export function selectConnectorIds(
 // SmallTV (smalltv-mod, #75) types: the device rejects any other value with a
 // 400, so critical becomes alert, and a cleared alert is shown as done.
 function smalltvType(event: NotificationEvent): string {
-  if (event.type === "alert.cleared") return "done"
-  return event.severity === "critical" ? "alert" : event.severity
+  if (event.type === 'alert.cleared') return 'done'
+  return event.severity === 'critical' ? 'alert' : event.severity
 }
 
 export function eventVars(event: NotificationEvent): Record<string, string> {
   return {
-    "event.type": event.type,
-    "event.severity": event.severity,
-    "event.source": event.source,
-    "event.target": event.target,
-    "event.message": event.message,
-    "event.time": event.time,
-    "event.smalltvType": smalltvType(event),
+    'event.type': event.type,
+    'event.severity': event.severity,
+    'event.source': event.source,
+    'event.target': event.target,
+    'event.message': event.message,
+    'event.time': event.time,
+    'event.smalltvType': smalltvType(event),
   }
 }
 
@@ -105,12 +105,12 @@ export function renderWebhookRequest(
   let headers: Record<string, string> = {}
   try {
     const parsed = JSON.parse(connector.headers) as Record<string, unknown>
-    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
       headers = Object.fromEntries(Object.entries(parsed).map(([k, v]) => [k, interpolateTemplate(String(v), vars)]))
     }
   } catch { /* degrade to no headers */ }
   return {
-    method: connector.method || "POST",
+    method: connector.method || 'POST',
     url: connector.url,
     headers,
     body: interpolateTemplate(connector.bodyTemplate, vars),
@@ -122,16 +122,16 @@ export function renderWebhookRequest(
 // (notification-queue.ts). Transports live in notification-transports.ts.
 // ---------------------------------------------------------------------------
 
-export const IN_APP_CONNECTOR_ID = "inapp"
+export const IN_APP_CONNECTOR_ID = 'inapp'
 
 // Fixed sample used by preview + Send test.
 export function sampleEvent(): NotificationEvent {
   return {
-    type: "alert.raised",
-    severity: "warning",
-    source: "storage.disk-usage",
-    target: "/srv/data",
-    message: "Disk usage: 84.2% (warning, threshold 80%)",
+    type: 'alert.raised',
+    severity: 'warning',
+    source: 'storage.disk-usage',
+    target: '/srv/data',
+    message: 'Disk usage: 84.2% (warning, threshold 80%)',
     time: new Date().toISOString(),
   }
 }
@@ -150,10 +150,10 @@ export interface WebhookPreset {
 // Presets prefill the connector dialog; everything stays editable after.
 export const WEBHOOK_PRESETS: WebhookPreset[] = [
   {
-    id: "custom",
-    label: "Custom (HSI JSON)",
-    method: "POST",
-    url: "",
+    id: 'custom',
+    label: 'Custom (HSI JSON)',
+    method: 'POST',
+    url: '',
     headers: '{"Content-Type":"application/json"}',
     bodyTemplate: `{
   "type": "{{event.type}}",
@@ -165,34 +165,34 @@ export const WEBHOOK_PRESETS: WebhookPreset[] = [
 }`,
   },
   {
-    id: "discord",
-    label: "Discord",
-    method: "POST",
-    url: "",
+    id: 'discord',
+    label: 'Discord',
+    method: 'POST',
+    url: '',
     headers: '{"Content-Type":"application/json"}',
     bodyTemplate: `{"content":"[{{event.severity}}] {{event.source}}: {{event.message}} ({{event.target}})"}`,
   },
   {
-    id: "slack",
-    label: "Slack",
-    method: "POST",
-    url: "",
+    id: 'slack',
+    label: 'Slack',
+    method: 'POST',
+    url: '',
     headers: '{"Content-Type":"application/json"}',
     bodyTemplate: `{"text":"[{{event.severity}}] {{event.source}}: {{event.message}} ({{event.target}})"}`,
   },
   {
-    id: "ntfy",
-    label: "ntfy",
-    method: "POST",
-    url: "https://ntfy.sh",
+    id: 'ntfy',
+    label: 'ntfy',
+    method: 'POST',
+    url: 'https://ntfy.sh',
     headers: '{"Content-Type":"application/json"}',
     bodyTemplate: `{"topic":"YOUR_TOPIC","title":"HSI {{event.severity}}: {{event.source}}","message":"{{event.message}}"}`,
   },
   {
-    id: "smalltv",
-    label: "SmallTV (smalltv-mod)",
-    method: "POST",
-    url: "http://smalltv.local/api/notify",
+    id: 'smalltv',
+    label: 'SmallTV (smalltv-mod)',
+    method: 'POST',
+    url: 'http://smalltv.local/api/notify',
     headers: '{"Content-Type":"application/json"}',
     bodyTemplate: `{"type":"{{event.smalltvType}}","title":"{{event.source}}","label":"{{event.target}}: {{event.message}}"}`,
     hint: "Use the screen's IP address if smalltv.local does not resolve from the server. The screen's web password must be off: HSI cannot sign in to it. Long messages are cut by the screen (48 characters on ESP8266 models).",
@@ -223,7 +223,7 @@ export async function recordInApp(data: {
   await prisma.notification.create({ data })
   // Prune: keep the 200 most recent rows of this scope.
   const scope = pruneScope(data.userId)
-  const keep = await prisma.notification.findMany({ where: scope, orderBy: { createdAt: "desc" }, take: 200, select: { createdAt: true } })
+  const keep = await prisma.notification.findMany({ where: scope, orderBy: { createdAt: 'desc' }, take: 200, select: { createdAt: true } })
   if (keep.length === 200) {
     await prisma.notification.deleteMany({ where: { ...scope, createdAt: { lt: keep[keep.length - 1]!.createdAt } } })
   }
@@ -245,12 +245,12 @@ export async function dispatchEvent(event: NotificationEvent): Promise<void> {
       try {
         await deliverInApp(event)
       } catch (e) {
-        log.error({ err: e }, "notifications: in-app delivery failed")
+        log.error({ err: e }, 'notifications: in-app delivery failed')
       }
     }
     await enqueueDeliveries(ids.filter(id => id !== IN_APP_CONNECTOR_ID && config.connectorIds.has(id)), event)
   } catch (e) {
-    log.error({ err: e }, "notifications: dispatch failed") // never crash the caller
+    log.error({ err: e }, 'notifications: dispatch failed') // never crash the caller
   }
 }
 
@@ -259,7 +259,7 @@ export async function ensureDefaultRule(): Promise<void> {
   const count = await prisma.notificationRule.count()
   if (count === 0) {
     await prisma.notificationRule.create({
-      data: { name: "All alerts", sourcePrefix: "", minSeverity: "warning", connectorIds: JSON.stringify([IN_APP_CONNECTOR_ID]), enabled: true },
+      data: { name: 'All alerts', sourcePrefix: '', minSeverity: 'warning', connectorIds: JSON.stringify([IN_APP_CONNECTOR_ID]), enabled: true },
     })
   }
 }

@@ -1,20 +1,20 @@
-import { adminProcedure, router } from "../index"
-import { z } from "zod"
-import fs from "node:fs"
-import path from "node:path"
-import { execFile } from "node:child_process"
-import { fileURLToPath } from "node:url"
-import { requestSync } from "../../nats"
-import { log } from "../../utils/log"
-import { readWorkerUpdateStatus } from "../../services/update-watch"
-import { beginMaintenance } from "../../services/maintenance"
+import { adminProcedure, router } from '../index'
+import { z } from 'zod'
+import fs from 'node:fs'
+import path from 'node:path'
+import { execFile } from 'node:child_process'
+import { fileURLToPath } from 'node:url'
+import { requestSync } from '../../nats'
+import { log } from '../../utils/log'
+import { readWorkerUpdateStatus } from '../../services/update-watch'
+import { beginMaintenance } from '../../services/maintenance'
 
 const dirname = path.dirname(fileURLToPath(import.meta.url))
 
 function installDir(): string {
   if (process.env.INSTALL_DIR) return process.env.INSTALL_DIR
   // dev: src/trpc/routers → ../../../../../ = repo root
-  return path.resolve(dirname, "../../../../..")
+  return path.resolve(dirname, '../../../../..')
 }
 
 // install.sh chowns INSTALL_DIR/database/data to the app user but leaves
@@ -30,8 +30,8 @@ function installDir(): string {
 // us which layout applies.
 export function updateStateDir(): string {
   return process.env.INSTALL_DIR
-    ? path.join(installDir(), "database", "data")
-    : path.join(installDir(), "packages", "database", "data")
+    ? path.join(installDir(), 'database', 'data')
+    : path.join(installDir(), 'packages', 'database', 'data')
 }
 
 // The update-apply path unit starts as soon as the marker exists: it is written
@@ -40,7 +40,7 @@ export function updateStateDir(): string {
 export function writePendingUpdate(file: string, version: string): void {
   const tmp = `${file}.tmp-${process.pid}`
   try {
-    fs.writeFileSync(tmp, version, { encoding: "utf8", flag: "wx" })
+    fs.writeFileSync(tmp, version, { encoding: 'utf8', flag: 'wx' })
     fs.renameSync(tmp, file)
   } catch (e) {
     fs.rmSync(tmp, { force: true })
@@ -49,27 +49,27 @@ export function writePendingUpdate(file: string, version: string): void {
 }
 
 function pendingUpdateFile(): string {
-  return path.join(updateStateDir(), ".pending-update")
+  return path.join(updateStateDir(), '.pending-update')
 }
 
 // Same constraint as the pending-update marker: a fresh install cannot create
 // files in INSTALL_DIR itself. Mirrored in scripts/install.sh (hsi-check-update).
 function updateCheckFile(): string {
-  return path.join(updateStateDir(), ".update-check.json")
+  return path.join(updateStateDir(), '.update-check.json')
 }
 
 // Written by versions before the move; read as a fallback until the next check.
 function legacyUpdateCheckFile(): string {
-  return path.join(installDir(), ".update-check.json")
+  return path.join(installDir(), '.update-check.json')
 }
 
 export function readCurrentVersion(): string {
-  const vf = path.join(installDir(), "VERSION")
-  if (fs.existsSync(vf)) return fs.readFileSync(vf, "utf8").trim()
+  const vf = path.join(installDir(), 'VERSION')
+  if (fs.existsSync(vf)) return fs.readFileSync(vf, 'utf8').trim()
   try {
-    const pkg = JSON.parse(fs.readFileSync(path.join(installDir(), "package.json"), "utf8"))
+    const pkg = JSON.parse(fs.readFileSync(path.join(installDir(), 'package.json'), 'utf8'))
     return `v${pkg.version}`
-  } catch { return "unknown" }
+  } catch { return 'unknown' }
 }
 
 type CheckResult = { latestVersion: string; checkedAt: string; releaseNotes?: string }
@@ -77,22 +77,22 @@ type CheckResult = { latestVersion: string; checkedAt: string; releaseNotes?: st
 function readCheck(): CheckResult | null {
   for (const file of [updateCheckFile(), legacyUpdateCheckFile()]) {
     try {
-      return JSON.parse(fs.readFileSync(file, "utf8")) as CheckResult
+      return JSON.parse(fs.readFileSync(file, 'utf8')) as CheckResult
     } catch { /* missing or unreadable: try the next location */ }
   }
   return null
 }
 
 function isNewer(candidate: string, current: string): boolean {
-  const toInts = (v: string) => v.replace(/^v/, "").split(".").map(x => parseInt(x) || 0)
-  const [caMaj=0, caMin=0, caPatch=0] = toInts(candidate)
-  const [cuMaj=0, cuMin=0, cuPatch=0] = toInts(current)
+  const toInts = (v: string) => v.replace(/^v/, '').split('.').map(x => parseInt(x) || 0)
+  const [caMaj = 0, caMin = 0, caPatch = 0] = toInts(candidate)
+  const [cuMaj = 0, cuMin = 0, cuPatch = 0] = toInts(current)
   if (caMaj !== cuMaj) return caMaj > cuMaj
   if (caMin !== cuMin) return caMin > cuMin
   return caPatch > cuPatch
 }
 
-const GITHUB_REPO = "kittyruntime/home-server-interface"
+const GITHUB_REPO = 'kittyruntime/home-server-interface'
 let restartScheduled = false
 
 // ── Pre-flight checks ─────────────────────────────────────────────────────────
@@ -101,32 +101,32 @@ let restartScheduled = false
 // independent and non-blocking: a `fail` blocks the install in the UI, a `warn`
 // lets it through with a visible caveat.
 
-type PreflightStatus = "ok" | "warn" | "fail"
+type PreflightStatus = 'ok' | 'warn' | 'fail'
 type PreflightCheck = { id: string; label: string; status: PreflightStatus; detail?: string }
 
 const MIN_FREE_BYTES = 500 * 1024 * 1024 // 500 MB headroom for download + extract
 
 function diskFreeBytes(dir: string): Promise<number> {
-  return new Promise((resolve) => {
+  return new Promise(resolve => {
     // -P: POSIX output (single line per fs), -k: 1024-byte blocks. df can wrap
     // long device names onto their own line, so parse the last field group.
-    execFile("df", ["-Pk", dir], (err, stdout) => {
+    execFile('df', ['-Pk', dir], (err, stdout) => {
       if (err) return resolve(-1)
-      const lines = stdout.trim().split("\n")
-      const last = lines[lines.length - 1] ?? ""
+      const lines = stdout.trim().split('\n')
+      const last = lines[lines.length - 1] ?? ''
       const cols = last.trim().split(/\s+/)
       // If the device name wrapped, the numbers are on the next line; take the
       // line that has at least 4 numeric fields.
-      const dataLine = cols.length >= 4 ? cols : (lines[lines.length - 2] ?? "").trim().split(/\s+/)
-      const availKb = parseInt(dataLine[3] ?? "", 10)
+      const dataLine = cols.length >= 4 ? cols : (lines[lines.length - 2] ?? '').trim().split(/\s+/)
+      const availKb = parseInt(dataLine[3] ?? '', 10)
       resolve(Number.isFinite(availKb) ? availKb * 1024 : -1)
     })
   })
 }
 
 function systemdActive(unit: string): Promise<boolean> {
-  return new Promise((resolve) => {
-    execFile("systemctl", ["is-active", "--quiet", unit], (err) => resolve(!err))
+  return new Promise(resolve => {
+    execFile('systemctl', ['is-active', '--quiet', unit], err => resolve(!err))
   })
 }
 
@@ -159,7 +159,7 @@ export const updateRouter = router({
   check: adminProcedure.mutation(async () => {
     const res = await fetch(
       `https://api.github.com/repos/${GITHUB_REPO}/releases/latest`,
-      { headers: { "User-Agent": "hsi-update-checker", Accept: "application/vnd.github+json" } }
+      { headers: { 'User-Agent': 'hsi-update-checker', 'Accept': 'application/vnd.github+json' } },
     )
     if (!res.ok) throw new Error(`GitHub API returned ${res.status}`)
     const data = await res.json() as { tag_name: string; body?: string }
@@ -169,11 +169,11 @@ export const updateRouter = router({
       releaseNotes: data.body?.slice(0, 4000),
     }
     try {
-      fs.writeFileSync(updateCheckFile(), JSON.stringify(result), "utf8")
+      fs.writeFileSync(updateCheckFile(), JSON.stringify(result), 'utf8')
     } catch (e) {
       // The check itself succeeded: report the latest version, but say why it
       // will not be remembered instead of failing the whole request.
-      log.error({ err: e, file: updateCheckFile() }, "update: could not save the check result")
+      log.error({ err: e, file: updateCheckFile() }, 'update: could not save the check result')
     }
     return result
   }),
@@ -184,50 +184,50 @@ export const updateRouter = router({
     // 1. Free disk space on the install partition
     const free = await diskFreeBytes(installDir())
     if (free < 0) {
-      checks.push({ id: "disk", label: "Free disk space", status: "warn", detail: "Could not determine free space" })
+      checks.push({ id: 'disk', label: 'Free disk space', status: 'warn', detail: 'Could not determine free space' })
     } else if (free < MIN_FREE_BYTES) {
-      checks.push({ id: "disk", label: "Free disk space", status: "fail", detail: `Only ${fmtMb(free)} free, ${fmtMb(MIN_FREE_BYTES)} recommended` })
+      checks.push({ id: 'disk', label: 'Free disk space', status: 'fail', detail: `Only ${fmtMb(free)} free, ${fmtMb(MIN_FREE_BYTES)} recommended` })
     } else {
-      checks.push({ id: "disk", label: "Free disk space", status: "ok", detail: `${fmtMb(free)} available` })
+      checks.push({ id: 'disk', label: 'Free disk space', status: 'ok', detail: `${fmtMb(free)} available` })
     }
 
     // 2. HSI services are up (so the update can actually restart into the new
     //    version). Checked one by one: an active hsi.target does not mean every
     //    component is running.
-    const units = ["hsi-server", "hsi-worker", "hsi-nats"] as const
+    const units = ['hsi-server', 'hsi-worker', 'hsi-nats'] as const
     const states = await Promise.all(units.map(u => systemdActive(u)))
     const down = units.filter((_, i) => !states[i])
     if (down.length === 0) {
-      checks.push({ id: "services", label: "HSI services", status: "ok", detail: "hsi-server, hsi-worker, hsi-nats all active" })
+      checks.push({ id: 'services', label: 'HSI services', status: 'ok', detail: 'hsi-server, hsi-worker, hsi-nats all active' })
     } else {
-      checks.push({ id: "services", label: "HSI services", status: "fail", detail: `Inactive: ${down.join(", ")}` })
+      checks.push({ id: 'services', label: 'HSI services', status: 'fail', detail: `Inactive: ${down.join(', ')}` })
     }
 
     // 3. No update already in flight
     const pending = fs.existsSync(pendingUpdateFile())
     checks.push(
       pending
-        ? { id: "pending", label: "No pending update", status: "fail", detail: "An update is already scheduled: restart to apply it first" }
-        : { id: "pending", label: "No pending update", status: "ok" },
+        ? { id: 'pending', label: 'No pending update', status: 'fail', detail: 'An update is already scheduled: restart to apply it first' }
+        : { id: 'pending', label: 'No pending update', status: 'ok' },
     )
 
     // 4. Current version is known (otherwise we can't reason about the upgrade)
     const current = readCurrentVersion()
     checks.push(
-      current === "unknown"
-        ? { id: "version", label: "Current version", status: "warn", detail: "Could not determine the running version" }
-        : { id: "version", label: "Current version", status: "ok", detail: current },
+      current === 'unknown'
+        ? { id: 'version', label: 'Current version', status: 'warn', detail: 'Could not determine the running version' }
+        : { id: 'version', label: 'Current version', status: 'ok', detail: current },
     )
 
     // 5. A release check has succeeded at least once (GitHub reachable)
     const check = readCheck()
     checks.push(
       check
-        ? { id: "release", label: "Release info", status: "ok", detail: `Last checked ${check.checkedAt}` }
-        : { id: "release", label: "Release info", status: "warn", detail: "Never checked for updates: run a check first" },
+        ? { id: 'release', label: 'Release info', status: 'ok', detail: `Last checked ${check.checkedAt}` }
+        : { id: 'release', label: 'Release info', status: 'warn', detail: 'Never checked for updates: run a check first' },
     )
 
-    const canApply = checks.every(c => c.status !== "fail")
+    const canApply = checks.every(c => c.status !== 'fail')
     return { checks, canApply }
   }),
 
@@ -237,16 +237,16 @@ export const updateRouter = router({
       // Recorded before the marker: update-watch reports the update as failed
       // if HSI does not come back on this version.
       const attempt = { from: readCurrentVersion(), target: input.version, requestedAt: new Date().toISOString() }
-      fs.writeFileSync(path.join(updateStateDir(), ".update-attempt.json"), JSON.stringify(attempt), "utf8")
+      fs.writeFileSync(path.join(updateStateDir(), '.update-attempt.json'), JSON.stringify(attempt), 'utf8')
       writePendingUpdate(pendingUpdateFile(), input.version)
-      beginMaintenance("update", input.version)
+      beginMaintenance('update', input.version)
       return { ok: true }
     }),
 
   restart: adminProcedure.mutation(() => {
     if (!restartScheduled) {
       restartScheduled = true
-      beginMaintenance("restart")
+      beginMaintenance('restart')
       // Respond to the browser and let the audit write complete before exiting.
       // The service supervisor starts the backend again after EX_TEMPFAIL.
       const timer = setTimeout(() => process.exit(75), 750)
@@ -256,8 +256,8 @@ export const updateRouter = router({
   }),
 
   rebootHost: adminProcedure.mutation(async () => {
-    await requestSync<{ scheduled: boolean }>("root.sys.reboot", {}, 5_000)
-    beginMaintenance("reboot")
+    await requestSync<{ scheduled: boolean }>('root.sys.reboot', {}, 5_000)
+    beginMaintenance('reboot')
     return { ok: true }
   }),
 })

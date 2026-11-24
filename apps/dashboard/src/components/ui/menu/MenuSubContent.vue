@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import type { HTMLAttributes } from "vue"
-import MenuContent from "./MenuContent.vue"
+import type { HTMLAttributes } from 'vue'
+import MenuContent from './MenuContent.vue'
 
-const props = defineProps<{ class?: HTMLAttributes["class"] }>()
+const props = defineProps<{ class?: HTMLAttributes['class'] }>()
 </script>
 
 <template>

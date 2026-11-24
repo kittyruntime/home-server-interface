@@ -147,8 +147,7 @@ export function evaluate(src: string, scope: Scope): unknown {
 
 /** Checks an expression without data; the error to show, or null. */
 export function checkExpression(src: string): string | null {
-  try { evaluate(src, { sources: [{}, {}, {}], item: {} }); return null }
-  catch (e) { return (e as Error).message }
+  try { evaluate(src, { sources: [{}, {}, {}], item: {} }); return null } catch (e) { return (e as Error).message }
 }
 
 // ── Formats ───────────────────────────────────────────────────────────────────

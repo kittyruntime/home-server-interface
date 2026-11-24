@@ -1,6 +1,6 @@
-import path from "node:path"
-import { fileURLToPath } from "node:url"
-import { mkdir, writeFile, unlink } from "node:fs/promises"
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
+import { mkdir, writeFile, unlink } from 'node:fs/promises'
 
 // Plain local app-data storage: these are small UI-setting images, not
 // NAS-browsable user files, so they deliberately skip the
@@ -18,8 +18,8 @@ import { mkdir, writeFile, unlink } from "node:fs/promises"
 const WALLPAPER_DIR = process.env.WALLPAPER_DIR
   ? path.resolve(process.env.WALLPAPER_DIR)
   : process.env.INSTALL_DIR
-  ? path.resolve(process.env.INSTALL_DIR, "data/wallpapers")
-  : path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../data/wallpapers")
+    ? path.resolve(process.env.INSTALL_DIR, 'data/wallpapers')
+    : path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../data/wallpapers')
 
 export function wallpaperPath(userId: string, ext: string): string {
   return path.join(WALLPAPER_DIR, `${userId}.${ext}`)
@@ -34,6 +34,6 @@ export async function deleteWallpaperFile(userId: string, ext: string): Promise<
   try {
     await unlink(wallpaperPath(userId, ext))
   } catch (e: any) {
-    if (e?.code !== "ENOENT") throw e
+    if (e?.code !== 'ENOENT') throw e
   }
 }

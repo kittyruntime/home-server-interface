@@ -74,7 +74,6 @@ const { page, pageCount, paged, pageSize } = usePagination(filteredGroups, 10)
 
 watch(search, () => { page.value = 1 })
 
-
 async function load() {
   const [g, u] = await Promise.all([trpc.group.list.query(), trpc.user.list.query()])
   groups.value = g as Group[]
@@ -181,7 +180,7 @@ onMounted(load)
               <TableHead class="px-5 py-3 text-left text-2xs font-semibold uppercase tracking-caps text-base-content/70 hidden sm:table-cell">
                 <SortableHeader :active="sortKey === 'createdAt'" :dir="sortDir" @click="toggleSort('createdAt')">{{ t('ui.settings.GroupsSection.created') }}</SortableHeader>
               </TableHead>
-              <TableHead class="px-4 py-3 w-16"></TableHead>
+              <TableHead class="px-4 py-3 w-16" />
             </TableRow>
           </TableHeader>
           <TableBody class="divide-y divide-base-300">

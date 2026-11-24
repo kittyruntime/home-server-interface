@@ -1,17 +1,17 @@
 <script setup lang="ts">
-import type { HTMLAttributes } from "vue"
-import { ref } from "vue"
-import { cn } from "@/lib/utils"
-import { useCheckedModel } from "../checked-model"
+import type { HTMLAttributes } from 'vue'
+import { ref } from 'vue'
+import { cn } from '@/lib/utils'
+import { useCheckedModel } from '../checked-model'
 
 const props = withDefaults(defineProps<{
   modelValue?: boolean
   defaultValue?: boolean
-  class?: HTMLAttributes["class"]
+  class?: HTMLAttributes['class']
 }>(), { modelValue: undefined, defaultValue: undefined })
 
 const emits = defineEmits<{
-  "update:modelValue": [value: boolean]
+  'update:modelValue': [value: boolean]
 }>()
 
 const el = ref<HTMLInputElement | null>(null)

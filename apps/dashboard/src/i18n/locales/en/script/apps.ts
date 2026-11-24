@@ -1,9 +1,7 @@
 // Messages from the scripts (notices, errors, labels), generated, then kept by hand.
 export default {
   AppList: {
-    deleteFailed: 'Delete failed',
     failed: 'Failed: {p0}',
-    applyFailed: 'Apply failed',
     failedToApply: 'Failed to apply',
     failedToSave: 'Failed to save',
     failedToUnpin: 'Failed to unpin',
@@ -20,8 +18,6 @@ export default {
     start2: 'Start',
     apply: 'Apply {p0}',
     apply2: 'Apply',
-    applying: 'Applying {p0}…',
-    applyFailed2: 'Apply {p0} failed',
   },
   AdvancedSection: {
     saveTheAppFirstTo: 'Save the app first to get a name.',
@@ -36,8 +32,6 @@ export default {
     streamError: 'Stream error',
   },
   UnmanagedContainers: {
-    enterAnAppName: 'Enter an app name.',
-    pasteAComposeFileOr: 'Paste a compose file or choose a file.',
     failedToLoad: 'Failed to load',
     importFailed: 'Import failed',
   },
@@ -47,10 +41,6 @@ export default {
     dockerComposeIsMissing: 'Docker Compose is missing',
   },
   AppFormModal: {
-    pasteAComposeYmlFirst: 'Paste a compose.yml first.',
-    yamlParseError: 'YAML parse error: {p0}',
-    noServicesFound: 'No services found.',
-    serviceNotFound: 'Service "{p0}" not found.',
     failedToLoadApp: 'Failed to load app',
     failedToSave: 'Failed to save',
     applyFailed: 'Apply failed',

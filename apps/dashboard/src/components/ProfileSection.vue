@@ -103,8 +103,7 @@ async function submitPassword() {
 // ── Init ──────────────────────────────────────────────────────────────────────
 
 onMounted(async () => {
-  try { me.value = (await trpc.user.me.query()) as Me }
-  finally { loading.value = false }
+  try { me.value = (await trpc.user.me.query()) as Me } finally { loading.value = false }
 })
 </script>
 
@@ -197,19 +196,19 @@ onMounted(async () => {
             <div>
               <label class="block text-xs text-base-content/70 mb-1">{{ t('ui.settings.ProfileSection.currentPassword') }}</label>
               <Input v-model="pwForm.current" type="password" placeholder="••••••••" autofocus
-                class="w-full px-3 py-1.5 text-sm"/>
+                class="w-full px-3 py-1.5 text-sm" />
             </div>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
               <div>
                 <label class="block text-xs text-base-content/70 mb-1">{{ t('ui.settings.ProfileSection.newPassword') }}</label>
                 <Input v-model="pwForm.next" type="password" :placeholder="t('ui.settings.ProfileSection.min6Chars')"
-                  class="w-full px-3 py-1.5 text-sm"/>
+                  class="w-full px-3 py-1.5 text-sm" />
               </div>
               <div>
                 <label class="block text-xs text-base-content/70 mb-1">{{ t('ui.settings.ProfileSection.confirm') }}</label>
                 <Input v-model="pwForm.confirm" type="password" :placeholder="t('ui.settings.ProfileSection.repeat')"
                   @keydown.enter="submitPassword"
-                  class="w-full px-3 py-1.5 text-sm"/>
+                  class="w-full px-3 py-1.5 text-sm" />
               </div>
             </div>
             <p v-if="pwError" role="alert" class="status-text text-error"><span class="status-tag">[ERR]</span> {{ pwError }}</p>

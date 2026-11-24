@@ -1,15 +1,15 @@
 <script setup lang="ts">
-import type { HTMLAttributes } from "vue"
-import { inject, onMounted, ref, watch } from "vue"
-import { cn } from "@/lib/utils"
-import { nextIndex } from "@/lib/menu-navigation"
-import { tabsKey } from "./context"
+import type { HTMLAttributes } from 'vue'
+import { inject, onMounted, ref, watch } from 'vue'
+import { cn } from '@/lib/utils'
+import { nextIndex } from '@/lib/menu-navigation'
+import { tabsKey } from './context'
 
 const props = withDefaults(defineProps<{
-  class?: HTMLAttributes["class"]
+  class?: HTMLAttributes['class']
   /** box: segmented control; border: underlined tabs over a panel. */
-  variant?: "box" | "border"
-}>(), { variant: "box" })
+  variant?: 'box' | 'border'
+}>(), { variant: 'box' })
 
 const ctx = inject(tabsKey)!
 const el = ref<HTMLElement | null>(null)
@@ -17,7 +17,7 @@ onMounted(() => {
   ctx.listEl.value = el.value
   ctx.refresh()
 })
-watch(ctx.model, () => ctx.refresh(), { flush: "post" })
+watch(ctx.model, () => ctx.refresh(), { flush: 'post' })
 
 function onFocusout(event: FocusEvent) {
   const next = event.relatedTarget as Node | null
@@ -28,20 +28,20 @@ function onFocusout(event: FocusEvent) {
 function onKeydown(event: KeyboardEvent) {
   if (event.isComposing || event.altKey || event.ctrlKey || event.metaKey)
     return
-  const vertical = ctx.orientation.value === "vertical"
+  const vertical = ctx.orientation.value === 'vertical'
   let key: string
-  if (event.key === "Home" || event.key === "PageUp")
-    key = "Home"
-  else if (event.key === "End" || event.key === "PageDown")
-    key = "End"
-  else if ((vertical && event.key === "ArrowDown") || (!vertical && event.key === "ArrowRight"))
-    key = "ArrowDown"
-  else if ((vertical && event.key === "ArrowUp") || (!vertical && event.key === "ArrowLeft"))
-    key = "ArrowUp"
+  if (event.key === 'Home' || event.key === 'PageUp')
+    key = 'Home'
+  else if (event.key === 'End' || event.key === 'PageDown')
+    key = 'End'
+  else if ((vertical && event.key === 'ArrowDown') || (!vertical && event.key === 'ArrowRight'))
+    key = 'ArrowDown'
+  else if ((vertical && event.key === 'ArrowUp') || (!vertical && event.key === 'ArrowLeft'))
+    key = 'ArrowUp'
   else
     return
   // Only the triggers of this list, which a nested list would also match
-  const all = Array.from(el.value?.querySelectorAll<HTMLElement>("[data-tab-trigger]") ?? [])
+  const all = Array.from(el.value?.querySelectorAll<HTMLElement>('[data-tab-trigger]') ?? [])
   const current = all.indexOf(document.activeElement as HTMLElement)
   if (current === -1)
     return

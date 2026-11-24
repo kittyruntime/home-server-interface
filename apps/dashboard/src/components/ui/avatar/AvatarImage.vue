@@ -1,13 +1,13 @@
 <script setup lang="ts">
-import type { ImgHTMLAttributes } from "vue"
-import { inject, onBeforeUnmount, watch } from "vue"
-import { avatarKey } from "./context"
+import type { ImgHTMLAttributes } from 'vue'
+import { inject, onBeforeUnmount, watch } from 'vue'
+import { avatarKey } from './context'
 
 const props = defineProps<{
   src?: string
   alt?: string
-  referrerPolicy?: ImgHTMLAttributes["referrerpolicy"]
-  crossOrigin?: "anonymous" | "use-credentials" | ""
+  referrerPolicy?: ImgHTMLAttributes['referrerpolicy']
+  crossOrigin?: 'anonymous' | 'use-credentials' | ''
 }>()
 
 const avatar = inject(avatarKey, null)
@@ -24,22 +24,22 @@ function release() {
   probe = null
 }
 
-watch(() => props.src, (src) => {
+watch(() => props.src, src => {
   release()
   if (!avatar)
     return
   if (!src) {
-    avatar.status.value = "error"
+    avatar.status.value = 'error'
     return
   }
-  avatar.status.value = "loading"
+  avatar.status.value = 'loading'
   const img = new Image()
   probe = img
   img.onload = () => {
-    avatar.status.value = "loaded"
+    avatar.status.value = 'loaded'
   }
   img.onerror = () => {
-    avatar.status.value = "error"
+    avatar.status.value = 'error'
   }
   if (props.referrerPolicy)
     img.referrerPolicy = props.referrerPolicy

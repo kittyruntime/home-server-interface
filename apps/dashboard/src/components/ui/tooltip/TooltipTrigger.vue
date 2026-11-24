@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import { inject, onBeforeUnmount, onMounted, ref } from "vue"
-import type { PrimitiveProps } from "../Primitive.vue"
-import Primitive from "../Primitive.vue"
-import { markTooltipClosed, recentlyClosed, tooltipKey } from "./context"
+import { inject, onBeforeUnmount, onMounted, ref } from 'vue'
+import type { PrimitiveProps } from '../Primitive.vue'
+import Primitive from '../Primitive.vue'
+import { markTooltipClosed, recentlyClosed, tooltipKey } from './context'
 
 /* Shows on mouse hover and on keyboard focus. A touch has no hover and a
    tap's focus is not :focus-visible, so a tooltip never gets in a tap's way. */
-const props = withDefaults(defineProps<PrimitiveProps>(), { as: "button" })
+const props = withDefaults(defineProps<PrimitiveProps>(), { as: 'button' })
 const ctx = inject(tooltipKey)!
 
 const el = ref<InstanceType<typeof Primitive> | null>(null)
@@ -32,12 +32,12 @@ function hide() {
 }
 
 function onPointerenter(event: PointerEvent) {
-  if (event.pointerType === "touch") return
+  if (event.pointerType === 'touch') return
   show(false)
 }
 
 function onFocus(event: FocusEvent) {
-  if ((event.target as HTMLElement).matches(":focus-visible")) show(true)
+  if ((event.target as HTMLElement).matches(':focus-visible')) show(true)
 }
 </script>
 

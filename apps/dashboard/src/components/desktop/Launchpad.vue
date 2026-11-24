@@ -39,7 +39,7 @@ const allApps: { id: AppId; adminOnly: boolean; capability?: string }[] = [
 const visibleApps = computed(() =>
   allApps
     .filter(a => !a.adminOnly || isAdmin.value || (a.capability != null && navCapability(a.capability)))
-    .map(a => a.id)
+    .map(a => a.id),
 )
 
 function launch(id: AppId) {

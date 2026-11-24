@@ -65,7 +65,7 @@ function addHeaderRow() { headerRows.value.push({ key: '', value: '' }) }
 function removeHeaderRow(i: number) { headerRows.value.splice(i, 1) }
 
 const headersJson = computed(() =>
-  JSON.stringify(Object.fromEntries(headerRows.value.map(r => [r.key, r.value]).filter(([k]) => k)))
+  JSON.stringify(Object.fromEntries(headerRows.value.map(r => [r.key, r.value]).filter(([k]) => k))),
 )
 
 const formatOptions = computed(() => type.value === 'smtp' ? presets.value?.smtp ?? [] : presets.value?.webhook ?? [])

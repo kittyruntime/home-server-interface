@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import type { HTMLAttributes } from "vue"
-import { reactiveOmit, useVModel } from "@vueuse/core"
-import { cn } from "@/lib/utils"
+import type { HTMLAttributes } from 'vue'
+import { reactiveOmit, useVModel } from '@vueuse/core'
+import { cn } from '@/lib/utils'
 
 defineOptions({
   inheritAttrs: false,
@@ -11,18 +11,18 @@ type AcceptableValue = string | number | boolean | bigint | Record<string, unkno
 
 // wrapperClass carries layout (width, margins, flex) to the wrapper: the
 // select itself always fills it, as the former .ui-input did.
-const props = defineProps<{ modelValue?: AcceptableValue | AcceptableValue[], class?: HTMLAttributes["class"], wrapperClass?: HTMLAttributes["class"] }>()
+const props = defineProps<{ modelValue?: AcceptableValue | AcceptableValue[], class?: HTMLAttributes['class'], wrapperClass?: HTMLAttributes['class'] }>()
 
 const emit = defineEmits<{
-  "update:modelValue": [value: AcceptableValue]
+  'update:modelValue': [value: AcceptableValue]
 }>()
 
-const modelValue = useVModel(props, "modelValue", emit, {
+const modelValue = useVModel(props, 'modelValue', emit, {
   passive: true,
-  defaultValue: "",
+  defaultValue: '',
 })
 
-const delegatedProps = reactiveOmit(props, "class", "wrapperClass")
+const delegatedProps = reactiveOmit(props, 'class', 'wrapperClass')
 </script>
 
 <template>

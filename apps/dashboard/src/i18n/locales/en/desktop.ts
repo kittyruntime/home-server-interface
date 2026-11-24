@@ -1,9 +1,7 @@
 // Generated from the templates, then kept by hand.
 export default {
   DesktopShell: {
-    removeWidget: 'Remove widget',
     changeWallpaper: 'Change wallpaper…',
-    addWidget: 'Add widget',
   },
   DesktopWindow: {
     newApp: 'Add an app',

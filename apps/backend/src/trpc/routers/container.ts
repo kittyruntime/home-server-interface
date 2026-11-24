@@ -1,20 +1,20 @@
-import { z } from "zod"
-import { composeBindSources } from "@app/compose"
-import { assertVolumeAvailable } from "../../services/volume-guard"
-import { catalogUpdateFor } from "../../services/app-update"
-import { TRPCError } from "@trpc/server"
-import { router, adminProcedure } from "../index"
-import { lanAddress, callerIp } from "../../services/lan-address"
-import { publishJob, requestSync } from "../../nats"
+import { z } from 'zod'
+import { composeBindSources } from '@app/compose'
+import { assertVolumeAvailable } from '../../services/volume-guard'
+import { catalogUpdateFor } from '../../services/app-update'
+import { TRPCError } from '@trpc/server'
+import { router, adminProcedure } from '../index'
+import { lanAddress, callerIp } from '../../services/lan-address'
+import { publishJob, requestSync } from '../../nats'
 import {
   listStacks, getStack, stackExists, writeStack,
   dockerContainers, type DockerContainerLite,
-} from "../../services/containerStacks"
-import { assertDockerReady, getDockerStatus, dockerProblem } from "../../services/docker-status"
+} from '../../services/containerStacks'
+import { assertDockerReady, getDockerStatus, dockerProblem } from '../../services/docker-status'
 import {
   generateComposeYaml, parseComposeYaml,
   zPortMapping, zEnvVar, zVolumeMount, zLabelEntry, zPinnedUrl, STACK_NAME_RE, type AppInput,
-} from "@app/compose"
+} from '@app/compose'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -23,11 +23,11 @@ export async function resolvePlaceMounts(
   prisma: any,
   volumes: Array<{ type: string; source: string; target: string; readOnly?: boolean }>,
 ) {
-  return Promise.all(volumes.map(async (v) => {
-    if (v.type !== "place") return v
+  return Promise.all(volumes.map(async v => {
+    if (v.type !== 'place') return v
     const place = await prisma.place.findUnique({ where: { id: v.source } })
-    if (!place) throw new TRPCError({ code: "NOT_FOUND", message: `Place ${v.source} not found` })
-    return { ...v, type: "bind" as const, source: place.path }
+    if (!place) throw new TRPCError({ code: 'NOT_FOUND', message: `Place ${v.source} not found` })
+    return { ...v, type: 'bind' as const, source: place.path }
   }))
 }
 
@@ -51,20 +51,20 @@ const appRouter = router({
     .query(async ({ input }) => ({ ...(await getStack(input.name)), id: input.name })),
 
   importCompose: adminProcedure.input(z.object({
-    name: z.string().min(1).max(64).refine(name => STACK_NAME_RE.test(name), "Invalid app name"),
+    name: z.string().min(1).max(64).refine(name => STACK_NAME_RE.test(name), 'Invalid app name'),
     content: z.string().min(1),
   })).mutation(async ({ input }) => {
     if (await stackExists(input.name)) {
-      throw new TRPCError({ code: "CONFLICT", message: "An app with this name already exists" })
+      throw new TRPCError({ code: 'CONFLICT', message: 'An app with this name already exists' })
     }
     let parsed: ReturnType<typeof parseComposeYaml>
     try {
       parsed = parseComposeYaml(input.content)
     } catch (e: any) {
-      throw new TRPCError({ code: "BAD_REQUEST", message: e?.message ?? "The file is not valid YAML" })
+      throw new TRPCError({ code: 'BAD_REQUEST', message: e?.message ?? 'The file is not valid YAML' })
     }
     if (parsed.services.length === 0) {
-      throw new TRPCError({ code: "BAD_REQUEST", message: "The file must declare at least one service" })
+      throw new TRPCError({ code: 'BAD_REQUEST', message: 'The file must declare at least one service' })
     }
     await assertVolumeAvailable(composeBindSources(input.content))
     await writeStack(input.name, input.content)
@@ -75,20 +75,20 @@ const appRouter = router({
     .mutation(async ({ ctx, input }) => {
       await assertDockerReady()
       await assertAppVolumes(input.name)
-      return { jobId: await publishJob("container.composeUp", { name: input.name }, ctx.user.userId) }
+      return { jobId: await publishJob('container.composeUp', { name: input.name }, ctx.user.userId) }
     }),
 
   stop: adminProcedure.input(z.object({ name: z.string() }))
     .mutation(async ({ ctx, input }) => {
       await assertDockerReady()
-      return { jobId: await publishJob("container.composeStop", { name: input.name }, ctx.user.userId) }
+      return { jobId: await publishJob('container.composeStop', { name: input.name }, ctx.user.userId) }
     }),
 
   restart: adminProcedure.input(z.object({ name: z.string() }))
     .mutation(async ({ ctx, input }) => {
       await assertDockerReady()
       await assertAppVolumes(input.name)
-      return { jobId: await publishJob("container.composeRestart", { name: input.name }, ctx.user.userId) }
+      return { jobId: await publishJob('container.composeRestart', { name: input.name }, ctx.user.userId) }
     }),
 
   /* NOTE: container logs are NOT a tRPC procedure - they are the HTTP SSE route
@@ -99,7 +99,7 @@ const appRouter = router({
   pin: adminProcedure.input(z.object({ name: z.string(), pinnedUrl: zPinnedUrl.nullable() }))
     .mutation(async ({ input }) => {
       const current = await getStack(input.name)
-      if (!current.app) throw new TRPCError({ code: "BAD_REQUEST", message: "Multi-service apps cannot be pinned from the UI" })
+      if (!current.app) throw new TRPCError({ code: 'BAD_REQUEST', message: 'Multi-service apps cannot be pinned from the UI' })
       const yaml = generateComposeYaml({ ...current.app, pinnedUrl: input.pinnedUrl }, current.rawYaml)
       await writeStack(input.name, yaml)
       return { ok: true }
@@ -111,7 +111,7 @@ const appRouter = router({
   checkPort: adminProcedure
     .input(z.object({
       port:        z.number().int().min(1).max(65535),
-      protocol:    z.enum(["tcp", "udp"]).default("tcp"),
+      protocol:    z.enum(['tcp', 'udp']).default('tcp'),
       excludeName: z.string().optional(),   // ignore the app currently being edited
     }))
     .query(async ({ input }): Promise<{ inUse: boolean; by: string | null }> => {
@@ -132,9 +132,9 @@ const appRouter = router({
       // 3) a non-Docker process holding the port (bind-and-release probe)
       try {
         const probe = await requestSync<{ inUse: boolean }>(
-          "root.sys.port.check", { port: input.port, protocol: input.protocol }, 5_000,
+          'root.sys.port.check', { port: input.port, protocol: input.protocol }, 5_000,
         )
-        if (probe.inUse) return { inUse: true, by: "another process on the host" }
+        if (probe.inUse) return { inUse: true, by: 'another process on the host' }
       } catch { /* worker unavailable, best-effort */ }
       return { inUse: false, by: null }
     }),
@@ -150,12 +150,12 @@ const appRouter = router({
       labels:       z.array(zLabelEntry).default([]),
     }))
     .mutation(async ({ ctx, input }) => {
-      if (await stackExists(input.name)) throw new TRPCError({ code: "CONFLICT", message: "An app with this name already exists" })
+      if (await stackExists(input.name)) throw new TRPCError({ code: 'CONFLICT', message: 'An app with this name already exists' })
       const resolved = await resolvePlaceMounts(ctx.prisma, input.volumes as any[])
       const yaml = generateComposeYaml({
         name: input.name, image: input.image, ports: input.ports, envs: input.envs,
         volumes: resolved as any[], networkNames: input.networkNames, labels: input.labels,
-        capAdd: [], capDrop: [], extraHosts: [], restartPolicy: "no",
+        capAdd: [], capDrop: [], extraHosts: [], restartPolicy: 'no',
         hostname: null, user: null, command: null, cpuLimit: null, memoryLimit: null, pinnedUrl: null,
       } as AppInput)
       await writeStack(input.name, yaml)
@@ -174,7 +174,7 @@ const appRouter = router({
     }
 
     const [all, stacks] = await Promise.all([
-      requestSync<DockerContainer[]>("root.container.listAll", {}, 10_000).catch(() => [] as DockerContainer[]),
+      requestSync<DockerContainer[]>('root.container.listAll', {}, 10_000).catch(() => [] as DockerContainer[]),
       listStacks(),
     ])
 
@@ -194,9 +194,9 @@ const appRouter = router({
         labels:         c.labels        ?? {},
         volumes:        c.volumes       ?? [],
         networkNames:   c.networkNames  ?? [],
-        composeProject: c.labels?.["com.docker.compose.project"] ?? null,
-        composeService: c.labels?.["com.docker.compose.service"] ?? null,
-        composeFile:    c.labels?.["com.docker.compose.config-files"] ?? null,
+        composeProject: c.labels?.['com.docker.compose.project'] ?? null,
+        composeService: c.labels?.['com.docker.compose.service'] ?? null,
+        composeFile:    c.labels?.['com.docker.compose.config-files'] ?? null,
       }))
   }),
 })

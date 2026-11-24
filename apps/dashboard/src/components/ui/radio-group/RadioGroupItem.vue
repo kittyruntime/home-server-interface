@@ -1,14 +1,14 @@
 <script setup lang="ts">
-import type { HTMLAttributes } from "vue"
-import type { RadioValue } from "./context"
-import { inject, onMounted, ref, watchEffect } from "vue"
-import { cn } from "@/lib/utils"
-import { radioGroupKey } from "./context"
+import type { HTMLAttributes } from 'vue'
+import type { RadioValue } from './context'
+import { inject, onMounted, ref, watchEffect } from 'vue'
+import { cn } from '@/lib/utils'
+import { radioGroupKey } from './context'
 
 const props = defineProps<{
   value: RadioValue
   disabled?: boolean
-  class?: HTMLAttributes["class"]
+  class?: HTMLAttributes['class']
 }>()
 
 const group = inject(radioGroupKey, null)
@@ -24,7 +24,7 @@ watchEffect(() => {
   void group?.model.value
   void group?.tick.value
   sync()
-}, { flush: "post" })
+}, { flush: 'post' })
 onMounted(sync)
 </script>
 

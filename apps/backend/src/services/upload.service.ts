@@ -136,7 +136,7 @@ export function clearUploadCancellation(id: string, ownerUserId: string): void {
 /** Resolve the declared size, allowing later chunks to omit the header. */
 export function resolveUploadTotalBytes(
   header: string | undefined,
-  state?: Pick<UploadState, "totalBytes">,
+  state?: Pick<UploadState, 'totalBytes'>,
 ): number | null {
   if (header === undefined) return state?.totalBytes ?? null
   if (!/^\d+$/.test(header)) return null
@@ -144,17 +144,17 @@ export function resolveUploadTotalBytes(
   return Number.isSafeInteger(totalBytes) ? totalBytes : null
 }
 
-export type UploadPhase = "uploading" | "staged" | "finalizing" | "completed" | "failed" | "cancelled"
+export type UploadPhase = 'uploading' | 'staged' | 'finalizing' | 'completed' | 'failed' | 'cancelled'
 
 export function getUploadPhase(state: UploadState, finalizeJobStatus?: string | null): UploadPhase {
-  if (state.cancelled) return "cancelled"
-  if (finalizeJobStatus === "completed") return "completed"
-  if (finalizeJobStatus === "failed") return "failed"
+  if (state.cancelled) return 'cancelled'
+  if (finalizeJobStatus === 'completed') return 'completed'
+  if (finalizeJobStatus === 'failed') return 'failed'
   if (
     state.finalizePromise || state.finalizeSha || state.finalizeJobId ||
-    finalizeJobStatus === "pending" || finalizeJobStatus === "running"
-  ) return "finalizing"
-  return state.received.size === state.totalChunks ? "staged" : "uploading"
+    finalizeJobStatus === 'pending' || finalizeJobStatus === 'running'
+  ) return 'finalizing'
+  return state.received.size === state.totalChunks ? 'staged' : 'uploading'
 }
 
 /**

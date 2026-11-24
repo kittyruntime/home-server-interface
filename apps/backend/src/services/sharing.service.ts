@@ -1,10 +1,10 @@
-import type { PrismaClient } from "@app/database"
-import { holdFor } from "./volume-guard"
-import { requestSync } from "../nats"
-import { log } from "../utils/log"
-import { overlayShares, type ShareChange } from "./sharing-plan"
-import { parseNfsClients } from "./nfs"
-import { noteRenderedSmb, smbAuditSupported, workerSmbSettings, type SmbSettingsPatch } from "./smb-events.service"
+import type { PrismaClient } from '@app/database'
+import { holdFor } from './volume-guard'
+import { requestSync } from '../nats'
+import { log } from '../utils/log'
+import { overlayShares, type ShareChange } from './sharing-plan'
+import { parseNfsClients } from './nfs'
+import { noteRenderedSmb, smbAuditSupported, workerSmbSettings, type SmbSettingsPatch } from './smb-events.service'
 
 /** The settings every smb.sync input carries, so no sync drops them. */
 export async function currentSmbSettings(prisma: PrismaClient, patch?: SmbSettingsPatch) {
@@ -15,14 +15,14 @@ export async function currentSmbSettings(prisma: PrismaClient, patch?: SmbSettin
 // is unsafe and Samba blocks it anyway (a root SMB login falls back to guest →
 // read-only). A user mapped to such an account simply isn't a share user; use a
 // normal account for SMB.
-const NON_SHAREABLE_LINUX = new Set(["root"])
+const NON_SHAREABLE_LINUX = new Set(['root'])
 function isShareableLinux(linux: string | null | undefined): linux is string {
   return !!linux && !NON_SHAREABLE_LINUX.has(linux)
 }
 
 /** Why a permitted user can't actually use file sharing, or null if they can. */
 export function shareExclusionReason(linuxUsername: string | null | undefined): string | null {
-  if (!linuxUsername) return "No Linux account: set a Linux username for this account."
+  if (!linuxUsername) return 'No Linux account: set a Linux username for this account.'
   if (NON_SHAREABLE_LINUX.has(linuxUsername)) return `System account "${linuxUsername}" is not allowed over SMB; use a non-root account.`
   return null
 }
@@ -42,7 +42,7 @@ export interface ShareUserEntry {
   linuxUsername: string | null
   write:         boolean
   /** How the access is granted: directly, or through a group. */
-  via:           "user" | "group"
+  via:           'user' | 'group'
 }
 
 export interface ResolvedShareUsers {
@@ -84,14 +84,14 @@ export async function resolveShareUsers(
     }),
   ])
 
-  const byUsername = new Map<string, { linux: string | null; write: boolean; via: "user" | "group" }>()
-  const add = (u: { username: string; linuxUsername: string | null }, write: boolean, via: "user" | "group") => {
+  const byUsername = new Map<string, { linux: string | null; write: boolean; via: 'user' | 'group' }>()
+  const add = (u: { username: string; linuxUsername: string | null }, write: boolean, via: 'user' | 'group') => {
     const cur = byUsername.get(u.username)
     if (cur) cur.write = cur.write || write
     else byUsername.set(u.username, { linux: u.linuxUsername, write, via })
   }
-  for (const p of userPerms) add({ username: p.user.username, linuxUsername: p.user.username }, p.canWrite, "user")
-  for (const p of groupPerms) for (const m of p.group.members) add({ username: m.user.username, linuxUsername: m.user.username }, p.canWrite, "group")
+  for (const p of userPerms) add({ username: p.user.username, linuxUsername: p.user.username }, p.canWrite, 'user')
+  for (const p of groupPerms) for (const m of p.group.members) add({ username: m.user.username, linuxUsername: m.user.username }, p.canWrite, 'group')
 
   const validUsers: string[] = []
   const writeUsers: string[] = []
@@ -116,10 +116,10 @@ export async function resolveShareUsers(
 
 function sanitizeSmbName(name: string): string {
   const cleaned = name
-    .replace(/[^A-Za-z0-9._-]+/g, "-")
-    .replace(/^[^A-Za-z0-9]+/, "")
+    .replace(/[^A-Za-z0-9._-]+/g, '-')
+    .replace(/^[^A-Za-z0-9]+/, '')
     .slice(0, 32)
-  return cleaned || "share"
+  return cleaned || 'share'
 }
 
 export function effectiveSmbName(
@@ -145,7 +145,7 @@ export async function desiredShareDefs(prisma: PrismaClient, change?: ShareChang
   const rows = await prisma.share.findMany({
     include: { place: { select: { name: true, path: true } } },
     // A fixed order: the plan fingerprint and smb.conf must not depend on scan order.
-    orderBy: { createdAt: "asc" },
+    orderBy: { createdAt: 'asc' },
   })
   const shares = overlayShares(rows, change).filter(s => s.enabled && s.smb !== false)
 
@@ -183,22 +183,22 @@ export async function desiredShareDefs(prisma: PrismaClient, change?: ShareChang
 export async function desiredNfsExports(prisma: PrismaClient, change?: ShareChange, opts: { withoutUser?: string } = {}) {
   const rows = await prisma.share.findMany({
     include: { place: { select: { name: true, path: true } } },
-    orderBy: { createdAt: "asc" },
+    orderBy: { createdAt: 'asc' },
   })
   const shares = overlayShares(rows, change).filter(s => s.enabled && s.nfs)
   const adminLinux = await adminLinuxUsers(prisma)
   const holds = await prisma.volumeHold.findMany()
   const out = []
   for (const s of shares) {
-    const parsed = parseNfsClients(s.nfsClients ?? "")
-    if ("error" in parsed) continue
+    const parsed = parseNfsClients(s.nfsClients ?? '')
+    if ('error' in parsed) continue
     const writers = new Set([...(await resolveShareUsers(prisma, s.placeId)).writeUsers, ...adminLinux])
     if (opts.withoutUser) writers.delete(opts.withoutUser)
-    const owner = s.nfsWriteAs ?? ""
+    const owner = s.nfsWriteAs ?? ''
     out.push({
       path: s.place.path,
       clients: parsed.clients,
-      writeAs: !s.readOnly && owner && writers.has(owner) ? owner : "",
+      writeAs: !s.readOnly && owner && writers.has(owner) ? owner : '',
       fsid: s.id,
       unavailable: holdFor(holds, s.place.path) !== null,
     })
@@ -212,7 +212,7 @@ export async function desiredNfsExports(prisma: PrismaClient, change?: ShareChan
 export async function desiredSftpUsers(prisma: PrismaClient, change?: ShareChange, opts: { withoutUser?: string } = {}) {
   const rows = await prisma.share.findMany({
     include: { place: { select: { name: true, path: true } } },
-    orderBy: { createdAt: "asc" },
+    orderBy: { createdAt: 'asc' },
   })
   const shares = overlayShares(rows, change).filter(s => s.enabled && s.sftp)
   const adminLinux = await adminLinuxUsers(prisma)
@@ -248,7 +248,7 @@ export function withShareLock<T>(fn: () => Promise<T>): Promise<T> {
 export async function syncShares(prisma: PrismaClient): Promise<void> {
   await withShareLock(async () => {
     const settings = await currentSmbSettings(prisma)
-    await requestSync("root.sharing.sync", { shares: await desiredShareDefs(prisma), settings,
+    await requestSync('root.sharing.sync', { shares: await desiredShareDefs(prisma), settings,
       nfs: { exports: await desiredNfsExports(prisma) }, sftp: { users: await desiredSftpUsers(prisma) },
     })
     noteRenderedSmb(settings)
@@ -275,7 +275,7 @@ async function syncPlaceAccessNow(prisma: PrismaClient): Promise<void> {
     const writeUsers = [...new Set([...users.writeUsers, ...adminLinux])]
     if (writeUsers.length) defs.push({ path: p.path, writeUsers })
   }
-  await requestSync("root.sharing.placeAccess", { places: defs })
+  await requestSync('root.sharing.placeAccess', { places: defs })
 }
 
 /**
@@ -285,7 +285,7 @@ async function syncPlaceAccessNow(prisma: PrismaClient): Promise<void> {
  */
 export async function preparePlaceDir(path: string): Promise<void> {
   try {
-    await requestSync("root.sharing.preparePlace", { path })
+    await requestSync('root.sharing.preparePlace', { path })
   } catch (err) {
     log.warn({ err, path }, "sharing: could not prepare the Place's folder (non-fatal)")
   }
@@ -297,6 +297,6 @@ export async function preparePlaceDir(path: string): Promise<void> {
 export async function syncSharesBestEffort(prisma: PrismaClient): Promise<void> {
   const results = await Promise.allSettled([syncShares(prisma), syncPlaceAccess(prisma)])
   for (const r of results) {
-    if (r.status === "rejected") log.warn({ err: r.reason }, "sharing: sync failed (non-fatal)")
+    if (r.status === 'rejected') log.warn({ err: r.reason }, 'sharing: sync failed (non-fatal)')
   }
 }

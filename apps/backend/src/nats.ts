@@ -1,14 +1,14 @@
-import { EventEmitter } from "node:events"
-import { connect, headers } from "@nats-io/transport-node"
-import type { NatsConnection, Subscription } from "@nats-io/transport-node"
-import { jetstream, jetstreamManager, JetStreamApiError } from "@nats-io/jetstream"
-import type { JetStreamClient, JetStreamManager } from "@nats-io/jetstream"
-import type { FastifyBaseLogger } from "fastify"
-import { prisma } from "@app/database"
-import crypto from "node:crypto"
-import { encodeJobMeta, jobKind, type JobMeta } from "./services/job-meta"
-import { notifyTaskEnd } from "./services/task-notifications"
-import { jobProgress } from "./services/job-progress"
+import { EventEmitter } from 'node:events'
+import { connect, headers } from '@nats-io/transport-node'
+import type { NatsConnection, Subscription } from '@nats-io/transport-node'
+import { jetstream, jetstreamManager, JetStreamApiError } from '@nats-io/jetstream'
+import type { JetStreamClient, JetStreamManager } from '@nats-io/jetstream'
+import type { FastifyBaseLogger } from 'fastify'
+import { prisma } from '@app/database'
+import crypto from 'node:crypto'
+import { encodeJobMeta, jobKind, type JobMeta } from './services/job-meta'
+import { notifyTaskEnd } from './services/task-notifications'
+import { jobProgress } from './services/job-progress'
 
 let nc: NatsConnection
 let js: JetStreamClient
@@ -16,32 +16,32 @@ let js: JetStreamClient
 // ── Stream definition ─────────────────────────────────────────────────────────
 
 const TASK_STREAM = {
-  name: "TASKS",
+  name: 'TASKS',
   subjects: [
-    "root.fs.mkdir",
-    "root.fs.touch",
-    "root.fs.copy",
-    "root.fs.move",
-    "root.fs.rename",
-    "root.fs.delete",
-    "root.fs.finalize",
-    "root.fs.chmod",
-    "root.fs.chown",
-    "root.fs.zip",
-    "root.fs.unzip",
-    "root.container.composeUp",
-    "root.container.composeStop",
-    "root.container.composeRestart",
-    "root.container.composeDown",
+    'root.fs.mkdir',
+    'root.fs.touch',
+    'root.fs.copy',
+    'root.fs.move',
+    'root.fs.rename',
+    'root.fs.delete',
+    'root.fs.finalize',
+    'root.fs.chmod',
+    'root.fs.chown',
+    'root.fs.zip',
+    'root.fs.unzip',
+    'root.container.composeUp',
+    'root.container.composeStop',
+    'root.container.composeRestart',
+    'root.container.composeDown',
   ],
 }
 
 // ── Connect ───────────────────────────────────────────────────────────────────
 
 export async function connectNats(): Promise<void> {
-  const servers = process.env.NATS_URL ?? "nats://127.0.0.1:4222"
-  const user    = process.env.NATS_USER ?? "backend"
-  const pass    = process.env.NATS_PASS ?? "backend-dev"
+  const servers = process.env.NATS_URL ?? 'nats://127.0.0.1:4222'
+  const user    = process.env.NATS_USER ?? 'backend'
+  const pass    = process.env.NATS_PASS ?? 'backend-dev'
 
   // Retry the initial connection for up to 60 s.  systemd's After= guarantees
   // nats is *started* before us, but not necessarily ready yet.
@@ -62,8 +62,8 @@ export async function connectNats(): Promise<void> {
   try {
     await jsm.streams.add(TASK_STREAM as any)
   } catch (e: any) {
-    if (e instanceof JetStreamApiError && e.message.includes("stream name already in use")) {
-      await jsm.streams.update("TASKS", TASK_STREAM as any)
+    if (e instanceof JetStreamApiError && e.message.includes('stream name already in use')) {
+      await jsm.streams.update('TASKS', TASK_STREAM as any)
     } else {
       throw e
     }
@@ -74,7 +74,7 @@ export async function connectNats(): Promise<void> {
 export async function consumerState(): Promise<{ numPending: number; numAckPending: number } | null> {
   try {
     const jsm = await jetstreamManager(nc)
-    const info = await jsm.consumers.info("TASKS", "root-worker")
+    const info = await jsm.consumers.info('TASKS', 'root-worker')
     return { numPending: info.num_pending, numAckPending: info.num_ack_pending }
   } catch {
     return null
@@ -90,20 +90,20 @@ export function isNatsConnected(): boolean {
 // ── Publish async job ─────────────────────────────────────────────────────────
 
 // Container jobs all carry the app name: no call site has to repeat it.
-function defaultMeta(action: string, payload: Record<string, unknown>): Omit<JobMeta, "kind"> {
-  return jobKind(action) === "container" && typeof payload.name === "string" ? { name: payload.name } : {}
+function defaultMeta(action: string, payload: Record<string, unknown>): Omit<JobMeta, 'kind'> {
+  return jobKind(action) === 'container' && typeof payload.name === 'string' ? { name: payload.name } : {}
 }
 
 export async function publishJob(
   action:  string,
   payload: Record<string, unknown>,
   userId?: string,
-  meta?: Omit<JobMeta, "kind">,
+  meta?: Omit<JobMeta, 'kind'>,
 ): Promise<string> {
   const jobId = crypto.randomUUID()
 
   await prisma.job.create({
-    data: { id: jobId, status: "pending", action, userId, meta: encodeJobMeta({ kind: jobKind(action), ...defaultMeta(action, payload), ...meta }) },
+    data: { id: jobId, status: 'pending', action, userId, meta: encodeJobMeta({ kind: jobKind(action), ...defaultMeta(action, payload), ...meta }) },
   })
 
   const subject = `root.${action}`
@@ -128,11 +128,11 @@ export async function requestSync<T>(
   try {
     resp = JSON.parse(msg.string()) as WorkerResponse<T>
   } catch {
-    throw new Error("Invalid worker response")
+    throw new Error('Invalid worker response')
   }
   if (!resp.ok) {
     // Never surface an empty message: the dashboard would show a blank error.
-    const message = resp.error?.trim() || `${subject} failed${resp.code ? ` (${resp.code})` : ""} without an error message`
+    const message = resp.error?.trim() || `${subject} failed${resp.code ? ` (${resp.code})` : ''} without an error message`
     throw Object.assign(new Error(message), { code: resp.code })
   }
   return resp.result
@@ -149,7 +149,7 @@ export async function requestZipTemp(
   timeout = 300_000,
 ): Promise<{ path: string; size: number }> {
   return requestSync<{ path: string; size: number }>(
-    "root.fs.zip-temp",
+    'root.fs.zip-temp',
     { path, linuxUsername, allowedRoot },
     timeout,
   )
@@ -158,7 +158,7 @@ export async function requestZipTemp(
 // Remove a share zip built by requestZipTemp (best-effort; the worker refuses
 // any path that isn't one of its own temp archives).
 export async function requestRmTemp(path: string): Promise<void> {
-  await requestSync<{ ok: boolean }>("root.fs.rm-temp", { path })
+  await requestSync<{ ok: boolean }>('root.fs.rm-temp', { path })
 }
 
 // Download uses binary reply: the worker sends raw bytes, not JSON.
@@ -169,7 +169,7 @@ export async function requestRead(
   timeout = 30_000,
 ): Promise<Buffer> {
   const msg = await nc.request(
-    "root.fs.read",
+    'root.fs.read',
     JSON.stringify({ path, linuxUsername, allowedRoot }),
     { timeout },
   )
@@ -191,18 +191,18 @@ export async function requestReadChunk(
   timeout = 10_000,
 ): Promise<Buffer> {
   const msg = await nc.request(
-    "root.fs.read-chunk",
+    'root.fs.read-chunk',
     JSON.stringify({ path, offset, length, linuxUsername, allowedRoot }),
     { timeout },
   )
-  if (msg.headers?.get("X-Chunk-Error")) {
+  if (msg.headers?.get('X-Chunk-Error')) {
     let resp: { error?: string; code?: string }
     try {
       resp = JSON.parse(msg.string()) as { error?: string; code?: string }
     } catch {
-      throw new Error("Invalid worker error response")
+      throw new Error('Invalid worker error response')
     }
-    throw Object.assign(new Error(resp.error ?? "read-chunk failed"), { code: resp.code })
+    throw Object.assign(new Error(resp.error ?? 'read-chunk failed'), { code: resp.code })
   }
   return Buffer.from(msg.data)
 }
@@ -218,7 +218,7 @@ export async function writeChunk(opts: {
   data:          Buffer
 }, timeout = 30_000): Promise<void> {
   const h = headers()
-  h.set("X-Meta", JSON.stringify({
+  h.set('X-Meta', JSON.stringify({
     uploadId:      opts.uploadId,
     offset:        opts.offset,
     destDir:       opts.destDir,
@@ -226,7 +226,7 @@ export async function writeChunk(opts: {
     allowedRoot:   opts.allowedRoot,
   }))
   const msg = await nc.request(
-    "root.fs.write-chunk",
+    'root.fs.write-chunk',
     opts.data,
     { headers: h, timeout },
   )
@@ -234,10 +234,10 @@ export async function writeChunk(opts: {
   try {
     resp = JSON.parse(msg.string()) as { ok: boolean; error?: string; code?: string }
   } catch {
-    throw new Error("Invalid worker response")
+    throw new Error('Invalid worker response')
   }
   if (!resp.ok) {
-    throw Object.assign(new Error(resp.error ?? "write-chunk failed"), { code: resp.code })
+    throw Object.assign(new Error(resp.error ?? 'write-chunk failed'), { code: resp.code })
   }
 }
 
@@ -281,7 +281,7 @@ export function jobEndSignal(jobId: string, ms: number): { ended: Promise<void>;
 
 export type JobEvent = {
   jobId:   string
-  status:  "running" | "progress" | "completed" | "failed"
+  status:  'running' | 'progress' | 'completed' | 'failed'
   result?: unknown
   error?:  string
   /** status "progress": bytes done out of the total. */
@@ -290,10 +290,10 @@ export type JobEvent = {
 
 /** Row update for a worker event: "running" stamps the start, an end the finish. */
 /** A worker event that changes the job's row (progress stays in memory). */
-export type JobRowEvent = JobEvent & { status: "running" | "completed" | "failed" }
+export type JobRowEvent = JobEvent & { status: 'running' | 'completed' | 'failed' }
 
 export function jobEventUpdate(event: JobRowEvent, now: Date) {
-  if (event.status === "running") return { status: "running", startedAt: now }
+  if (event.status === 'running') return { status: 'running', startedAt: now }
   return {
     status: event.status,
     result: event.result != null ? JSON.stringify(event.result) : null,
@@ -303,7 +303,7 @@ export function jobEventUpdate(event: JobRowEvent, now: Date) {
 }
 
 export async function startEventSubscriber(log: FastifyBaseLogger): Promise<void> {
-  const sub = nc.subscribe("events.job.*")
+  const sub = nc.subscribe('events.job.*')
 
   for await (const msg of sub) {
     try {
@@ -311,22 +311,22 @@ export async function startEventSubscriber(log: FastifyBaseLogger): Promise<void
       try {
         event = JSON.parse(msg.string()) as JobEvent
       } catch {
-        log.warn("nats: event subscriber received invalid JSON, skipping message")
+        log.warn('nats: event subscriber received invalid JSON, skipping message')
         continue
       }
       if (!event.jobId) {
-        log.warn("nats: event subscriber received message without jobId, skipping")
+        log.warn('nats: event subscriber received message without jobId, skipping')
         continue
       }
-      if (event.status === "progress") {
+      if (event.status === 'progress') {
         // In memory only: once a second per job, the database has no use for it.
         if (event.progress) jobProgress.record(event.jobId, event.progress)
         continue
       }
-      if (event.status === "running") {
+      if (event.status === 'running') {
         // A late "running" never overwrites an end that was already recorded.
         await prisma.job.updateMany({
-          where: { id: event.jobId, status: { in: ["pending", "running"] } },
+          where: { id: event.jobId, status: { in: ['pending', 'running'] } },
           data: jobEventUpdate(event as JobRowEvent, new Date()),
         })
         continue
@@ -339,13 +339,13 @@ export async function startEventSubscriber(log: FastifyBaseLogger): Promise<void
       jobEnded.emit(job.id)
       void notifyTaskEnd(job.id)
       // Same jobId as the worker's log, so a failure can be followed across both.
-      if (event.status === "failed") {
-        log.warn({ jobId: job.id, action: job.action, userId: job.userId, error: event.error }, "job failed")
+      if (event.status === 'failed') {
+        log.warn({ jobId: job.id, action: job.action, userId: job.userId, error: event.error }, 'job failed')
       } else {
-        log.info({ jobId: job.id, action: job.action }, "job finished")
+        log.info({ jobId: job.id, action: job.action }, 'job finished')
       }
     } catch (e) {
-      log.error(e, "nats: event subscriber error")
+      log.error(e, 'nats: event subscriber error')
     }
   }
 }

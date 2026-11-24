@@ -1,36 +1,36 @@
-import { defineConfig } from "astro/config"
-import starlight from "@astrojs/starlight"
-import starlightLinksValidator from "starlight-links-validator"
+import { defineConfig } from 'astro/config'
+import starlight from '@astrojs/starlight'
+import starlightLinksValidator from 'starlight-links-validator'
 
 export default defineConfig({
-  site: "https://kittyruntime.github.io",
-  base: "/home-server-interface",
+  site: 'https://kittyruntime.github.io',
+  base: '/home-server-interface',
   integrations: [
     starlight({
-      title: "Home Server Interface",
-      description: "A modern home server dashboard for self-hosting apps, media and storage.",
-      social: [{ icon: "github", label: "GitHub", href: "https://github.com/kittyruntime/home-server-interface" }],
-      editLink: { baseUrl: "https://github.com/kittyruntime/home-server-interface/edit/main/website/" },
+      title: 'Home Server Interface',
+      description: 'A modern home server dashboard for self-hosting apps, media and storage.',
+      social: [{ icon: 'github', label: 'GitHub', href: 'https://github.com/kittyruntime/home-server-interface' }],
+      editLink: { baseUrl: 'https://github.com/kittyruntime/home-server-interface/edit/main/website/' },
       // The dev setup page links the local dev server on purpose.
       plugins: [starlightLinksValidator({ errorOnLocalLinks: false })],
       sidebar: [
         {
-          label: "Guide",
+          label: 'Guide',
           items: [
-            "guide/install",
-            "guide/secure-access",
-            "guide/network",
-            "guide/assistant",
-            "guide/ai-assistant",
-            { label: "Features", items: [{ autogenerate: { directory: "guide/features" } }] },
-            "guide/manage-without-hsi",
-            "guide/storage-descriptions",
-            "guide/data-backups",
-            "guide/backup-restore",
+            'guide/install',
+            'guide/secure-access',
+            'guide/network',
+            'guide/assistant',
+            'guide/ai-assistant',
+            { label: 'Features', items: [{ autogenerate: { directory: 'guide/features' } }] },
+            'guide/manage-without-hsi',
+            'guide/storage-descriptions',
+            'guide/data-backups',
+            'guide/backup-restore',
           ],
         },
-        { label: "Reference", items: ["reference/configuration", "reference/storage-plans"] },
-        { label: "Development", items: ["development/architecture", "development/setup", "development/design-system", "development/app-catalog"] },
+        { label: 'Reference', items: ['reference/configuration', 'reference/storage-plans'] },
+        { label: 'Development', items: ['development/architecture', 'development/setup', 'development/code-style', 'development/design-system', 'development/app-catalog'] },
       ],
     }),
   ],

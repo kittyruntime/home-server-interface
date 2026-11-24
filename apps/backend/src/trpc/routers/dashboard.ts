@@ -1,13 +1,13 @@
-import { z } from "zod"
-import { router, protectedProcedure, adminProcedure, storageProcedure } from "../index"
-import { boardView, parseWidgets, replaceBoards, zBoardInput, zBoardsInput } from "../../services/dashboard-boards"
-import { MAX_WALLS, newWallToken } from "../../services/dashboard-walls"
-import { readSensors } from "../../services/hw-sensors"
-import { readUps, type UpsReading } from "../../services/ups"
-import { checkUrls, checkableUrl } from "../../services/link-status"
-import { volumeForecasts } from "../../services/volume-usage"
-import { cachedDigest, DigestUnavailable, writeDigest } from "../../services/dashboard-digest"
-import { TRPCError } from "@trpc/server"
+import { z } from 'zod'
+import { router, protectedProcedure, adminProcedure, storageProcedure } from '../index'
+import { boardView, parseWidgets, replaceBoards, zBoardInput, zBoardsInput } from '../../services/dashboard-boards'
+import { MAX_WALLS, newWallToken } from '../../services/dashboard-walls'
+import { readSensors } from '../../services/hw-sensors'
+import { readUps, type UpsReading } from '../../services/ups'
+import { checkUrls, checkableUrl } from '../../services/link-status'
+import { volumeForecasts } from '../../services/volume-usage'
+import { cachedDigest, DigestUnavailable, writeDigest } from '../../services/dashboard-digest'
+import { TRPCError } from '@trpc/server'
 
 let sensorsCache: { at: number; value: ReturnType<typeof readSensors> } | null = null
 let upsCache: { at: number; value: UpsReading[] | null } | null = null
@@ -16,10 +16,10 @@ export const dashboardRouter = router({
   // The viewer's boards; without any, the published set, then nothing (the
   // dashboard then shows its built-in default).
   boards: protectedProcedure.query(async ({ ctx }) => {
-    const own = await ctx.prisma.dashboardBoard.findMany({ where: { ownerId: ctx.user.userId }, orderBy: { position: "asc" } })
-    if (own.length) return { source: "own" as const, boards: own.map(boardView) }
-    const published = await ctx.prisma.dashboardBoard.findMany({ where: { ownerId: null }, orderBy: { position: "asc" } })
-    return { source: published.length ? "published" as const : "default" as const, boards: published.map(boardView) }
+    const own = await ctx.prisma.dashboardBoard.findMany({ where: { ownerId: ctx.user.userId }, orderBy: { position: 'asc' } })
+    if (own.length) return { source: 'own' as const, boards: own.map(boardView) }
+    const published = await ctx.prisma.dashboardBoard.findMany({ where: { ownerId: null }, orderBy: { position: 'asc' } })
+    return { source: published.length ? 'published' as const : 'default' as const, boards: published.map(boardView) }
   }),
 
   save: protectedProcedure.input(zBoardsInput)
@@ -32,7 +32,7 @@ export const dashboardRouter = router({
   }),
 
   published: adminProcedure.query(async ({ ctx }) =>
-    (await ctx.prisma.dashboardBoard.findMany({ where: { ownerId: null }, orderBy: { position: "asc" } })).map(boardView)),
+    (await ctx.prisma.dashboardBoard.findMany({ where: { ownerId: null }, orderBy: { position: 'asc' } })).map(boardView)),
 
   // What accounts without boards of their own start from. Accounts that already
   // have their own keep them.
@@ -66,28 +66,27 @@ export const dashboardRouter = router({
       .filter(u => checkableUrl(u) != null && (!ctx.wall || ctx.wall.linkUrls.has(u))))),
 
   // Today's summary by the assistant: admin only, since it reads every alert.
-  digest: adminProcedure.input(z.object({ locale: z.enum(["en", "fr"]) }))
+  digest: adminProcedure.input(z.object({ locale: z.enum(['en', 'fr']) }))
     .query(({ input }) => cachedDigest(input.locale)),
 
-  writeDigest: adminProcedure.input(z.object({ locale: z.enum(["en", "fr"]) }))
+  writeDigest: adminProcedure.input(z.object({ locale: z.enum(['en', 'fr']) }))
     .mutation(async ({ ctx, input }) => {
-      try { return await writeDigest({ userId: ctx.user.userId, isAdmin: true }, input.locale) }
-      catch (e) {
-        if (e instanceof DigestUnavailable) throw new TRPCError({ code: "PRECONDITION_FAILED", message: e.message })
-        throw new TRPCError({ code: "BAD_GATEWAY", message: e instanceof Error ? e.message : "The assistant did not answer" })
+      try { return await writeDigest({ userId: ctx.user.userId, isAdmin: true }, input.locale) } catch (e) {
+        if (e instanceof DigestUnavailable) throw new TRPCError({ code: 'PRECONDITION_FAILED', message: e.message })
+        throw new TRPCError({ code: 'BAD_GATEWAY', message: e instanceof Error ? e.message : 'The assistant did not answer' })
       }
     }),
 
   // ── Wall displays ──────────────────────────────────────────────────────────
 
   walls: protectedProcedure.query(async ({ ctx }) =>
-    (await ctx.prisma.dashboardWall.findMany({ where: { ownerId: ctx.user.userId }, orderBy: { createdAt: "asc" } }))
+    (await ctx.prisma.dashboardWall.findMany({ where: { ownerId: ctx.user.userId }, orderBy: { createdAt: 'asc' } }))
       .map(w => ({ id: w.id, name: w.name, prefix: w.prefix, widgets: parseWidgets(w.widgets).length, lastSeenAt: w.lastSeenAt, createdAt: w.createdAt }))),
 
   // A display showing a copy of a board; its token is shown this once.
   createWall: protectedProcedure.input(zBoardInput).mutation(async ({ ctx, input }) => {
     if (await ctx.prisma.dashboardWall.count({ where: { ownerId: ctx.user.userId } }) >= MAX_WALLS) {
-      throw new TRPCError({ code: "BAD_REQUEST", message: `At most ${MAX_WALLS} wall displays per account` })
+      throw new TRPCError({ code: 'BAD_REQUEST', message: `At most ${MAX_WALLS} wall displays per account` })
     }
     const { token, hash, prefix } = newWallToken()
     const wall = await ctx.prisma.dashboardWall.create({
@@ -103,7 +102,7 @@ export const dashboardRouter = router({
         where: { id: input.id, ownerId: ctx.user.userId },
         data: { name: input.name, widgets: JSON.stringify(input.widgets) },
       })
-      if (!n.count) throw new TRPCError({ code: "NOT_FOUND", message: "This display no longer exists" })
+      if (!n.count) throw new TRPCError({ code: 'NOT_FOUND', message: 'This display no longer exists' })
       return { ok: true }
     }),
 
@@ -114,12 +113,12 @@ export const dashboardRouter = router({
 
   // What a display shows; only its own token reaches it.
   wall: protectedProcedure.query(async ({ ctx }) => {
-    if (!ctx.wall) throw new TRPCError({ code: "FORBIDDEN", message: "Open this with a wall display link" })
+    if (!ctx.wall) throw new TRPCError({ code: 'FORBIDDEN', message: 'Open this with a wall display link' })
     const w = await ctx.prisma.dashboardWall.findUnique({ where: { id: ctx.wall.id } })
-    if (!w) throw new TRPCError({ code: "NOT_FOUND", message: "This display was removed" })
+    if (!w) throw new TRPCError({ code: 'NOT_FOUND', message: 'This display was removed' })
     return {
       name: w.name, widgets: parseWidgets(w.widgets),
-      viewer: { isAdmin: ctx.user.isAdmin, storage: ctx.user.isAdmin || (ctx.user.capabilities ?? []).includes("storage") },
+      viewer: { isAdmin: ctx.user.isAdmin, storage: ctx.user.isAdmin || (ctx.user.capabilities ?? []).includes('storage') },
     }
   }),
 })

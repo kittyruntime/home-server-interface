@@ -62,12 +62,12 @@ async function clearAll() {
 // up without touching this component.
 const sourceFilter = ref<string>('all')
 const sourcePrefixes = computed(() =>
-  [...new Set(alerts.value.map(a => a.source.split('.')[0] + '.'))].sort()
+  [...new Set(alerts.value.map(a => a.source.split('.')[0] + '.'))].sort(),
 )
 const filteredAlerts = computed(() =>
   sourceFilter.value === 'all'
     ? alerts.value
-    : alerts.value.filter(a => a.source.startsWith(sourceFilter.value))
+    : alerts.value.filter(a => a.source.startsWith(sourceFilter.value)),
 )
 
 const isCritical = (a: Alert) => /critical/i.test(a.message) || a.source === 'storage.raid'
@@ -83,7 +83,6 @@ async function load() {
     loading.value = false
   }
 }
-
 
 onMounted(load)
 </script>

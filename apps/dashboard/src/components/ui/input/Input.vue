@@ -1,20 +1,20 @@
 <script setup lang="ts">
-import type { HTMLAttributes } from "vue"
-import { ref, useAttrs } from "vue"
-import { useVModel } from "@vueuse/core"
-import { cn } from "@/lib/utils"
+import type { HTMLAttributes } from 'vue'
+import { ref, useAttrs } from 'vue'
+import { useVModel } from '@vueuse/core'
+import { cn } from '@/lib/utils'
 
 const props = defineProps<{
   defaultValue?: string | number
   modelValue?: string | number
-  class?: HTMLAttributes["class"]
+  class?: HTMLAttributes['class']
 }>()
 
 const emits = defineEmits<{
-  (e: "update:modelValue", payload: string | number): void
+  (e: 'update:modelValue', payload: string | number): void
 }>()
 
-const modelValue = useVModel(props, "modelValue", emits, {
+const modelValue = useVModel(props, 'modelValue', emits, {
   passive: true,
   defaultValue: props.defaultValue,
 })
@@ -25,7 +25,7 @@ const attrs = useAttrs()
 const el = ref<HTMLInputElement | null>(null)
 defineExpose({
   el,
-  focus: (options?: Parameters<HTMLElement["focus"]>[0]) => el.value?.focus(options),
+  focus: (options?: Parameters<HTMLElement['focus']>[0]) => el.value?.focus(options),
   select: () => el.value?.select(),
 })
 </script>

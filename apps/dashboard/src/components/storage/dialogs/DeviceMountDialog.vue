@@ -124,34 +124,34 @@ defineExpose({ open })
       <fieldset class="space-y-2">
         <legend class="text-xs font-medium text-base-content/80 mb-1.5">{{ t('ui.storage.DeviceMountDialog.access') }}</legend>
         <RadioGroup v-model="dlg.access" class="gap-2">
-        <label class="flex items-start gap-2.5 cursor-pointer">
-          <RadioGroupItem value="shared" class="mt-0.5" />
-          <div>
-            <div class="text-xs font-medium text-base-content/80">{{ t('ui.storage.DeviceMountDialog.writableByYouAndShared') }}</div>
-            <div class="text-2xs text-base-content/70">{{ t('ui.storage.DeviceMountDialog.onANewEmptyVolume') }}</div>
-          </div>
-        </label>
-        <label class="flex items-start gap-2.5 cursor-pointer">
-          <RadioGroupItem value="user" class="mt-0.5" />
-          <div class="flex-1">
-            <div class="text-xs font-medium text-base-content/80">{{ t('ui.storage.DeviceMountDialog.ownedByAnotherUser') }}</div>
-            <div class="text-2xs text-base-content/70">{{ t('ui.storage.DeviceMountDialog.sameAsAboveOwnedBy') }}</div>
-            <NativeSelect wrapper-class="mt-1.5 w-full" v-if="dlg.access === 'user'" v-model="dlg.ownerUserId"
-              class="px-3 py-2 text-sm">
-              <NativeSelectOption value="" disabled>{{ t('ui.storage.DeviceMountDialog.chooseAUser') }}</NativeSelectOption>
-              <NativeSelectOption v-for="u in users" :key="u.id" :value="u.id">
-                {{ u.displayName ? `${u.displayName} (${u.username})` : u.username }}
-              </NativeSelectOption>
-            </NativeSelect>
-          </div>
-        </label>
-        <label class="flex items-start gap-2.5 cursor-pointer">
-          <RadioGroupItem value="keep" class="mt-0.5" />
-          <div>
-            <div class="text-xs font-medium text-base-content/80">{{ t('ui.storage.DeviceMountDialog.keepCurrentPermissions') }}</div>
-            <div class="text-2xs text-base-content/70">{{ t('ui.storage.DeviceMountDialog.aNewVolumeStaysOwned') }}</div>
-          </div>
-        </label>
+          <label class="flex items-start gap-2.5 cursor-pointer">
+            <RadioGroupItem value="shared" class="mt-0.5" />
+            <div>
+              <div class="text-xs font-medium text-base-content/80">{{ t('ui.storage.DeviceMountDialog.writableByYouAndShared') }}</div>
+              <div class="text-2xs text-base-content/70">{{ t('ui.storage.DeviceMountDialog.onANewEmptyVolume') }}</div>
+            </div>
+          </label>
+          <label class="flex items-start gap-2.5 cursor-pointer">
+            <RadioGroupItem value="user" class="mt-0.5" />
+            <div class="flex-1">
+              <div class="text-xs font-medium text-base-content/80">{{ t('ui.storage.DeviceMountDialog.ownedByAnotherUser') }}</div>
+              <div class="text-2xs text-base-content/70">{{ t('ui.storage.DeviceMountDialog.sameAsAboveOwnedBy') }}</div>
+              <NativeSelect wrapper-class="mt-1.5 w-full" v-if="dlg.access === 'user'" v-model="dlg.ownerUserId"
+                class="px-3 py-2 text-sm">
+                <NativeSelectOption value="" disabled>{{ t('ui.storage.DeviceMountDialog.chooseAUser') }}</NativeSelectOption>
+                <NativeSelectOption v-for="u in users" :key="u.id" :value="u.id">
+                  {{ u.displayName ? `${u.displayName} (${u.username})` : u.username }}
+                </NativeSelectOption>
+              </NativeSelect>
+            </div>
+          </label>
+          <label class="flex items-start gap-2.5 cursor-pointer">
+            <RadioGroupItem value="keep" class="mt-0.5" />
+            <div>
+              <div class="text-xs font-medium text-base-content/80">{{ t('ui.storage.DeviceMountDialog.keepCurrentPermissions') }}</div>
+              <div class="text-2xs text-base-content/70">{{ t('ui.storage.DeviceMountDialog.aNewVolumeStaysOwned') }}</div>
+            </div>
+          </label>
         </RadioGroup>
         <label v-if="dlg.access !== 'keep'" class="flex items-start gap-2.5 cursor-pointer pt-1">
           <Checkbox v-model="dlg.force" class="mt-0.5" />
@@ -170,7 +170,7 @@ defineExpose({ open })
           </div>
         </label>
         <Input v-if="dlg.createPlace" v-model="dlg.placeName" type="text" :placeholder="t('ui.storage.DeviceMountDialog.placeName')"
-          class="w-full px-3 py-2 text-sm"/>
+          class="w-full px-3 py-2 text-sm" />
       </div>
       <p v-if="dlg.err" role="alert" class="status-text text-error"><span class="status-tag">[ERR]</span> {{ dlg.err }}</p>
       <div class="flex gap-2 pt-1">

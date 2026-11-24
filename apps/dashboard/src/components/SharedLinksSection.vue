@@ -15,8 +15,7 @@ const loading = ref(true)
 
 async function load() {
   loading.value = true
-  try { links.value = await trpc.shareLink.listMine.query() }
-  finally { loading.value = false }
+  try { links.value = await trpc.shareLink.listMine.query() } finally { loading.value = false }
 }
 async function revoke(id: string) { await trpc.shareLink.revoke.mutate({ id }); await load() }
 async function remove(id: string) { await trpc.shareLink.delete.mutate({ id }); await load() }

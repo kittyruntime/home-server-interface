@@ -1,15 +1,15 @@
 <script setup lang="ts">
-import type { HTMLAttributes } from "vue"
-import { Circle } from "@lucide/vue"
-import { inject } from "vue"
-import MenuItem from "./MenuItem.vue"
-import { radioGroupKey } from "@/lib/use-menu"
+import type { HTMLAttributes } from 'vue'
+import { Circle } from '@lucide/vue'
+import { inject } from 'vue'
+import MenuItem from './MenuItem.vue'
+import { radioGroupKey } from '@/lib/use-menu'
 
 const props = defineProps<{
   value: string
   disabled?: boolean
   textValue?: string
-  class?: HTMLAttributes["class"]
+  class?: HTMLAttributes['class']
 }>()
 const emit = defineEmits<{ select: [event: Event] }>()
 
@@ -20,7 +20,7 @@ function checked() {
 }
 
 function onSelect(event: Event) {
-  emit("select", event)
+  emit('select', event)
   if (!event.defaultPrevented) group?.select(props.value)
 }
 </script>

@@ -1,22 +1,22 @@
-import jwt from "jsonwebtoken"
-import crypto from "node:crypto"
-import { log } from "../utils/log"
+import jwt from 'jsonwebtoken'
+import crypto from 'node:crypto'
+import { log } from '../utils/log'
 
-const DEV_SECRET = "dev-secret"
-const isProd = process.env.NODE_ENV === "production"
+const DEV_SECRET = 'dev-secret'
+const isProd = process.env.NODE_ENV === 'production'
 
 // In production, refuse to start with a missing or weak signing key rather than
 // silently falling back to a public default that would let anyone forge tokens.
 if (isProd && (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 32)) {
   throw new Error(
-    "[security] JWT_SECRET must be set to a strong value (>= 32 chars) in production. " +
-    "Refusing to start with an insecure signing key. The install script generates one for you.",
+    '[security] JWT_SECRET must be set to a strong value (>= 32 chars) in production. ' +
+    'Refusing to start with an insecure signing key. The install script generates one for you.',
   )
 }
 if (!process.env.JWT_SECRET) {
   log.warn(
-    "JWT_SECRET is not set; using an insecure development default. " +
-    "Set JWT_SECRET in your environment before deploying to production.",
+    'JWT_SECRET is not set; using an insecure development default. ' +
+    'Set JWT_SECRET in your environment before deploying to production.',
   )
 }
 
@@ -39,13 +39,13 @@ export function signToken(
   mustChangePassword: boolean,
 ): string {
   const jti = crypto.randomUUID()
-  return jwt.sign({ userId, isAdmin, isUserManager, capabilities, mustChangePassword, jti }, JWT_SECRET, { expiresIn: "7d" })
+  return jwt.sign({ userId, isAdmin, isUserManager, capabilities, mustChangePassword, jti }, JWT_SECRET, { expiresIn: '7d' })
 }
 
 export function verifyToken(token: string): TokenPayload {
   const payload = jwt.verify(token, JWT_SECRET) as TokenPayload & { purpose?: string }
   // A setup session (#12) only opens setup.createAdmin, never a login.
-  if (payload.purpose) throw new Error("not a session token")
+  if (payload.purpose) throw new Error('not a session token')
   return payload
 }
 
@@ -53,12 +53,12 @@ export function verifyToken(token: string): TokenPayload {
 // Minted once the one-time setup token checks out; short-lived, and accepted
 // only by setup.createAdmin.
 export function signSetupSession(): string {
-  return jwt.sign({ purpose: "setup", jti: crypto.randomUUID() }, JWT_SECRET, { expiresIn: "30m" })
+  return jwt.sign({ purpose: 'setup', jti: crypto.randomUUID() }, JWT_SECRET, { expiresIn: '30m' })
 }
 
 export function verifySetupSession(token: string): void {
   const payload = jwt.verify(token, JWT_SECRET) as { purpose?: string }
-  if (payload.purpose !== "setup") throw new Error("not a setup session")
+  if (payload.purpose !== 'setup') throw new Error('not a setup session')
 }
 
 // ── File access tokens ────────────────────────────────────────────────────────
@@ -70,16 +70,16 @@ export function verifySetupSession(token: string): void {
 export interface FileTokenPayload {
   userId: string
   path: string
-  scope: "file-read"
+  scope: 'file-read'
 }
 
 export function signFileToken(userId: string, path: string): string {
-  return jwt.sign({ userId, path, scope: "file-read" }, JWT_SECRET, { expiresIn: "15m" })
+  return jwt.sign({ userId, path, scope: 'file-read' }, JWT_SECRET, { expiresIn: '15m' })
 }
 
 export function verifyFileToken(token: string): FileTokenPayload {
   const payload = jwt.verify(token, JWT_SECRET) as FileTokenPayload
-  if (payload.scope !== "file-read") throw new Error("Invalid token scope")
+  if (payload.scope !== 'file-read') throw new Error('Invalid token scope')
   return payload
 }
 
@@ -90,16 +90,16 @@ export function verifyFileToken(token: string): FileTokenPayload {
 // minted on demand instead of putting the session JWT in that URL.
 export interface WallpaperTokenPayload {
   userId: string
-  scope: "wallpaper-read"
+  scope: 'wallpaper-read'
 }
 
 export function signWallpaperToken(userId: string): string {
-  return jwt.sign({ userId, scope: "wallpaper-read" }, JWT_SECRET, { expiresIn: "15m" })
+  return jwt.sign({ userId, scope: 'wallpaper-read' }, JWT_SECRET, { expiresIn: '15m' })
 }
 
 export function verifyWallpaperToken(token: string): WallpaperTokenPayload {
   const payload = jwt.verify(token, JWT_SECRET) as WallpaperTokenPayload
-  if (payload.scope !== "wallpaper-read") throw new Error("Invalid token scope")
+  if (payload.scope !== 'wallpaper-read') throw new Error('Invalid token scope')
   return payload
 }
 
@@ -109,16 +109,16 @@ export function verifyWallpaperToken(token: string): WallpaperTokenPayload {
 // on a password-protected link don't re-send the password in every URL.
 export interface ShareTokenPayload {
   shareLinkId: string
-  scope: "share"
+  scope: 'share'
 }
 
 export function signShareToken(shareLinkId: string): string {
-  return jwt.sign({ shareLinkId, scope: "share" }, JWT_SECRET, { expiresIn: "30m" })
+  return jwt.sign({ shareLinkId, scope: 'share' }, JWT_SECRET, { expiresIn: '30m' })
 }
 
 export function verifyShareToken(token: string): ShareTokenPayload {
   const payload = jwt.verify(token, JWT_SECRET) as ShareTokenPayload
-  if (payload.scope !== "share") throw new Error("Invalid token scope")
+  if (payload.scope !== 'share') throw new Error('Invalid token scope')
   return payload
 }
 

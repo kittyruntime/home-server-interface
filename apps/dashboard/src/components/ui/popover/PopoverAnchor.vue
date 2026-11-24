@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { inject, onBeforeUnmount, onMounted, ref } from "vue"
-import type { PrimitiveProps } from "../Primitive.vue"
-import Primitive from "../Primitive.vue"
-import { popoverKey } from "./context"
+import { inject, onBeforeUnmount, onMounted, ref } from 'vue'
+import type { PrimitiveProps } from '../Primitive.vue'
+import Primitive from '../Primitive.vue'
+import { popoverKey } from './context'
 
 const props = defineProps<PrimitiveProps>()
 const ctx = inject(popoverKey)!

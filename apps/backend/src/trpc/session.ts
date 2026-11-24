@@ -1,4 +1,4 @@
-import { isTokenBlacklisted, verifyToken, type TokenPayload } from "./auth"
+import { isTokenBlacklisted, verifyToken, type TokenPayload } from './auth'
 
 export interface CurrentUserAuthorization {
   isAdmin: boolean
@@ -21,7 +21,7 @@ export async function authenticateSession(
   authorization: string | undefined,
   loadCurrentUser: LoadCurrentUser,
 ): Promise<TokenPayload | null> {
-  if (!authorization?.startsWith("Bearer ")) return null
+  if (!authorization?.startsWith('Bearer ')) return null
 
   let payload: TokenPayload
   try {

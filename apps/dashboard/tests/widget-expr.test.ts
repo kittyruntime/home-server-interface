@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { checkExpression, evaluate, formatValue, levelOf, pathPart, readPath, segments } from '../src/lib/widget-expr.ts'
 
 const jelly = [{ UserName: 'a', NowPlayingItem: { Name: 'X' } }, { UserName: 'b' }, { UserName: 'c', NowPlayingItem: { Name: 'Y' } }]
-const stats = { photos: 1200, videos: 80, usage: 5e10, quota: 2e11, 'odd key': 3, items: [{ size: 10 }, { size: 32 }] }
+const stats = { 'photos': 1200, 'videos': 80, 'usage': 5e10, 'quota': 2e11, 'odd key': 3, 'items': [{ size: 10 }, { size: 32 }] }
 
 test('paths read names, indexes and quoted keys', () => {
   assert.deepEqual(segments('a.b[2]["odd key"].c'), ['a', 'b', 2, 'odd key', 'c'])

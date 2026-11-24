@@ -17,7 +17,6 @@ import { dateFormat } from '../lib/intl-cache'
 
 const { t } = useI18n()
 
-
 const { confirm } = useConfirm()
 
 type Connector = Awaited<ReturnType<typeof trpc.notifications.connectors.list.query>>[number]
@@ -273,18 +272,18 @@ function formatTime(at: string | Date): string {
             <ChevronDownIcon :class="['w-4 h-4 text-base-content/70 transition-transform', deliveriesExpanded ? 'rotate-180' : '']" aria-hidden="true" />
           </CollapsibleTrigger>
           <CollapsibleContent>
-          <ul v-if="deliveries.length > 0" class="divide-y divide-base-300">
-            <li v-for="d in deliveries" :key="d.id" class="flex items-center gap-3 px-5 py-2.5 text-xs">
-              <span class="w-1.5 h-1.5 rounded-full shrink-0" :class="deliveryDot(d)" />
-              <span class="font-medium text-base-content/80 shrink-0">{{ d.connectorName }}</span>
-              <span class="flex-1 truncate" :class="d.status === 'failed' ? 'text-error' : 'text-base-content/70'">{{ deliveryText(d) }}</span>
-              <Badge variant="secondary" v-if="d.test" class="shrink-0">{{ $t('ui.settings.NotificationsSection.test') }}</Badge>
-              <span class="text-base-content/70 tabular-nums shrink-0">{{ formatTime(d.at) }}</span>
-            </li>
-          </ul>
-          <p v-else class="px-5 py-6 text-sm text-base-content/70">
-            {{ $t('ui.settings.NotificationsSection.noDeliveriesYetSendTest') }}
-          </p>
+            <ul v-if="deliveries.length > 0" class="divide-y divide-base-300">
+              <li v-for="d in deliveries" :key="d.id" class="flex items-center gap-3 px-5 py-2.5 text-xs">
+                <span class="w-1.5 h-1.5 rounded-full shrink-0" :class="deliveryDot(d)" />
+                <span class="font-medium text-base-content/80 shrink-0">{{ d.connectorName }}</span>
+                <span class="flex-1 truncate" :class="d.status === 'failed' ? 'text-error' : 'text-base-content/70'">{{ deliveryText(d) }}</span>
+                <Badge variant="secondary" v-if="d.test" class="shrink-0">{{ $t('ui.settings.NotificationsSection.test') }}</Badge>
+                <span class="text-base-content/70 tabular-nums shrink-0">{{ formatTime(d.at) }}</span>
+              </li>
+            </ul>
+            <p v-else class="px-5 py-6 text-sm text-base-content/70">
+              {{ $t('ui.settings.NotificationsSection.noDeliveriesYetSendTest') }}
+            </p>
           </CollapsibleContent>
         </Collapsible>
 

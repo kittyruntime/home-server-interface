@@ -1,33 +1,33 @@
-import { z } from "zod"
-import { TRPCError } from "@trpc/server"
-import { router, protectedProcedure, adminProcedure } from "../index"
-import { prisma, PrismaClient } from "@app/database"
-import { renderWebhookRequest, sampleEvent, WEBHOOK_PRESETS, IN_APP_CONNECTOR_ID } from "../../services/notifications"
+import { z } from 'zod'
+import { TRPCError } from '@trpc/server'
+import { router, protectedProcedure, adminProcedure } from '../index'
+import { prisma, PrismaClient } from '@app/database'
+import { renderWebhookRequest, sampleEvent, WEBHOOK_PRESETS, IN_APP_CONNECTOR_ID } from '../../services/notifications'
 import {
   DEFAULT_EMAIL_BODY, DEFAULT_EMAIL_SUBJECT, SECRET_MASK, SMTP_PRESETS, maskUrl, mergeConnectorInput, resolveStored,
   toPublicConnector, toStoredFields, type ConnectorInput, type ResolvedConnector,
-} from "../../services/notification-connectors"
-import { deliverResolved, renderEmail } from "../../services/notification-transports"
-import { notificationWhere } from "../../services/task-notifications"
+} from '../../services/notification-connectors'
+import { deliverResolved, renderEmail } from '../../services/notification-transports'
+import { notificationWhere } from '../../services/task-notifications'
 
-const severityEnum = z.enum(["info", "warning", "critical"])
+const severityEnum = z.enum(['info', 'warning', 'critical'])
 
 const webhookPart = z.object({
-  type: z.literal("webhook"),
-  method: z.enum(["POST", "PUT"]).default("POST"),
+  type: z.literal('webhook'),
+  method: z.enum(['POST', 'PUT']).default('POST'),
   url: z.string().max(2048),
-  headers: z.string().default("{}"),
+  headers: z.string().default('{}'),
   bodyTemplate: z.string(),
 })
 
 const smtpPart = z.object({
-  type: z.literal("smtp"),
+  type: z.literal('smtp'),
   smtp: z.object({
     host: z.string().min(1).max(255),
     port: z.number().int().min(1).max(65535),
-    security: z.enum(["starttls", "tls", "none"]),
-    username: z.string().max(255).default(""),
-    password: z.string().max(1024).default(""),
+    security: z.enum(['starttls', 'tls', 'none']),
+    username: z.string().max(255).default(''),
+    password: z.string().max(1024).default(''),
     from: z.string().email(),
     to: z.array(z.string().email()).min(1).max(20),
     subjectTemplate: z.string().max(500),
@@ -35,7 +35,7 @@ const smtpPart = z.object({
   }),
 })
 
-const connectorPart = z.discriminatedUnion("type", [webhookPart, smtpPart])
+const connectorPart = z.discriminatedUnion('type', [webhookPart, smtpPart])
 const connectorMeta = z.object({
   name: z.string().min(1).max(64),
   enabled: z.boolean().default(true),
@@ -47,7 +47,7 @@ const optionalId = z.object({ id: z.string().uuid().optional() })
 // Maps secret and validation failures to a 400 with the real message.
 function badRequest(e: unknown): never {
   if (e instanceof TRPCError) throw e
-  throw new TRPCError({ code: "BAD_REQUEST", message: e instanceof Error ? e.message : String(e) })
+  throw new TRPCError({ code: 'BAD_REQUEST', message: e instanceof Error ? e.message : String(e) })
 }
 
 // Plaintext connector for an input, merged with the stored secrets when the
@@ -57,7 +57,7 @@ async function resolveInput(db: PrismaClient, input: ConnectorInput, id?: string
   let unreadable = false
   if (id) {
     const row = await db.notificationConnector.findUnique({ where: { id } })
-    if (!row) throw new TRPCError({ code: "NOT_FOUND", message: "Connector not found" })
+    if (!row) throw new TRPCError({ code: 'NOT_FOUND', message: 'Connector not found' })
     try {
       stored = resolveStored(row)
     } catch {
@@ -72,9 +72,9 @@ async function resolveInput(db: PrismaClient, input: ConnectorInput, id?: string
 }
 
 function partOf(input: z.infer<typeof connectorPart>): ConnectorInput {
-  return input.type === "smtp"
-    ? { type: "smtp", smtp: input.smtp }
-    : { type: "webhook", method: input.method, url: input.url, headers: input.headers, bodyTemplate: input.bodyTemplate }
+  return input.type === 'smtp'
+    ? { type: 'smtp', smtp: input.smtp }
+    : { type: 'webhook', method: input.method, url: input.url, headers: input.headers, bodyTemplate: input.bodyTemplate }
 }
 
 function storedData(resolved: ResolvedConnector) {
@@ -87,8 +87,8 @@ function storedData(resolved: ResolvedConnector) {
 
 const ruleInput = z.object({
   name: z.string().min(1).max(64),
-  sourcePrefix: z.string().max(64).default(""),
-  minSeverity: severityEnum.default("warning"),
+  sourcePrefix: z.string().max(64).default(''),
+  minSeverity: severityEnum.default('warning'),
   connectorIds: z.array(z.string()).min(1),
   enabled: z.boolean().default(true),
 })
@@ -100,7 +100,7 @@ async function resolveConnectorIds(db: PrismaClient, connectorIds: string[]): Pr
   const known = new Set(connectors.map(c => c.id))
   for (const id of unique) {
     if (id !== IN_APP_CONNECTOR_ID && !known.has(id)) {
-      throw new TRPCError({ code: "BAD_REQUEST", message: `Unknown connector id: ${id}` })
+      throw new TRPCError({ code: 'BAD_REQUEST', message: `Unknown connector id: ${id}` })
     }
   }
   return unique
@@ -111,7 +111,7 @@ export const notificationsRouter = router({
   list: protectedProcedure.query(async ({ ctx }) => {
     const mine = notificationWhere(ctx.user)
     const [items, unread] = await Promise.all([
-      ctx.prisma.notification.findMany({ where: mine, orderBy: { createdAt: "desc" }, take: 100 }),
+      ctx.prisma.notification.findMany({ where: mine, orderBy: { createdAt: 'desc' }, take: 100 }),
       ctx.prisma.notification.count({ where: { AND: [mine, { readAt: null }] } }),
     ])
     return { items, unread }
@@ -135,7 +135,7 @@ export const notificationsRouter = router({
 
   connectors: router({
     list: adminProcedure.query(async ({ ctx }) => {
-      const rows = await ctx.prisma.notificationConnector.findMany({ orderBy: { createdAt: "asc" } })
+      const rows = await ctx.prisma.notificationConnector.findMany({ orderBy: { createdAt: 'asc' } })
       return rows.map(r => toPublicConnector(r))
     }),
     presets: adminProcedure.query(() => ({
@@ -166,7 +166,7 @@ export const notificationsRouter = router({
     delete: adminProcedure.input(z.object({ id: z.string().uuid() })).mutation(async ({ ctx, input }) =>
       // Orphan rule targets are impossible: strip the id from every rule,
       // atomically with the delete itself.
-      ctx.prisma.$transaction(async (tx) => {
+      ctx.prisma.$transaction(async tx => {
         const rules = await tx.notificationRule.findMany()
         for (const rule of rules) {
           const ids: string[] = JSON.parse(rule.connectorIds)
@@ -184,7 +184,7 @@ export const notificationsRouter = router({
   }),
 
   rules: router({
-    list: adminProcedure.query(async ({ ctx }) => ctx.prisma.notificationRule.findMany({ orderBy: { name: "asc" } })),
+    list: adminProcedure.query(async ({ ctx }) => ctx.prisma.notificationRule.findMany({ orderBy: { name: 'asc' } })),
     create: adminProcedure.input(ruleInput).mutation(async ({ ctx, input }) => {
       const connectorIds = await resolveConnectorIds(ctx.prisma, input.connectorIds)
       return ctx.prisma.notificationRule.create({
@@ -208,17 +208,17 @@ export const notificationsRouter = router({
   renderPreview: adminProcedure.input(z.intersection(connectorPart, optionalId)).mutation(async ({ ctx, input }) => {
     const event = sampleEvent()
     // Rendering an email needs no secret: never merge stored ones for it.
-    if (input.type === "smtp") return { type: "smtp" as const, email: renderEmail({ ...input.smtp, password: "" }, event) }
+    if (input.type === 'smtp') return { type: 'smtp' as const, email: renderEmail({ ...input.smtp, password: '' }, event) }
     const resolved = await resolveInput(ctx.prisma, partOf(input), input.id)
-    if (resolved.type !== "webhook") throw new TRPCError({ code: "BAD_REQUEST", message: "Unexpected connector type" })
+    if (resolved.type !== 'webhook') throw new TRPCError({ code: 'BAD_REQUEST', message: 'Unexpected connector type' })
     const request = renderWebhookRequest(
       { method: resolved.method, url: resolved.url, headers: JSON.stringify(resolved.headers), bodyTemplate: resolved.bodyTemplate },
       event,
     )
     // The preview is shown in the browser: mask secrets the same way as `list`.
     const headers = Object.fromEntries(Object.entries(request.headers).map(([k, v]) =>
-      [k, k.toLowerCase() === "content-type" ? v : SECRET_MASK]))
-    return { type: "webhook" as const, request: { ...request, url: maskUrl(request.url), headers } }
+      [k, k.toLowerCase() === 'content-type' ? v : SECRET_MASK]))
+    return { type: 'webhook' as const, request: { ...request, url: maskUrl(request.url), headers } }
   }),
 
   testConnector: adminProcedure.input(z.intersection(connectorPart, optionalId)).mutation(async ({ ctx, input }) => {
@@ -227,8 +227,8 @@ export const notificationsRouter = router({
     const result = await deliverResolved(resolved, event) // one attempt, no queue, no rate limit
     await prisma.notificationDelivery.create({
       data: {
-        connectorId: input.id ?? "test", status: result.ok ? "sent" : "failed", ok: result.ok, attempts: 1,
-        error: result.error ?? "", test: true, sentAt: new Date(), event: JSON.stringify(event),
+        connectorId: input.id ?? 'test', status: result.ok ? 'sent' : 'failed', ok: result.ok, attempts: 1,
+        error: result.error ?? '', test: true, sentAt: new Date(), event: JSON.stringify(event),
       },
     })
     return result
@@ -237,14 +237,14 @@ export const notificationsRouter = router({
   deliveries: router({
     list: adminProcedure.query(async ({ ctx }) => {
       const [rows, connectors] = await Promise.all([
-        ctx.prisma.notificationDelivery.findMany({ orderBy: { at: "desc" }, take: 50 }),
+        ctx.prisma.notificationDelivery.findMany({ orderBy: { at: 'desc' }, take: 50 }),
         ctx.prisma.notificationConnector.findMany({ select: { id: true, name: true } }),
       ])
       const names = new Map(connectors.map(c => [c.id, c.name]))
       return rows.map(r => ({
         id: r.id, connectorId: r.connectorId, connectorName: names.get(r.connectorId) ?? r.connectorId,
-        status: r.status as "pending" | "sending" | "sent" | "failed", attempts: r.attempts,
-        error: r.error ?? "", test: r.test, at: r.at, sentAt: r.sentAt, nextAttemptAt: r.nextAttemptAt,
+        status: r.status as 'pending' | 'sending' | 'sent' | 'failed', attempts: r.attempts,
+        error: r.error ?? '', test: r.test, at: r.at, sentAt: r.sentAt, nextAttemptAt: r.nextAttemptAt,
       }))
     }),
   }),

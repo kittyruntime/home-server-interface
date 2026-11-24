@@ -29,7 +29,7 @@ async function downloadBackup() {
   try {
     const response = await fetch('/system/config-backup', {
       method: 'POST',
-      headers: { Authorization: `Bearer ${token.value}`, 'Content-Type': 'application/json' },
+      headers: { 'Authorization': `Bearer ${token.value}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({ password: password.value }),
     })
     if (!response.ok) {

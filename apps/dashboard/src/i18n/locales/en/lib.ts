@@ -38,14 +38,6 @@ export default {
     succeeded2: 'Succeeded',
     unknownError: 'unknown error',
   },
-  dashboard_widgets: {
-    memory: 'Memory',
-    network: 'Network',
-    containers: 'Containers',
-    storage: 'Storage',
-    system: 'System',
-    diskHealth: 'Disk Health',
-  },
   jobLogs: {
     viewLogs: 'View logs',
   },
@@ -68,7 +60,6 @@ export default {
     files: 'Files',
     apps: 'Apps',
     storage: 'Storage',
-    appStore: 'App Store',
     monitor: 'Monitor',
     sharing: 'Sharing',
     assistant: 'Assistant',
@@ -76,7 +67,6 @@ export default {
   },
   store: {
     all: 'All',
-    installed: 'Installed',
     updates: 'Updates',
     categories: {
       Media: 'Media',

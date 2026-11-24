@@ -70,8 +70,7 @@ function formatTime(createdAt: string): string {
 // Also clears this browser's finished operations, so the badge goes back to zero.
 async function clearAll() {
   for (const op of finishedOps.value) dismiss(op.id)
-  if (isAdmin.value) { if (items.value.length > 0) await clear() }
-  else if (unread.value > 0) await markAllRead()
+  if (isAdmin.value) { if (items.value.length > 0) await clear() } else if (unread.value > 0) await markAllRead()
 }
 
 // A whole phrase per task ("Copy finished", "Move failed"), so languages

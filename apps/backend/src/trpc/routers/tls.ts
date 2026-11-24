@@ -1,8 +1,8 @@
-import { router, adminProcedure } from "../index"
-import { requestSync } from "../../nats"
+import { router, adminProcedure } from '../index'
+import { requestSync } from '../../nats'
 
 export interface TlsStatus {
-  mode: "local" | "imported" | "proxy" | "off"
+  mode: 'local' | 'imported' | 'proxy' | 'off'
   port: number
   standardPorts: boolean
   trustedProxies: string[]
@@ -12,5 +12,5 @@ export interface TlsStatus {
 }
 
 export const tlsRouter = router({
-  status: adminProcedure.query(() => requestSync<TlsStatus>("root.tls.status", {}, 10_000)),
+  status: adminProcedure.query(() => requestSync<TlsStatus>('root.tls.status', {}, 10_000)),
 })

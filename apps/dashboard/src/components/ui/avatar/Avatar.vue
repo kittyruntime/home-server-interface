@@ -1,16 +1,16 @@
 <script setup lang="ts">
-import type { HTMLAttributes } from "vue"
-import type { ImageStatus } from "./context"
-import { provide, ref } from "vue"
-import { cn } from "@/lib/utils"
-import { avatarKey } from "./context"
+import type { HTMLAttributes } from 'vue'
+import type { ImageStatus } from './context'
+import { provide, ref } from 'vue'
+import { cn } from '@/lib/utils'
+import { avatarKey } from './context'
 
 const props = defineProps<{
-  class?: HTMLAttributes["class"]
+  class?: HTMLAttributes['class']
 }>()
 
 // AvatarImage reports its loading status here, AvatarFallback shows until "loaded"
-provide(avatarKey, { status: ref<ImageStatus>("idle") })
+provide(avatarKey, { status: ref<ImageStatus>('idle') })
 </script>
 
 <template>

@@ -30,9 +30,7 @@ const total = computed(() => groups.value.reduce((n, g) => n + g.entries.length,
 
 async function load() {
   loading.value = true
-  try { groups.value = await trpc.trash.list.query() as Group[] }
-  catch (e: unknown) { toast.error(e instanceof Error ? e.message : String(e)) }
-  finally { loading.value = false }
+  try { groups.value = await trpc.trash.list.query() as Group[] } catch (e: unknown) { toast.error(e instanceof Error ? e.message : String(e)) } finally { loading.value = false }
 }
 
 function folderOf(path: string) {
@@ -82,9 +80,7 @@ async function remove(g: Group, e: Entry) {
   })
   if (!ok) return
   busy.value = e.id
-  try { await trpc.trash.delete.mutate({ placeId: g.placeId, ids: [e.id] }) }
-  catch (err: unknown) { toast.error(err instanceof Error ? err.message : String(err)) }
-  finally { busy.value = null; await load() }
+  try { await trpc.trash.delete.mutate({ placeId: g.placeId, ids: [e.id] }) } catch (err: unknown) { toast.error(err instanceof Error ? err.message : String(err)) } finally { busy.value = null; await load() }
 }
 
 async function empty(g: Group) {
@@ -93,9 +89,7 @@ async function empty(g: Group) {
   })
   if (!ok) return
   busy.value = g.placeId
-  try { await trpc.trash.empty.mutate({ placeId: g.placeId }) }
-  catch (err: unknown) { toast.error(err instanceof Error ? err.message : String(err)) }
-  finally { busy.value = null; await load() }
+  try { await trpc.trash.empty.mutate({ placeId: g.placeId }) } catch (err: unknown) { toast.error(err instanceof Error ? err.message : String(err)) } finally { busy.value = null; await load() }
 }
 
 onMounted(load)

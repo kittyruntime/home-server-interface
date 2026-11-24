@@ -1,4 +1,4 @@
-import { TRPCError } from "@trpc/server"
+import { TRPCError } from '@trpc/server'
 
 // Fixed-window throttle for failed login attempts, keyed per username and per
 // client IP. In-memory on purpose: a restart clears it, the same tradeoff the
@@ -35,7 +35,7 @@ export function assertNotThrottled(keys: string[]): void {
         ? `${Math.ceil(retryAfterSec / 60)} minutes`
         : `${retryAfterSec} seconds`
       throw new TRPCError({
-        code: "TOO_MANY_REQUESTS",
+        code: 'TOO_MANY_REQUESTS',
         message: `Too many failed login attempts. Try again in ${wait}`,
       })
     }
