@@ -29,6 +29,11 @@ file -b "$worker" | grep -q "$MACHINE" \
 engine=$(ls "$TMP"/node_modules/@prisma/engines/schema-engine-*)
 "$engine" --version >/dev/null
 
-test -s "$TMP/server.js"
-test -s "$TMP/public/index.html"
+# The installer's own completeness check, as it runs on this machine.
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+die() { echo "$*" >&2; exit 1; }
+# shellcheck disable=SC1090
+source <(sed -n '/^# BEGIN release functions/,/^# END release functions/p' "$ROOT/scripts/install.sh")
+release_stage_complete "$TMP" "$(basename "$worker")" \
+  || die "The installer would refuse this archive as incomplete on $(uname -m)."
 echo "Release archive OK on $(uname -m): $(basename "$ARCHIVE")"

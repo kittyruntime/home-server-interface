@@ -808,8 +808,19 @@ resolve_installed() {
 # Whether an extracted release holds everything the installer runs. Prisma 7
 # has no query engine: the client queries through its SQLite driver adapter,
 # and only the schema engine (migrate deploy) is a binary.
+# prisma_engine_target: the Prisma engine target the archive of this machine ships
+# (scripts/build-release.sh builds the same one).
+prisma_engine_target() {
+  case "$(release_arch)" in
+    amd64) echo debian-openssl-3.0.x ;;
+    arm64) echo linux-arm64-openssl-3.0.x ;;
+    *) return 1 ;;
+  esac
+}
+
 release_stage_complete() {
-  local stage="$1" worker_bin="$2"
+  local stage="$1" worker_bin="$2" engine
+  engine=$(prisma_engine_target) || return 1
   [[ -f "$stage/server.js" \
      && -f "$stage/public/index.html" \
      && -x "$stage/bin/$worker_bin" \
@@ -817,7 +828,7 @@ release_stage_complete() {
      && -d "$stage/compose/src" \
      && -x "$stage/node_modules/.bin/prisma" \
      && -x "$stage/node_modules/.bin/tsx" \
-     && -x "$stage/node_modules/@prisma/engines/schema-engine-debian-openssl-3.0.x" \
+     && -x "$stage/node_modules/@prisma/engines/schema-engine-$engine" \
      && -f "$stage/runtime/package-lock.json" ]]
 }
 
