@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.95.0] - 2026-11-25
+
 ### Added
 - **Raspberry Pi and other 64-bit ARM machines**: each release now ships an
   arm64 archive next to the amd64 one. The installer and updates pick the
@@ -2464,7 +2466,8 @@ First stable release.
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.94.0...HEAD
+[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.95.0...HEAD
+[1.95.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.94.0...v1.95.0
 [1.94.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.93.0...v1.94.0
 [1.93.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.92.1...v1.93.0
 [1.92.1]: https://github.com/kittyruntime/home-server-interface/compare/v1.92.0...v1.92.1
