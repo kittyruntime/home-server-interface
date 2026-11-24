@@ -3,7 +3,7 @@ import { showAppsView } from './apps-view'
 
 // After an App Store install, HSI shows the new app in its Apps section
 // instead of opening it (#36): the shell switches to Apps, and the app list
-// scrolls to the app, marks it and opens its logs once it is listed.
+// scrolls to the app, marks it and follows its start once it is listed.
 
 /** Name of the app to show; cleared by the app list once shown. */
 export const pendingAppFocus = ref<string | null>(null)

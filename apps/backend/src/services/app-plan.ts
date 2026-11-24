@@ -239,6 +239,8 @@ export const APP_INPUTS = {
     })).default([]),
     env:     z.array(z.object({ key: z.string(), value: z.string() })).default([]),
     volumes: z.array(zInstallVolume).default([]),
+    // Start the app once installed (the form's choice); off, it waits for Start.
+    start:   z.boolean().default(true),
   }),
 } satisfies Record<AppOp, z.ZodTypeAny>
 
@@ -539,7 +541,7 @@ async function buildInstallPlan(input: z.infer<typeof APP_INPUTS["app.install"]>
       throw e
     }
   }, manifestSecretKeys(m)))
-  steps.push(upStep(deps, input.name, yaml, false))
+  if (input.start) steps.push(upStep(deps, input.name, yaml, false))
   return { op: "app.install", steps, observed: {}, reply: { name: input.name, webPort } }
 }
 

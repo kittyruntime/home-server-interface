@@ -1332,6 +1332,9 @@ async function testAppPlanBuilders() {
   assert.deepEqual(p1.steps.map(s => s.kind), ["create", "create", "create", "run"])
   assert.ok(!JSON.stringify(ap.publicSteps(p1)).includes("generated-"))
   assert.equal(ap.appFingerprint(p1, inst), ap.appFingerprint(p2, inst), "a random secret must not make the plan stale")
+  // Not started on request: the compose file is written, nothing runs it.
+  const idle = await ap.buildAppPlan("app.install", { ...inst, name: "demo4", start: false }, deps)
+  assert.deepEqual(idle.steps.map(s => s.kind), ["create", "create", "create"])
   await assert.rejects(ap.buildAppPlan("app.install", { ...inst, volumes: [{ target: "/data", source: { kind: "newPlace", name: "x", path: "/mnt/taken" } }] }, deps), /Place already exists/)
 
   // The address the web port is reached at, behind the user's proxy (#26):
