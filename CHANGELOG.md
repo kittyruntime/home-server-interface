@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.95.1] - 2026-11-25
+
 ### Fixed
 - **Install on a Raspberry Pi**: the installer refused the arm64 archive as
   incomplete ("Release archive is incomplete"); it checked for the Prisma
@@ -2471,7 +2473,8 @@ First stable release.
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.95.0...HEAD
+[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.95.1...HEAD
+[1.95.1]: https://github.com/kittyruntime/home-server-interface/compare/v1.95.0...v1.95.1
 [1.95.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.94.0...v1.95.0
 [1.94.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.93.0...v1.94.0
 [1.93.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.92.1...v1.93.0
