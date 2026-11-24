@@ -222,6 +222,7 @@ create_mirror() {
   fp=$(python3 -c 'import json,sys; print(json.loads(sys.argv[1])["fingerprint"])' "$plan")
   result=$(api storage.volumeApply "{\"input\":$input,\"fingerprint\":\"$fp\"}")
   python3 -c 'import json,sys; r=json.loads(sys.argv[1]); assert r["ok"], r' "$result" || fail "volume creation failed: $result"
+  fast_resync
 }
 
 expect_mirror() {
@@ -332,10 +333,17 @@ mirror_array() { vm_ssh 'lsblk -nro NAME,TYPE | awk "\$2==\"raid1\"{print \$1; e
 
 # Waits for the mirror to be in sync on two disks: HSI refuses to reshape an
 # array during a resync or a rebuild.
+# The test disks are small and idle: let md resync them as fast as they go
+# rather than at its default ceiling. Set again after each boot.
+fast_resync() {
+  vm_ssh 'sysctl -qw dev.raid.speed_limit_min=500000 dev.raid.speed_limit_max=5000000 2>/dev/null || true'
+}
+
 wait_clean() {
   local md
   md=$(mirror_array)
-  vm_ssh "for i in \$(seq 1 180); do d=\$(mdadm --detail /dev/$md); echo \"\$d\" | grep -Eq 'State : (clean|active) *\$' && echo \"\$d\" | grep -Eq 'Active Devices *: *2' && exit 0; sleep 5; done; mdadm --detail /dev/$md; exit 1" \
+  fast_resync
+  vm_ssh "for i in \$(seq 1 900); do d=\$(mdadm --detail /dev/$md); echo \"\$d\" | grep -Eq 'State : (clean|active) *\$' && echo \"\$d\" | grep -Eq 'Active Devices *: *2' && exit 0; sleep 1; done; mdadm --detail /dev/$md; exit 1" \
     || fail "$md did not get in sync"
 }
 
@@ -411,6 +419,7 @@ grow_mirror_disks() {
   expect_running "$version"; expect_mirror
   wait_clean
   log "Growing the mirror to the size of its disks"
+  fast_resync
   apply_plan volume.expand "{\"uuid\":\"$uuid\",\"mode\":\"mirrorGrow\"}" >/dev/null
   vm_until 900 "the volume did not grow once its larger disks were synchronised" \
     "test \$(findmnt -bno SIZE /srv/vm-mirror) -gt $((before * 3 / 2))"

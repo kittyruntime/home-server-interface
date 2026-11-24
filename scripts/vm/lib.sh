@@ -87,7 +87,6 @@ ssh_pwauth: false
 users:
   - name: root
     ssh_authorized_keys: ["$(cat "$VM_DIR/id_ed25519.pub")"]
-package_update: true
 packages: [curl, ca-certificates, python3, openssl]
 USERDATA
   vm_seed hsi-vm
