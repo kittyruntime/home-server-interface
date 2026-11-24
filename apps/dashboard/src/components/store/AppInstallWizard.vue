@@ -6,6 +6,7 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { trpc } from '../../lib/trpc'
 import { applyPlanned } from '../../lib/plan'
 import { focusNewApp } from '../../lib/app-focus'
+import { registerAppJob } from '../../lib/app-jobs'
 import type { Place } from '../apps/VolumesTable.vue'
 import LoadingState from '../ui/LoadingState.vue'
 import ErrorState from '../ui/ErrorState.vue'
@@ -68,6 +69,8 @@ const volumeRows = ref<VolumeRow[]>([])
 
 const installing   = ref(false)
 const installError = ref('')
+// The app starts once installed unless this is unticked.
+const startAfterInstall = ref(true)
 
 /** Last path segment, used to derive default volume names/paths. */
 function basename(path: string): string {
@@ -232,12 +235,14 @@ async function install() {
       volumes,
     }
 
-    await applyPlanned('app.install', payload, {
+    const start = startAfterInstall.value
+    const reply = await applyPlanned('app.install', { ...payload, start }, {
       domain: 'apps', title: t('uis.store.AppInstallWizard.install', { p0: name.value }), actionLabel: t('uis.store.AppInstallWizard.install2'),
     })
+    // The list follows the start like any other: no logs to read yet.
+    if (start && typeof reply.jobId === 'string') registerAppJob({ name: name.value, jobId: reply.jobId, action: 'start' })
     emit('installed')
-    // Show the new app in Apps (its start-up logs) rather than opening it
-    // before it is up.
+    // Show the new app in Apps rather than opening it before it is up.
     focusNewApp(name.value)
   } catch (e: any) {
     installError.value = e?.message ?? t('uis.store.AppInstallWizard.failedToInstallThisApp')
@@ -267,7 +272,7 @@ async function install() {
       <!-- Name -->
       <div class="space-y-1.5">
         <label class="text-xs font-medium text-base-content/70 uppercase tracking-caps">{{ t('ui.store.AppInstallWizard.appName') }}</label>
-        <Input v-model="name" maxlength="64" laceholder="app-name" />
+        <Input v-model="name" maxlength="64" placeholder="app-name" />
         <p v-if="!nameValid" role="alert" class="status-text text-error">
           <span class="status-tag">[ERR]</span> {{ t('ui.store.AppInstallWizard.useLowercaseLettersNumbersOr') }}
         </p>
@@ -371,14 +376,18 @@ async function install() {
 
           <div v-else-if="v.mode === 'newPlace'" class="grid grid-cols-1 sm:grid-cols-2 gap-2">
             <Input v-model="v.newPlaceName" :placeholder="t('ui.store.AppInstallWizard.placeName')" />
-            <Input v-model="v.newPlacePath" laceholder="/srv/apps/…" class="font-mono" />
+            <Input v-model="v.newPlacePath" placeholder="/srv/apps/…" class="font-mono" />
           </div>
 
-          <Input v-else-if="v.mode === 'bind'" v-model="v.bindPath" laceholder="/host/path" class="font-mono" />
+          <Input v-else-if="v.mode === 'bind'" v-model="v.bindPath" placeholder="/host/path" class="font-mono" />
 
-          <Input v-else-if="v.mode === 'named'" v-model="v.namedName" laceholder="volume-name" class="font-mono" />
+          <Input v-else-if="v.mode === 'named'" v-model="v.namedName" placeholder="volume-name" class="font-mono" />
         </div>
       </div>
+
+      <label class="flex items-center gap-2 text-sm text-base-content">
+        <Checkbox v-model="startAfterInstall" :disabled="installing" />{{ t('ui.store.AppInstallWizard.startAfterInstall') }}
+      </label>
 
       <!-- Footer -->
       <div class="flex items-center gap-3 pt-2 border-t border-base-300">
@@ -386,7 +395,7 @@ async function install() {
         <div v-else class="flex-1" />
         <Button variant="outline" size="sm" @click="emit('close')">{{ t('ui.store.AppInstallWizard.cancel') }}</Button>
         <Button size="sm" :disabled="!canInstall" @click="install">
-          {{ installing ? 'Installing…' : 'Install' }}
+          {{ installing ? t('ui.store.AppInstallWizard.installing') : t('ui.store.AppInstallWizard.installButton') }}
         </Button>
       </div>
     </template>

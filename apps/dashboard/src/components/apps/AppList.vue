@@ -25,6 +25,7 @@ import { updateText } from '../../lib/app-update'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { safePinnedUrl } from '../../lib/pinned-url'
+import { portUrl } from '../../lib/port-links'
 import { filterApps, summarizeApps } from '../../lib/app-list'
 import LoadingSpinner from '../ui/LoadingSpinner.vue'
 import { Alert, AlertDescription } from '@/components/ui/alert'
@@ -101,14 +102,15 @@ function catalogOf(app: App) {
   return id ? catalog.value[id] ?? null : null
 }
 const busyFor = (app: App) => !!actionLoading.value[app.id] || appHasPendingJob(app.name)
-function openPinned(app: App) {
-  const url = safePinnedUrl(app.app?.pinnedUrl)
+function openApp(app: App) {
+  const url = openUrl(app)
   if (url) window.open(url, '_blank', 'noopener')
 }
 
 onMounted(async () => {
   void refreshHolds()
   void loadCatalog()
+  void loadLanHost()
   await load()
 })
 // Container states change behind our back (crash, restart policy, the CLI).
@@ -142,11 +144,28 @@ function actionText(action: string) {
   return t(`ui.apps.AppList.action${action.charAt(0).toUpperCase()}${action.slice(1)}`)
 }
 
-function portsSummary(app: App): string {
-  const ports = app.app?.ports ?? []
-  if (!ports.length) return '-'
-  return ports.slice(0, 2).map(p => `${p.hostPort}:${p.containerPort}`).join(', ')
-    + (ports.length > 2 ? ` +${ports.length - 2}` : '')
+// Published ports open the app from the local network: on the server's LAN
+// address, as HSI itself may be reached through a domain or a proxy.
+const lanHost = ref(location.hostname)
+async function loadLanHost() {
+  try {
+    const { address } = await trpc.container.app.lanAddress.query()
+    if (address) lanHost.value = address
+  } catch { /* the address HSI is opened at */ }
+}
+const shownPorts = (app: App) => (app.app?.ports ?? []).slice(0, 3)
+const hiddenPorts = (app: App) => Math.max(0, (app.app?.ports?.length ?? 0) - 3)
+
+/** Where Open goes: the pinned URL, else the first port that is a link. */
+function openUrl(app: App): string | null {
+  const pinned = safePinnedUrl(app.app?.pinnedUrl)
+  if (pinned) return pinned
+  if (app.status !== 'running') return null
+  for (const p of app.app?.ports ?? []) {
+    const url = portUrl(p, lanHost.value)
+    if (url) return url
+  }
+  return null
 }
 
 function observeAction(notifId: string | null, job: JobObservation) {
@@ -307,12 +326,34 @@ function openForm()       { editName.value = null; showModal.value = true }
 // (the start goes through its preview like any other).
 async function onComposeAdded(name: string, start: boolean) {
   await load()
+  await markApp(name)
+  if (start) void runAction(name, 'start')
+}
+
+// An app created in the form: back to the list, which marks it and follows
+// its start (requested by the form) like any other.
+async function onCreated(name: string) {
+  showModal.value = false
+  await load()
+  await markApp(name)
+  followStart(name)
+}
+
+/** Mark a listed app for a few seconds and scroll it into view. */
+async function markApp(name: string) {
   focusedName.value = name
   if (focusTimer) clearTimeout(focusTimer)
   focusTimer = setTimeout(() => { focusedName.value = null }, 4000)
   await nextTick()
-  document.querySelector<HTMLElement>(`[data-app-name="${CSS.escape(name)}"]`)?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
-  if (start) void runAction(name, 'start')
+  for (const el of document.querySelectorAll<HTMLElement>(`[data-app-name="${CSS.escape(name)}"]`)) {
+    if (el.offsetParent) el.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+  }
+}
+
+/** Follow the start job a new app was created with, if any. */
+function followStart(name: string) {
+  const job = knownAppJobs.get(name)
+  if (job) void observePendingJob(job)
 }
 // Multi-service stacks are fine too: the form modal handles them with a
 // notice + the raw YAML editor (advanced tab only). Pinning from the UI is
@@ -324,21 +365,15 @@ function openEdit(a: App) {
 function openLogs(a: App) { logsApp.value = a }
 
 // A freshly installed app (#36): once listed, scroll to it, mark it for a
-// few seconds and open its logs to follow its start-up.
+// few seconds and follow its start in the list.
 const focusedName = ref<string | null>(null)
 let focusTimer: ReturnType<typeof setTimeout> | null = null
 watch([pendingAppFocus, apps], async () => {
   const app = appToFocus(pendingAppFocus.value, apps.value)
   if (!app) return
   pendingAppFocus.value = null
-  focusedName.value = app.name
-  logsApp.value = app
-  if (focusTimer) clearTimeout(focusTimer)
-  focusTimer = setTimeout(() => { focusedName.value = null }, 4000)
-  await nextTick()
-  for (const el of document.querySelectorAll<HTMLElement>(`[data-app-name="${CSS.escape(app.name)}"]`)) {
-    if (el.offsetParent) el.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
-  }
+  followStart(app.name)
+  await markApp(app.name)
 })
 // Already mounted: pick the new app up without waiting for the next refresh.
 watch(pendingAppFocus, name => { if (name && !loading.value) void silentRefresh() })
@@ -393,6 +428,7 @@ async function unpin(app: App) {
     @close="showModal = false"
     @saved="onSaved"
     @deployed="onDeployed"
+    @created="onCreated"
   />
 
   <div v-else class="flex-1 overflow-y-auto min-w-0">
@@ -492,7 +528,10 @@ async function unpin(app: App) {
                   <span v-else-if="app.drifted" class="badge badge-sm badge-soft badge-warning whitespace-nowrap">{{ t('ui.apps.AppList.modifiedOutsideHsi') }}</span>
                 </div>
                 <p class="mt-0.5 truncate font-mono text-2xs text-base-content/60" :title="app.app?.image ?? undefined">
-                  <template v-if="catalogOf(app)">{{ app.name }} · </template>{{ app.app?.image ?? '-' }}<template v-if="app.app?.ports?.length"> · {{ portsSummary(app) }}</template>
+                  <template v-if="catalogOf(app)">{{ app.name }} · </template>{{ app.app?.image ?? '-' }}<template v-for="p in shownPorts(app)" :key="`${p.hostPort}/${p.protocol}`"> · <a
+                    v-if="portUrl(p, lanHost)" :href="portUrl(p, lanHost)!" target="_blank" rel="noopener noreferrer"
+                    class="touch-hit link link-hover text-primary" :title="portUrl(p, lanHost)!"
+                    :aria-label="`${t('ui.apps.AppList.openPort', { p0: p.hostPort })}: ${app.name}`">{{ p.hostPort }}</a><template v-else>{{ p.hostPort }}/{{ p.protocol }}</template></template><template v-if="hiddenPorts(app)"> +{{ hiddenPorts(app) }}</template>
                 </p>
                 <p v-if="app.services && app.services.length > 1" class="mt-1 flex flex-wrap gap-x-3 gap-y-0.5">
                   <span v-for="svc in app.observed" :key="svc.name" class="inline-flex items-center gap-1.5 font-mono text-2xs text-base-content/70">
@@ -519,7 +558,7 @@ async function unpin(app: App) {
                 </Button>
                 <Button v-else-if="app.pendingApply || app.drifted" size="sm" class="btn-soft min-w-20" :disabled="busyFor(app)" :tooltip="t('ui.apps.AppList.applyChanges')" @click="applyApp(app.id)">{{ t('ui.apps.AppList.apply') }}</Button>
                 <Button v-else-if="app.status === 'stopped' || app.status === 'error'" variant="secondary" size="sm" class="min-w-20" :disabled="busyFor(app)" @click="runAction(app.id, 'start')">{{ t('ui.apps.AppList.start') }}</Button>
-                <Button v-else-if="safePinnedUrl(app.app?.pinnedUrl)" variant="secondary" size="sm" class="min-w-20" @click="openPinned(app)">
+                <Button v-else-if="openUrl(app)" variant="secondary" size="sm" class="min-w-20" :tooltip="openUrl(app)!" @click="openApp(app)">
                   {{ t('ui.apps.AppList.open') }}<ExternalLinkIcon class="size-3.5 opacity-60" aria-hidden="true" />
                 </Button>
                 </div>

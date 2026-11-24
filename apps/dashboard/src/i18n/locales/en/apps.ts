@@ -47,6 +47,7 @@ export default {
     },
   },
   AppList: {
+    openPort: 'Open port {p0}',
     allApps: 'All apps',
     open: 'Open',
     pinQuickAccess: 'Pin to quick access',
@@ -208,8 +209,8 @@ export default {
     noNetworksAttached: 'No networks attached.',
     cancel: 'Cancel',
     close: 'Close',
-    createAndStart: 'Create and start',
-    saveWithoutStarting: 'Save without starting',
+    create: 'Create',
+    startAfterCreate: 'Start the app once it is created',
     saveChanges: 'Save changes',
     savedNotStarted: 'Configuration saved. This app has not been started.',
     deploymentSummaryTitle: 'After you create the app',

@@ -20,6 +20,9 @@ export default {
     noPlacesYetCreateOne: 'Aucun emplacement pour l’instant. Créez-en un depuis la page Emplacements, ou choisissez une autre source.',
     placeName: 'Nom de l’emplacement',
     cancel: 'Annuler',
+    startAfterInstall: 'Démarrer l’application après son installation',
+    installing: 'Installation…',
+    installButton: 'Installer',
   },
   AppStorePanel: {
     sectionUpdates: 'Mises à jour',

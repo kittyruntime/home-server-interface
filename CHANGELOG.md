@@ -13,8 +13,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   list and in Monitor.
 
 ### Changed
+- **New apps start on their own**: installing from the App Store or creating
+  an app by hand starts it once created, with a checkbox at the end of the
+  form to leave it stopped. The app list shows its start instead of opening
+  its logs, which are empty until it runs.
+- **Published ports are links**: each port of an app opens it on the
+  server's local network address, and Open uses the first one when no
+  address is pinned.
 - **Monitor** shows each app's processes under its icon and name, the App
   Store logo for an app installed from it.
+
+### Fixed
+- The App Store install form shows its path and volume examples again, and
+  its Install button is translated.
 
 ## [1.92.1] - 2026-11-24
 

@@ -4,6 +4,7 @@ import { assertVolumeAvailable } from "../../services/volume-guard"
 import { catalogUpdateFor } from "../../services/app-update"
 import { TRPCError } from "@trpc/server"
 import { router, adminProcedure } from "../index"
+import { lanAddress, callerIp } from "../../services/lan-address"
 import { publishJob, requestSync } from "../../nats"
 import {
   listStacks, getStack, stackExists, writeStack,
@@ -42,6 +43,9 @@ async function dockerBoundPorts(): Promise<Map<string, string>> {
 
 const appRouter = router({
   list: adminProcedure.query(async () => (await listStacks()).map(s => ({ ...s, id: s.name, catalogUpdate: catalogUpdateFor(s.app) }))),
+  // Where the viewer reaches published ports: the server's LAN address on
+  // their network ("" when none), as HSI may be opened through a domain.
+  lanAddress: adminProcedure.query(({ ctx }) => ({ address: lanAddress(undefined, callerIp(ctx.req)) })),
 
   get: adminProcedure.input(z.object({ name: z.string() }))
     .query(async ({ input }) => ({ ...(await getStack(input.name)), id: input.name })),

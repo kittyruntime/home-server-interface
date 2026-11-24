@@ -28,7 +28,7 @@ import {
 } from "../../services/sharing-view.service"
 import { syncSystemPassword, verifyPassword } from "../../services/user.service"
 import { clientAllowed, parseNfsClients, suggestNfsClients } from "../../services/nfs"
-import { lanAddress } from "../../services/lan-address"
+import { lanAddress, callerIp as viewerIp } from "../../services/lan-address"
 import type { Context } from "../context"
 
 type DirState = {
@@ -79,7 +79,7 @@ async function sambaFacts(paths: string[]): Promise<{ sambaUsers: Set<string>; d
 }
 
 function callerIp(ctx: Context): string | undefined {
-  return ctx.req.ip ?? ctx.req.headers["x-forwarded-for"]?.toString()
+  return viewerIp(ctx.req)
 }
 
 async function assertUniqueName(

@@ -28,3 +28,8 @@ export function lanAddress(ifaces: ReturnType<typeof networkInterfaces> = networ
   }
   return candidates[0]?.address ?? ""
 }
+
+/** The viewer's address as the server sees it, for lanAddress. */
+export function callerIp(req: { ip?: string; headers: Record<string, string | string[] | undefined> }): string | undefined {
+  return req.ip ?? req.headers["x-forwarded-for"]?.toString()
+}

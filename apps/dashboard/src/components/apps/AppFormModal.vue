@@ -5,7 +5,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ref, reactive, watch, computed, onMounted, onUnmounted } from 'vue'
 import { trpc } from '../../lib/trpc'
 import { JobError, pollJobResult } from '../../lib/jobs'
-import { deployApp, isSavedBeforeStartFailure } from '../../lib/app-deployment'
+import { isSavedBeforeStartFailure } from '../../lib/app-deployment'
 import { clearAppJob, registerAppJob } from '../../lib/app-jobs'
 import { openJobLogs, viewableJobId } from '../../lib/jobLogs'
 import { applyPlanned, applyPlannedJob, PlanExecutionError } from '../../lib/plan'
@@ -18,6 +18,7 @@ import AppIconPicker                            from './AppIconPicker.vue'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import AppDeploymentProgress from './AppDeploymentProgress.vue'
 import ContainerLogsPanel from './ContainerLogsPanel.vue'
@@ -33,6 +34,8 @@ const emit  = defineEmits<{
   close: []
   saved: [name: string]
   deployed: [name: string]
+  // A new app: the list takes over (its start shows there, not in the form).
+  created: [name: string, startJobId: string | null]
 }>()
 
 type Tab = 'basic' | 'ports' | 'envs' | 'volumes' | 'networks' | 'labels' | 'advanced'
@@ -95,6 +98,8 @@ const unknownFields = ref<string[]>([])
 // Inline "saved - apply now?" prompt state
 const savedName  = ref<string | null>(null)
 const savedWithoutStarting = ref(false)
+// A new app starts once created unless this is unticked.
+const startAfterCreate = ref(true)
 const configurationDirty = ref(false)
 const applying   = ref(false)
 const applyState = ref<'idle' | 'applied' | 'error'>('idle')
@@ -244,11 +249,12 @@ async function followJob(jobId: string, name: string) {
   }
 }
 
-async function save(mode: 'save' | 'start' = 'save') {
+async function save() {
   error.value = ''
   deployError.value = ''
   const name = form.name
   const create = !editing.value
+  const start = create && startAfterCreate.value
   loading.value = true
   try {
     const payload = {
@@ -271,56 +277,27 @@ async function save(mode: 'save' | 'start' = 'save') {
       pinnedUrl:     form.pinnedUrl || null,
       icon:          form.icon,
     }
-    if (mode === 'start' && create) {
-      activePollController?.abort()
-      activePollController = new AbortController()
-      const signal = activePollController.signal
-      const result = await deployApp(payload, async (configuration, start) => {
-        const reply = await applyPlanned('app.save', { name, create: true, start, data: configuration }, {
-          domain: 'apps', title: `Create ${name}`, actionLabel: t('ui.apps.AppFormModal.createAndStart'),
-        })
-        const jobId = typeof reply.jobId === 'string' ? reply.jobId : ''
-        if (!jobId) throw new Error('The start job was not returned')
-        registerAppJob({ name, jobId, action: 'start' })
-        editing.value = true
-        savedName.value = name
-        savedWithoutStarting.value = false
-        configurationDirty.value = false
-        emit('saved', name)
-        loading.value = false
-        return { jobId }
-      }, async jobId => {
-        deployment.value = { name, jobId, status: 'pending', taskStatus: 'pending', action: 'container.composeUp', error: '' }
-        observing.value = true
-        return pollJobResult(jobId, DEPLOYMENT_DEADLINE_MS, observeDeployment, signal)
-      })
-      if (!signal.aborted && deployment.value?.jobId === result.jobId) {
-        deployment.value.status = result.status
-        deployment.value.error = result.error ?? ''
-        if (result.status === 'completed') {
-          clearAppJob(name, result.jobId)
-          emit('deployed', name)
-        } else if (result.status === 'failed') {
-          deployment.value.error = result.error ?? t('uis.apps.AppFormModal.applyFailed')
-          clearAppJob(name, result.jobId)
-        }
-      }
-    } else {
-      await applyPlanned('app.save', { name, create, start: false, data: payload }, {
-        domain: 'apps',
-        title: create ? `Create ${name}` : `Save ${name}`,
-        actionLabel: t('uis.apps.AppFormModal.save'),
-      })
-      editing.value = true
-      savedName.value = name
-      savedWithoutStarting.value = create
-      configurationDirty.value = false
-      applyState.value = 'idle'
-      emit('saved', name)
+    const reply = await applyPlanned('app.save', { name, create, start, data: payload }, {
+      domain: 'apps',
+      title: create ? `Create ${name}` : `Save ${name}`,
+      actionLabel: create ? t('ui.apps.AppFormModal.create') : t('uis.apps.AppFormModal.save'),
+    })
+    if (create) {
+      // Back to the list, which shows the app and follows its start.
+      const jobId = start && typeof reply.jobId === 'string' ? reply.jobId : null
+      if (jobId) registerAppJob({ name, jobId, action: 'start' })
+      emit('created', name, jobId)
+      return
     }
+    editing.value = true
+    savedName.value = name
+    savedWithoutStarting.value = false
+    configurationDirty.value = false
+    applyState.value = 'idle'
+    emit('saved', name)
   } catch (e: any) {
     if (e?.message === '') return // cancelled from the plan preview
-    if (mode === 'start' && create && e instanceof PlanExecutionError && e.result && isSavedBeforeStartFailure(e.result)) {
+    if (start && e instanceof PlanExecutionError && e.result && isSavedBeforeStartFailure(e.result)) {
       editing.value = true
       savedName.value = name
       savedWithoutStarting.value = true
@@ -332,7 +309,6 @@ async function save(mode: 'save' | 'start' = 'save') {
     error.value = e?.message ?? t('uis.apps.AppFormModal.failedToSave')
   } finally {
     loading.value = false
-    observing.value = false
   }
 }
 
@@ -572,8 +548,8 @@ function rawSaved(raw: string) {
         <h3 class="font-semibold">{{ t('ui.apps.AppFormModal.deploymentSummaryTitle') }}</h3>
         <ol class="mt-3 space-y-2 text-sm text-base-content/80">
           <li class="flex gap-2"><span class="text-primary">1.</span>{{ t('ui.apps.AppFormModal.deploymentStepSave') }}</li>
-          <li class="flex gap-2"><span class="text-primary">2.</span>{{ t('ui.apps.AppFormModal.deploymentStepDownload') }}</li>
-          <li class="flex gap-2"><span class="text-primary">3.</span>{{ t('ui.apps.AppFormModal.deploymentStepStart') }}</li>
+          <li v-if="startAfterCreate" class="flex gap-2"><span class="text-primary">2.</span>{{ t('ui.apps.AppFormModal.deploymentStepDownload') }}</li>
+          <li v-if="startAfterCreate" class="flex gap-2"><span class="text-primary">3.</span>{{ t('ui.apps.AppFormModal.deploymentStepStart') }}</li>
         </ol>
         <p class="mt-3 text-xs text-base-content/70">{{ t('ui.apps.AppFormModal.deploymentSummaryDetail') }}</p>
       </aside>
@@ -588,14 +564,14 @@ function rawSaved(raw: string) {
       <div v-else class="flex-1" />
       <Button variant="ghost" @click="emit('close')" :disabled="loading || applying">{{ t('ui.apps.AppFormModal.cancel') }}</Button>
       <template v-if="!editing">
-        <Button class="w-full sm:w-auto" variant="outline" @click="save('save')" :disabled="loading || !form.name || !form.image">
-          {{ t('ui.apps.AppFormModal.saveWithoutStarting') }}
-        </Button>
-        <Button class="w-full sm:w-auto" @click="save('start')" :disabled="loading || !form.name || !form.image">
-          {{ loading ? t('ui.apps.AppFormModal.saving') : t('ui.apps.AppFormModal.createAndStart') }}
+        <label class="flex w-full items-center gap-2 text-sm sm:w-auto">
+          <Checkbox v-model="startAfterCreate" :disabled="loading" />{{ t('ui.apps.AppFormModal.startAfterCreate') }}
+        </label>
+        <Button class="w-full sm:w-auto" @click="save()" :disabled="loading || !form.name || !form.image">
+          {{ loading ? t('ui.apps.AppFormModal.saving') : t('ui.apps.AppFormModal.create') }}
         </Button>
       </template>
-      <Button v-else class="w-full sm:w-auto" @click="save('save')" :disabled="loading || !form.name || !form.image">
+      <Button v-else class="w-full sm:w-auto" @click="save()" :disabled="loading || !form.name || !form.image">
         {{ loading ? t('ui.apps.AppFormModal.saving') : t('ui.apps.AppFormModal.saveChanges') }}
       </Button>
     </div>
