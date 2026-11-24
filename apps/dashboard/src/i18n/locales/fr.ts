@@ -881,6 +881,8 @@ export default {
       title: 'Affichage',
       showHidden: 'Afficher les fichiers cachés',
       showHiddenHint: 'Fichiers et dossiers dont le nom commence par un point.',
+      showRoot: 'Afficher la racine du serveur',
+      showRootHint: 'Affiche tout le serveur (« / ») parmi les emplacements. Les favoris hors des emplacements s’ouvrent toujours.',
       visibleColumns: 'Colonnes visibles…',
       columns: 'Colonnes',
       columnsHint: 'Affichées dans la vue en liste, à côté du nom.',

@@ -6,13 +6,21 @@ import { normalizeBookmarks, type Bookmark } from './bookmarks'
 // and view. Kept in localStorage for an instant read and synced with the
 // account by ./preferences.ts, like the appearance.
 
+/** The sections of the properties window, which fold away. */
+export const PROP_SECTIONS = ['storage', 'general', 'dates', 'permissions', 'details'] as const
+export type PropSectionId = typeof PROP_SECTIONS[number]
+
 export interface FilePrefs {
   sortField: SortField
   sortDir: SortDir
   columns: Column[]
   showHidden: boolean
+  /** Admins: show the whole server ("/") among the places. */
+  showRoot: boolean
   view: 'list' | 'grid'
   bookmarks: Bookmark[]
+  /** Properties sections folded away. */
+  foldedSections: PropSectionId[]
 }
 
 export const DEFAULT_FILE_PREFS: FilePrefs = {
@@ -20,8 +28,10 @@ export const DEFAULT_FILE_PREFS: FilePrefs = {
   sortDir: 'asc',
   columns: ['size', 'modified'],
   showHidden: false,
+  showRoot: true,
   view: 'list',
   bookmarks: [],
+  foldedSections: ['dates', 'details'],
 }
 
 const STORAGE_KEY = 'file-prefs'
@@ -39,8 +49,12 @@ export function normalizeFilePrefs(raw: unknown): FilePrefs {
     sortDir: v.sortDir === 'asc' || v.sortDir === 'desc' ? v.sortDir : d.sortDir,
     columns,
     showHidden: typeof v.showHidden === 'boolean' ? v.showHidden : d.showHidden,
+    showRoot: typeof v.showRoot === 'boolean' ? v.showRoot : d.showRoot,
     view: v.view === 'list' || v.view === 'grid' ? v.view : d.view,
     bookmarks: v.bookmarks === undefined ? d.bookmarks : normalizeBookmarks(v.bookmarks),
+    foldedSections: Array.isArray(v.foldedSections)
+      ? PROP_SECTIONS.filter(s => (v.foldedSections as unknown[]).includes(s))
+      : d.foldedSections,
   }
 }
 

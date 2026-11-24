@@ -304,6 +304,14 @@ const VIRTUAL_ROOT: Place = { id: '__root__', name: 'Root', path: '/' }
 const allPlaces = computed((): Place[] =>
   isAdmin.value ? [VIRTUAL_ROOT, ...dbPlaces.value] : dbPlaces.value
 )
+// The places listed in the sidebar: an admin can leave the whole server out.
+// A bookmark or a link outside the places still opens through it.
+const listedPlaces = computed((): Place[] =>
+  filePrefs.value.showRoot ? allPlaces.value : allPlaces.value.filter(p => p.id !== VIRTUAL_ROOT.id)
+)
+watch(() => filePrefs.value.showRoot, show => {
+  if (!show && activePlaceId.value === VIRTUAL_ROOT.id && listedPlaces.value.length > 0) selectPlace(listedPlaces.value[0]!)
+})
 
 const activePlace = computed(() =>
   activePlaceId.value ? allPlaces.value.find(p => p.id === activePlaceId.value) ?? null : null
@@ -905,7 +913,7 @@ onMounted(async () => {
   dbPlaces.value = (await trpc.place.list.query()) as Place[]
   const folder = takeFolderFocus()
   if (folder) void openBookmark(folder)
-  else if (allPlaces.value.length > 0) selectPlace(allPlaces.value[0]!)
+  else if (listedPlaces.value.length > 0) selectPlace(listedPlaces.value[0]!)
   void hydrateInterruptedUploads()
 })
 
@@ -934,7 +942,7 @@ watch(pendingFolder, path => {
         'absolute @2xl/files:relative z-20 @2xl/files:z-0 inset-y-0 left-0',
         sidebarOpen ? 'translate-x-0' : '-translate-x-full @2xl/files:translate-x-0',
       ]"
-      :places="allPlaces"
+      :places="listedPlaces"
       :active-place-id="activePlaceId"
       :settings-active="showShared"
       :bookmarks="bookmarks"
@@ -976,7 +984,7 @@ watch(pendingFolder, path => {
                 <TabsTrigger value="display">{{ t('files.display.title') }}</TabsTrigger>
                 <TabsTrigger value="shared">{{ t('ui.files.PlacesSidebar.sharedLinks') }}</TabsTrigger>
               </TabsList>
-              <TabsContent value="display"><DisplaySettings /></TabsContent>
+              <TabsContent value="display"><DisplaySettings :is-admin="isAdmin" /></TabsContent>
               <TabsContent value="shared"><SharedLinksSection /></TabsContent>
             </Tabs>
           </div>
