@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **App icons**: an app added by hand can wear one of 40 generic icons,
+  picked in its form (optional, its initial otherwise). It shows in the app
+  list and in Monitor.
+
 ### Changed
 - **New apps start on their own**: installing from the App Store or creating
   an app by hand starts it once created, with a checkbox at the end of the
@@ -15,6 +20,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Published ports are links**: each port of an app opens it on the
   server's local network address, and Open uses the first one when no
   address is pinned.
+- **Monitor** shows each app's processes under its icon and name, the App
+  Store logo for an app installed from it.
 
 ### Fixed
 - The App Store install form shows its path and volume examples again, and

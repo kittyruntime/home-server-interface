@@ -136,7 +136,7 @@ function onKey(e: KeyboardEvent) {
       <div class="min-h-0 flex-1 overflow-auto px-3 py-2" @keydown="onKey">
         <TransitionGroup tag="ol" move-class="transition-transform duration-(--dur-slow) ease-out" :aria-label="t('monitor.owners.title')">
           <li v-for="g in rows" :id="`owner-${g.key}`" :key="g.key" class="scroll-mt-2">
-            <OwnerRow :icon="g.icon" :name="g.name" :sub="g.sub" :level="g.level" :value="g.value" :color="g.color" :others="g.others"
+            <OwnerRow :icon="g.icon" :tile="g.tile" :name="g.name" :sub="g.sub" :level="g.level" :value="g.value" :color="g.color" :others="g.others"
               :lit="lit.has(g.key)" :expanded="isOpen(g.key)" @activate="toggle(g.key)" />
             <ol v-if="isOpen(g.key)" class="mb-1.5">
               <li v-for="p in g.procs" :key="keyOf(p.row)">

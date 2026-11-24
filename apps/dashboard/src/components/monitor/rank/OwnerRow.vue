@@ -2,6 +2,7 @@
 import type { Component } from 'vue'
 import { ChevronRightIcon } from '@lucide/vue'
 import RankBar from './RankBar.vue'
+import AppTile from '../../store/AppTile.vue'
 import { RANK_GRID } from './owners'
 
 // One owner in the ranking: what it is, the share it takes, the two other
@@ -12,7 +13,8 @@ withDefaults(defineProps<{
   icon: Component; name: string; sub: string
   level: number; value: string; color: string; others: string[]
   expanded?: boolean; lit?: boolean
-}>(), { expanded: undefined, lit: false })
+  tile?: { svg?: string | null; glyph?: string | null; name: string } | null
+}>(), { expanded: undefined, lit: false, tile: null })
 defineEmits<{ activate: [] }>()
 </script>
 
@@ -24,7 +26,8 @@ defineEmits<{ activate: [] }>()
     <span class="flex min-w-0 items-center gap-2 @md:gap-3">
       <ChevronRightIcon v-if="expanded !== undefined" class="size-4 shrink-0 text-base-content/60 transition-transform duration-(--dur-base)"
         :class="expanded && 'rotate-90'" aria-hidden="true" />
-      <span class="hidden size-8 shrink-0 place-items-center rounded-field bg-base-200 text-base-content/80 @md:grid" aria-hidden="true">
+      <AppTile v-if="tile" :svg="tile.svg" :glyph="tile.glyph" :name="tile.name" size="sm" class="hidden! @md:grid!" />
+      <span v-else class="hidden size-8 shrink-0 place-items-center rounded-field bg-base-200 text-base-content/80 @md:grid" aria-hidden="true">
         <component :is="icon" class="size-4" />
       </span>
       <span class="min-w-0">
