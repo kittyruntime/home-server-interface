@@ -49,7 +49,7 @@ onUnmounted(() => stop?.())
     <p v-else-if="procsError && !rows.length" class="px-5 py-8 text-center text-sm text-base-content/70">{{ t('monitor.proc.loadFailed') }}</p>
     <TransitionGroup v-else tag="ol" class="px-3 @2xl:px-5" move-class="transition-transform duration-(--dur-slow) ease-out">
       <li v-for="r in top" :key="r.key">
-        <OwnerRow :icon="r.icon" :name="r.name" :sub="r.sub" :level="r.level" :value="r.value" :color="r.color"
+        <OwnerRow :icon="r.icon" :tile="r.tile" :name="r.name" :sub="r.sub" :level="r.level" :value="r.value" :color="r.color"
           :others="r.others" :lit="lit.has(r.key)" @activate="emit('open', r.key)" />
       </li>
     </TransitionGroup>

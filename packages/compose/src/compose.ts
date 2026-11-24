@@ -1,5 +1,5 @@
 import { parse, parseDocument, isMap, type YAMLMap } from "yaml"
-import { zAppInput, zPinnedUrl, type AppInput, type PortMapping, type EnvVar, type VolumeMount, type LabelEntry } from "./model.js"
+import { zAppInput, zAppIcon, zPinnedUrl, type AppInput, type PortMapping, type EnvVar, type VolumeMount, type LabelEntry } from "./model.js"
 
 const HEADER = "# Managed by HSI - editable by hand, re-read on load.\n"
 
@@ -132,7 +132,7 @@ function applyModel(doc: any, name: string, input: AppInput) {
   const svc = ensureService(doc, name)
   // x-hsi is a managed key, but its sub-keys are HSI metadata the forms do not
   // all represent: carry unknown sub-keys over from the existing file. The
-  // model stays authoritative for the managed pinnedUrl/ports sub-keys.
+  // model stays authoritative for the managed pinnedUrl/icon/ports sub-keys.
   const prevXhsiNode = svc.getIn(["x-hsi"], true)
   const prevXhsi = isMap(prevXhsiNode) ? prevXhsiNode.toJSON() as Record<string, unknown> : null
   for (const k of MANAGED_SERVICE_KEYS) svc.deleteIn([k])
@@ -159,9 +159,10 @@ function applyModel(doc: any, name: string, input: AppInput) {
   const domainPorts = input.ports.filter(p => p.domain)
   const xhsi: Record<string, unknown> = {}
   for (const [k, v] of Object.entries(prevXhsi ?? {})) {
-    if (k !== "pinnedUrl" && k !== "ports") xhsi[k] = v
+    if (k !== "pinnedUrl" && k !== "icon" && k !== "ports") xhsi[k] = v
   }
   if (input.pinnedUrl) xhsi.pinnedUrl = input.pinnedUrl
+  if (input.icon) xhsi.icon = input.icon
   if (domainPorts.length) xhsi.ports = domainPorts.map(p => ({
     containerPort: p.containerPort, domain: p.domain, tls: p.tls, publicPort: p.publicPort ?? null,
   }))
@@ -302,6 +303,7 @@ export function parseComposeYaml(content: string, main?: string): ParsedCompose 
     }
     const rawPinnedUrl = svc["x-hsi"]?.pinnedUrl
     const safePinnedUrl = zPinnedUrl.safeParse(rawPinnedUrl)
+    const icon = zAppIcon.safeParse(svc["x-hsi"]?.icon)
     const candidate = {
       name: svcName, image: svc.image ?? "",
       ports, envs, volumes, networkNames: Array.isArray(svc.networks) ? svc.networks : [],
@@ -310,6 +312,7 @@ export function parseComposeYaml(content: string, main?: string): ParsedCompose 
       command: typeof svc.command === "string" ? svc.command : null,
       cpuLimit: svc.cpus ?? null, memoryLimit: svc.mem_limit ?? null,
       pinnedUrl: safePinnedUrl.success ? safePinnedUrl.data : null,
+      ...(icon.success ? { icon: icon.data } : {}),
     }
     const parsed = zAppInput.safeParse(candidate)
     if (parsed.success) app = parsed.data

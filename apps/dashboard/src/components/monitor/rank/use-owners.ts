@@ -3,6 +3,7 @@ import { useI18n } from 'vue-i18n'
 import { groupProcesses, matchesProcess, sortProcesses, type RankMetric } from '../../../lib/perf-math'
 import { procs, type ProcessRow } from '../../../lib/proc-live'
 import { useRanking } from '../../../lib/use-ranking'
+import { appLook, loadAppLooks } from '../../../lib/app-icons'
 import { METRICS, METRIC_COLOR, OWNER_ICON, metricLevel, metricText, ownerName } from './owners'
 
 const SORT_KEY = { cpu: 'cpu', rss: 'rss', disk: 'disk' } as const
@@ -10,6 +11,7 @@ const SORT_KEY = { cpu: 'cpu', rss: 'rss', disk: 'disk' } as const
 /** The owners of the running processes, ranked by a metric, ready to draw. */
 export function useOwners(metric: Ref<RankMetric>, query: Ref<string> = computed(() => '')) {
   const { t } = useI18n()
+  void loadAppLooks()
   const groups = computed(() => groupProcesses(procs.value.filter(p => matchesProcess(p, query.value))))
   const { ranked, lit } = useRanking(groups, metric, query)
 
@@ -24,7 +26,9 @@ export function useOwners(metric: Ref<RankMetric>, query: Ref<string> = computed
     key: g.key,
     kind: g.kind,
     icon: OWNER_ICON[g.kind],
-    name: ownerName(g.kind, g.owner, t),
+    // An app shows its own icon (catalog logo or the one picked for it).
+    tile: g.kind === 'app' ? { ...appLook(g.owner), name: g.owner } : null,
+    name: (g.kind === 'app' && appLook(g.owner)?.label) || ownerName(g.kind, g.owner, t),
     sub: `${t(`monitor.owners.kind.${g.kind}`)} · ${t('monitor.owners.count', { n: g.procs.length }, g.procs.length)}`,
     level: metricLevel(g[metric.value], leader.value),
     value: metricText(metric.value, g[metric.value]),

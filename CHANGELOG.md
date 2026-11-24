@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **App icons**: an app added by hand can wear one of 40 generic icons,
+  picked in its form (optional, its initial otherwise). It shows in the app
+  list and in Monitor.
+
+### Changed
+- **Monitor** shows each app's processes under its icon and name, the App
+  Store logo for an app installed from it.
+
 ## [1.92.1] - 2026-11-24
 
 ### Changed

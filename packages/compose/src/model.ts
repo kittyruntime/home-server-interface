@@ -61,6 +61,8 @@ export const zLabelEntry = z.object({
   value: z.string(),
 })
 
+export const zAppIcon = z.string().regex(/^[a-z0-9-]{1,40}$/)
+
 export const zPinnedUrl = z.string().url().refine(value => {
   try {
     const protocol = new URL(value).protocol
@@ -90,6 +92,9 @@ export const zAppInput = z.object({
   cpuLimit:      z.number().min(0).max(64).nullable().optional(),
   memoryLimit:   z.string().regex(/^\d+[kmgKMG]?$/).nullable().optional(),
   pinnedUrl:     zPinnedUrl.nullable().optional(),
+  // The icon picked for an app added by hand: a name from the dashboard's set
+  // of generic icons (x-hsi metadata, never passed to Docker).
+  icon:          zAppIcon.nullable().optional(),
 })
 
 export type AppInput = z.infer<typeof zAppInput>

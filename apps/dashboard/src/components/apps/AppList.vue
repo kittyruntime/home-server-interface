@@ -452,7 +452,7 @@ async function unpin(app: App) {
               class="group flex w-24 flex-col items-center gap-2 rounded-box px-2 py-3 text-center no-underline transition-colors hover:bg-base-200 focus-visible:bg-base-200 focus-visible:outline-none"
             >
               <span class="relative">
-                <AppTile :svg="catalogOf(app)?.icon" :name="catalogOf(app)?.name ?? app.name" size="lg" />
+                <AppTile :svg="catalogOf(app)?.icon" :glyph="app.app?.icon" :name="catalogOf(app)?.name ?? app.name" size="lg" />
                 <span :class="['absolute -right-0.5 -bottom-0.5 size-3 rounded-full ring-2 ring-base-100', statusDot(app.status)]" />
               </span>
               <span class="w-full truncate text-xs text-base-content/80 group-hover:text-base-content">{{ catalogOf(app)?.name ?? app.name }}</span>
@@ -476,7 +476,7 @@ async function unpin(app: App) {
               :data-app-name="app.name"
               :class="['row relative flex items-center gap-3.5 px-4 py-3 transition-colors', focusedName === app.name ? 'bg-primary/10' : '']"
             >
-              <AppTile :svg="catalogOf(app)?.icon" :name="catalogOf(app)?.name ?? app.name" />
+              <AppTile :svg="catalogOf(app)?.icon" :glyph="app.app?.icon" :name="catalogOf(app)?.name ?? app.name" />
 
               <div class="min-w-0 flex-1">
                 <div class="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">

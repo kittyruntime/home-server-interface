@@ -10,6 +10,18 @@ for (const pinnedUrl of ["javascript:alert(1)", "data:text/html,<script>alert(1)
   assert.equal(zAppInput.safeParse({ name: "jellyfin", image: "jellyfin/jellyfin:latest", pinnedUrl }).success, false)
 }
 
+// The icon picked for an app added by hand round-trips through x-hsi; an
+// unknown shape is dropped rather than refusing the file.
+{
+  const yaml = generateComposeYaml({ ...zAppInput.parse({ name: "notes", image: "example/notes:1" }), icon: "book-open" })
+  assert.match(yaml, /icon: book-open/)
+  assert.equal(parseComposeYaml(yaml).app?.icon, "book-open")
+  const cleared = generateComposeYaml({ ...zAppInput.parse({ name: "notes", image: "example/notes:1" }), icon: null }, yaml)
+  assert.doesNotMatch(cleared, /icon:/)
+  const odd = parseComposeYaml(`services:\n  notes:\n    image: example/notes:1\n    x-hsi:\n      icon: "<svg/>"\n`)
+  assert.equal(odd.app?.icon, undefined)
+}
+
 const legacyUnsafePin = parseComposeYaml(`services:\n  jellyfin:\n    image: jellyfin/jellyfin:latest\n    x-hsi:\n      pinnedUrl: javascript:alert(1)\n`)
 assert.ok(legacyUnsafePin.app, "legacy unsafe pin metadata should not make a single-service app uneditable")
 assert.equal(legacyUnsafePin.app?.pinnedUrl, null)

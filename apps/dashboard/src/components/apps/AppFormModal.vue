@@ -14,6 +14,7 @@ import EnvsEditor,      { type EnvVar }         from './EnvsEditor.vue'
 import VolumesTable,    { type VolumeMount, type Place } from './VolumesTable.vue'
 import LabelsTable,     { type LabelEntry }     from './LabelsTable.vue'
 import AdvancedSection                          from './AdvancedSection.vue'
+import AppIconPicker                            from './AppIconPicker.vue'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
@@ -65,6 +66,7 @@ function emptyForm() {
     cpuLimit:      null as number | null,
     memoryLimit:   null as string | null,
     pinnedUrl:     null as string | null,
+    icon:          null as string | null,
   }
 }
 
@@ -150,6 +152,7 @@ watch(() => props.editName, async (name) => {
           cpuLimit:      s.app.cpuLimit ?? null,
           memoryLimit:   s.app.memoryLimit ?? null,
           pinnedUrl:     s.app.pinnedUrl ?? null,
+          icon:          s.app.icon ?? null,
         })
         activeTab.value = 'basic'
       } else {
@@ -192,6 +195,9 @@ watch(form, () => {
     if (savedName.value) configurationDirty.value = true
   }
 }, { deep: true })
+
+// A catalog app wears its logo: no generic icon to pick.
+const fromCatalog = computed(() => form.labels.some(l => l.key === 'hsi.catalog.id'))
 
 const visibleTabs = computed(() => multiSvc.value ? tabs.filter(t => t.id === 'advanced') : tabs)
 
@@ -263,6 +269,7 @@ async function save(mode: 'save' | 'start' = 'save') {
       cpuLimit:      form.cpuLimit,
       memoryLimit:   form.memoryLimit,
       pinnedUrl:     form.pinnedUrl || null,
+      icon:          form.icon,
     }
     if (mode === 'start' && create) {
       activePollController?.abort()
@@ -488,6 +495,11 @@ function rawSaved(raw: string) {
             id="app-image" v-model="form.image" :placeholder="t('ui.apps.AppFormModal.nginxAlpine')"
             class="w-full px-3 py-2 text-sm font-mono"
           />
+        </div>
+        <div v-if="!fromCatalog" class="space-y-1.5">
+          <span id="app-icon-label" class="text-xs font-medium text-base-content/70 uppercase tracking-caps">{{ t('ui.apps.AppFormModal.iconOptional') }}</span>
+          <AppIconPicker v-model="form.icon" :name="form.name" aria-labelledby="app-icon-label" />
+          <p class="text-xs text-base-content/70">{{ t('ui.apps.AppFormModal.iconHint') }}</p>
         </div>
         <div class="space-y-1.5 pt-3 border-t border-base-300">
           <label for="app-pinned-url" class="text-xs font-medium text-base-content/70 uppercase tracking-caps">{{ t('ui.apps.AppFormModal.urlSidebarOptional') }}</label>
