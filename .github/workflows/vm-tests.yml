@@ -80,16 +80,7 @@ jobs:
       - name: Build
         env:
           VERSION: ${{ steps.version.outputs.version }}
-        run: |
-          pnpm --filter @app/database db:generate
-          npm ci --prefix runtime --omit=dev --no-audit --no-fund
-          PRISMA_CLI_BINARY_TARGETS=debian-openssl-3.0.x \
-            node runtime/node_modules/@prisma/engines/scripts/postinstall.js
-          (cd apps/root-worker && CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags "-s -w -X main.buildVersion=v${VERSION}" -o root-worker .)
-          pnpm --filter @app/backend build
-          echo "VITE_API_URL=/trpc" > apps/dashboard/.env.production
-          pnpm --filter @app/dashboard run build
-          scripts/package-release.sh "$VERSION"
+        run: scripts/build-release.sh "$VERSION"
 
       - uses: actions/upload-artifact@v5
         with:

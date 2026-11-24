@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Raspberry Pi and other 64-bit ARM machines**: each release now ships an
+  arm64 archive next to the amd64 one. The installer and updates pick the
+  archive of the machine they run on; a 32-bit OS is refused with a clear
+  message. App Store apps need an arm64 image to install there.
 - **Pause the Monitor**: a Pause button on Performance and Processes
   freezes the live figures to read them; Resume picks up again, and the
   Monitor is live again the next time it opens.

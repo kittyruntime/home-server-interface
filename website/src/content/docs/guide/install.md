@@ -5,7 +5,11 @@ description: Requirements, the install command, safe updates and rollback, versi
 
 ## Requirements
 
-- Ubuntu 24.04 on x86-64 (other distributions are not officially supported)
+- Ubuntu 24.04 on x86-64 (other distributions are not officially supported), or a
+  64-bit ARM machine such as a Raspberry Pi 4 or 5 with a 64-bit OS. The installer
+  and updates pick the archive of the machine's architecture (amd64 or arm64); a
+  32-bit OS is refused. On ARM, an App Store app installs only if its image is
+  published for arm64.
 - `curl` and root access to run the install command (`sudo`, or `curl … | bash` from a root shell)
 - The installer checks the other host packages it needs (storage tools such as `mdadm`,
   `smartmontools`, `lvm2`, `parted`, plus `openssl`, `rsync`, an OpenSSH client) and installs
@@ -132,7 +136,8 @@ Download the files of a release and check them yourself (OpenSSL 3 needed):
 ```bash
 V=v1.67.0
 BASE=https://github.com/kittyruntime/home-server-interface/releases/download/$V
-curl -fsSLO $BASE/hsi-$V-linux-amd64.tar.gz
+ARCH=amd64                                       # arm64 on a Raspberry Pi
+curl -fsSLO $BASE/hsi-$V-linux-$ARCH.tar.gz
 curl -fsSLO $BASE/install.sh
 curl -fsSLO $BASE/SHA256SUMS
 curl -fsSLO $BASE/SHA256SUMS.sig
@@ -141,7 +146,7 @@ curl -fsSL https://raw.githubusercontent.com/kittyruntime/home-server-interface/
 base64 -d SHA256SUMS.sig > SHA256SUMS.sig.bin
 openssl pkeyutl -verify -pubin -inkey release-signing.pub -rawin \
   -in SHA256SUMS -sigfile SHA256SUMS.sig.bin     # Signature Verified Successfully
-sha256sum -c SHA256SUMS                          # both files: OK
+sha256sum -c --ignore-missing SHA256SUMS        # the files you downloaded: OK
 ```
 
 The public key is fetched at the release tag. The same key is embedded in every
@@ -197,7 +202,8 @@ three services individually.
 
 - **Active development.** New features ship regularly, and some interfaces may
   still change between releases.
-- **Tested on Ubuntu 24.04** (x86-64). Other distributions are not officially
+- **Tested on Ubuntu 24.04** (x86-64). The arm64 build is checked on ARM in CI but
+  not run through the full install tests. Other distributions are not officially
   supported.
 - **Not security-audited.** Keep HSI updated, avoid exposing it directly to the
   internet, and consider network isolation.

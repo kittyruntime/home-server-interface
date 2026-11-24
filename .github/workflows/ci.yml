@@ -147,6 +147,45 @@ jobs:
       - name: Smoke-test backend artifact
         run: pnpm smoke:backend
 
+  # The arm64 archive (Raspberry Pi 4 and 5 with a 64-bit OS), built and
+  # checked on an arm64 runner: the tests, then the archive's worker and
+  # native modules run on the architecture they ship for.
+  arm64:
+    runs-on: ubuntu-24.04-arm
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          check-latest: true
+          cache: pnpm
+
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: apps/root-worker/go.mod
+          cache-dependency-path: apps/root-worker/go.sum
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Tests
+        run: |
+          pnpm --filter @app/database db:generate
+          pnpm test
+
+      - name: Build the arm64 release archive
+        run: echo "ARCHIVE=$(scripts/build-release.sh "$(node -p 'require("./package.json").version')-ci" | tail -1)" >> "$GITHUB_ENV"
+
+      - name: Check the archive on arm64
+        run: |
+          [[ "$ARCHIVE" == *-linux-arm64.tar.gz ]]
+          scripts/smoke-release.sh "$ARCHIVE"
+          pnpm smoke:backend
+
   docs:
     runs-on: ubuntu-latest
 
