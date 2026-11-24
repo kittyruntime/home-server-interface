@@ -80,6 +80,7 @@ export default {
       Downloads: 'Téléchargements',
       Developer: 'Développement',
       Utilities: 'Utilitaires',
+      Games: 'Jeux',
     },
   },
   tls: {
