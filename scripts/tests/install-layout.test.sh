@@ -558,11 +558,11 @@ STAGE="$TMP/stage/hsi-v1.68.1"
 mkdir -p "$STAGE/public" "$STAGE/bin" "$STAGE/database/prisma" "$STAGE/compose/src" \
   "$STAGE/node_modules/.bin" "$STAGE/node_modules/@prisma/engines" "$STAGE/runtime"
 touch "$STAGE/server.js" "$STAGE/public/index.html" "$STAGE/runtime/package-lock.json"
-for x in bin/hsi-worker node_modules/.bin/prisma node_modules/.bin/tsx node_modules/@prisma/engines/schema-engine-debian-openssl-3.0.x; do
+for x in bin/hsi-worker node_modules/.bin/prisma node_modules/.bin/tsx node_modules/@prisma/engines/schema-engine-$(prisma_engine_target); do
   printf '#!/bin/sh\n' > "$STAGE/$x"; chmod +x "$STAGE/$x"
 done
 check "a Prisma 7 release archive is complete" 'release_stage_complete "$STAGE" hsi-worker'
-rm "$STAGE/node_modules/@prisma/engines/schema-engine-debian-openssl-3.0.x"
+rm "$STAGE/node_modules/@prisma/engines/schema-engine-$(prisma_engine_target)"
 check "an archive without the schema engine is incomplete" '! release_stage_complete "$STAGE" hsi-worker'
 
 # Versions and URLs the update relies on.

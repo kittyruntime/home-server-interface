@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **Install on a Raspberry Pi**: the installer refused the arm64 archive as
+  incomplete ("Release archive is incomplete"); it checked for the Prisma
+  engine of the amd64 archive.
+
 ## [1.95.0] - 2026-11-25
 
 ### Added
