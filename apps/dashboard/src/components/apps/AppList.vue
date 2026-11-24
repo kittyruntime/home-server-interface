@@ -481,7 +481,7 @@ async function unpin(app: App) {
               <div class="min-w-0 flex-1">
                 <div class="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
                   <button type="button"
-                    class="truncate text-left text-sm font-semibold text-base-content outline-none hover:underline focus-visible:underline disabled:no-underline"
+                    class="truncate text-left text-sm font-semibold text-base-content outline-none hover:underline focus-visible:underline disabled:no-underline pointer-coarse:-my-3 pointer-coarse:py-3"
                     :class="!catalogOf(app) && 'font-mono font-medium'"
                     :disabled="appHasPendingJob(app.name)"
                     :aria-label="`${t('ui.apps.AppList.edit')} ${app.name}`"

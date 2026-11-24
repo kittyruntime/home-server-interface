@@ -324,7 +324,7 @@ function lvMountpoint(lv: { vgName: string; name: string; path: string }): strin
             </div>
           </div>
           <!-- Actions: revealed on hover, hidden by default -->
-          <div v-if="!part.isSystem" class="flex items-center gap-1 shrink-0 opacity-0 group-hover/part:opacity-100 transition-opacity">
+          <div v-if="!part.isSystem" class="flex items-center gap-1 shrink-0 opacity-0 group-hover/part:opacity-100 focus-within:opacity-100 pointer-coarse:opacity-100 transition-opacity">
             <Button variant="outline" size="xs" v-if="!part.mountpoint && !roleOf(part)" @click="emit('format', part)"
               class="text-2xs text-base-content/70 hover:border-primary/50 hover:text-primary">{{ t('ui.storage.DiskCard.format') }}</Button>
             <Button variant="outline" size="xs" v-if="part.fstype && !part.mountpoint && !roleOf(part)" @click="emit('mount', part)"

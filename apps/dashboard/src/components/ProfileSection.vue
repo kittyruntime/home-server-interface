@@ -246,7 +246,7 @@ onMounted(async () => {
       <!-- ── Appearance ── -->
       <Collapsible class="space-y-2">
         <h4 class="text-xs font-semibold uppercase tracking-caps text-base-content/70">
-          <CollapsibleTrigger class="group flex w-full items-center justify-between text-left uppercase tracking-caps outline-none focus-visible:ring-3 focus-visible:ring-base-content/30 rounded-sm">
+          <CollapsibleTrigger class="group flex w-full items-center justify-between text-left uppercase tracking-caps outline-none pointer-coarse:-my-3.5 pointer-coarse:py-3.5 focus-visible:ring-3 focus-visible:ring-base-content/30 rounded-sm">
             {{ t('profile.appearance') }}
             <ChevronDownIcon class="size-3.5 text-base-content/70 transition-transform group-data-[state=open]:rotate-180" aria-hidden="true" />
           </CollapsibleTrigger>
@@ -259,7 +259,7 @@ onMounted(async () => {
       <!-- ── Advanced options ── -->
       <Collapsible class="space-y-2">
         <h4 class="text-xs font-semibold uppercase tracking-caps text-base-content/70">
-          <CollapsibleTrigger class="group flex w-full items-center justify-between text-left uppercase tracking-caps outline-none focus-visible:ring-3 focus-visible:ring-base-content/30 rounded-sm">
+          <CollapsibleTrigger class="group flex w-full items-center justify-between text-left uppercase tracking-caps outline-none pointer-coarse:-my-3.5 pointer-coarse:py-3.5 focus-visible:ring-3 focus-visible:ring-base-content/30 rounded-sm">
             {{ t('profile.advancedOptions') }}
             <ChevronDownIcon class="size-3.5 text-base-content/70 transition-transform group-data-[state=open]:rotate-180" aria-hidden="true" />
           </CollapsibleTrigger>

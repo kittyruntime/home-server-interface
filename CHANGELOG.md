@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **Phones and tablets**: every small button, checkbox and switch answers to
+  a finger-sized area on a touch screen, without changing its look, and the
+  actions that only appeared on hover are always shown there.
+- **Files** shows its places beside the files only when there is room, in a
+  window too, and opens them from the menu button otherwise, so no column is
+  cut off on a tablet held upright.
+- **Rows that scroll sideways** (App Store categories, tabs) stay on one line
+  and fade at the edge while there is more to see; tabs no longer wrap onto a
+  second line.
+- **Smaller screens**: the Monitor figures fit their tile on a phone, the
+  Getting started steps stack when the card is narrow, and the icon bar
+  scrolls on a phone held sideways instead of hiding the account and
+  notifications.
+
+### Fixed
+- The activity dot on a phone's bottom bar sits on the bell again.
+- The smallest badges no longer drop below the 11px text floor.
+
 ## [1.92.0] - 2026-11-24
 
 ### Added

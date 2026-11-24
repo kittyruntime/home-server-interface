@@ -21,7 +21,7 @@ defineEmits<{ select: [] }>()
     <span class="flex items-center gap-1.5 text-xs font-medium text-base-content/70">
       <component :is="icon" class="size-3.5" aria-hidden="true" />{{ label }}
     </span>
-    <span class="truncate font-figure text-2xl leading-none tabular-nums text-base-content @5xl:text-3xl">{{ value }}</span>
+    <span class="truncate font-figure text-xl leading-none tabular-nums text-base-content @xl:text-2xl @5xl:text-3xl">{{ value }}</span>
     <span v-if="flow" class="flex min-w-0 flex-wrap gap-x-3 text-xs tabular-nums text-base-content/70">
       <span class="sr-only">{{ sub }}</span>
       <span class="flex items-center gap-0.5" aria-hidden="true"><ArrowDownIcon class="size-3" />{{ flow.rx }}</span>

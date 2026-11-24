@@ -31,11 +31,11 @@ async function copy() {
     type="button"
     :aria-label="t('files.copyPath.label', { path })"
     :title="t('files.copyPath.hint')"
-    class="group/copy inline-flex min-w-0 max-w-full cursor-copy items-center gap-1 rounded-field text-left outline-none hover:text-base-content focus-visible:ring-2 focus-visible:ring-base-content/30"
+    class="group/copy touch-hit inline-flex min-w-0 max-w-full cursor-copy items-center gap-1 rounded-field text-left outline-none hover:text-base-content focus-visible:ring-2 focus-visible:ring-base-content/30"
     @click.stop="copy"
   >
     <span class="min-w-0 truncate"><slot>{{ path }}</slot></span>
     <CheckIcon v-if="copied" class="size-3 shrink-0 text-success" aria-hidden="true" />
-    <CopyIcon v-else class="size-3 shrink-0 opacity-0 transition-opacity group-hover/copy:opacity-60 group-focus-visible/copy:opacity-60" aria-hidden="true" />
+    <CopyIcon v-else class="size-3 shrink-0 opacity-0 transition-opacity group-hover/copy:opacity-60 group-focus-visible/copy:opacity-60 [@media(hover:none)]:opacity-60" aria-hidden="true" />
   </button>
 </template>

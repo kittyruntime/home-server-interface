@@ -58,7 +58,7 @@ function onKeydown(event: KeyboardEvent) {
     :aria-orientation="ctx.orientation.value"
     data-slot="tabs-list"
     :data-orientation="ctx.orientation.value"
-    :class="cn('tabs w-fit', props.variant === 'border' ? 'tabs-border' : 'tabs-box', ctx.orientation.value === 'vertical' && 'flex-col', props.class)"
+    :class="cn('tabs w-fit', props.variant === 'border' ? 'tabs-border' : 'tabs-box', ctx.orientation.value === 'vertical' ? 'flex-col' : 'max-w-full flex-nowrap overflow-x-auto [scrollbar-width:none]', props.class)"
     @focusout="onFocusout"
     @keydown="onKeydown"
   >

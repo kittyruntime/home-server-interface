@@ -526,6 +526,64 @@ button:not([data-slot]):focus-visible,
   .touch-target { min-width: 2.75rem; min-height: 2.75rem; }
 }
 
+/* A finger needs about 44px. Under a coarse pointer (phone, tablet, touch
+   laptop) the small controls keep their look but answer to a 44px area
+   around them: an invisible layer that overflows the control. Utilities
+   (absolute, fixed...) still win over the position set here. */
+@layer components {
+  @media (pointer: coarse) {
+    .btn-xs, .btn-sm, .btn-link, .checkbox, .toggle, .radio, .touch-hit { position: relative; }
+    .btn-xs::after, .btn-sm::after, .btn-link::after, .checkbox::after, .toggle::after, .radio::after, .touch-hit::after {
+      content: "";
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: max(100%, 2.75rem);
+      height: max(100%, 2.75rem);
+      transform: translate(-50%, -50%);
+    }
+  }
+}
+
+/* daisyUI sets its smallest badge at 10px; 11px is the floor of the scale. */
+.badge-xs { font-size: var(--text-2xs); }
+
+/* The icon rail on a short screen (a phone held sideways): tighter, and its
+   app list scrolls without showing a bar. */
+.rail-scroll { scrollbar-width: none; }
+.rail-scroll::-webkit-scrollbar { display: none; }
+@media (max-height: 560px) {
+  .rail { padding-block: 0.5rem; }
+  .rail .btn-lg.btn-square { --size: 2.5rem; }
+}
+
+/* A row that scrolls sideways (filter chips, tabs) fades at the edge it
+   continues past, so it reads as more to come rather than cut off. */
+@property --scroll-fade {
+  syntax: "<length>";
+  inherits: false;
+  initial-value: 0px;
+}
+.scroll-fade-x {
+  overflow-x: auto;
+  scrollbar-width: none;
+  mask-image: linear-gradient(to right, #000 calc(100% - var(--scroll-fade)), transparent);
+}
+.scroll-fade-x::-webkit-scrollbar { display: none; }
+/* Only while there is more to scroll to: the fade follows the scroll position
+   and is gone at the end, and a row that fits never scrolls, so never fades. */
+@supports (animation-timeline: scroll()) {
+  .scroll-fade-x {
+    animation: scroll-fade-x linear both;
+    animation-timeline: scroll(self inline);
+  }
+}
+@keyframes scroll-fade-x {
+  from { --scroll-fade: 2rem; }
+  95% { --scroll-fade: 2rem; }
+  to { --scroll-fade: 0px; }
+}
+
 /* Toast host: a manual popover (top layer) that adds no box of its own, so
    vue-sonner's fixed-position toasts show above native dialogs. */
 .toast-layer {
