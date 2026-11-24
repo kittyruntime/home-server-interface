@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.92.0] - 2026-11-24
+
 ### Added
 - **App Store**: a Games category, with Minecraft servers for Java Edition and
   Bedrock Edition (consoles, phones and tablets), and five more apps:
@@ -2398,7 +2400,8 @@ First stable release.
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.91.0...HEAD
+[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.92.0...HEAD
+[1.92.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.91.0...v1.92.0
 [1.91.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.90.1...v1.91.0
 [1.90.1]: https://github.com/kittyruntime/home-server-interface/compare/v1.90.0...v1.90.1
 [1.90.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.89.1...v1.90.0
