@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, onUnmounted, ref } from 'vue'
 import type { Component } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { ActivityIcon, ClipboardListIcon, HistoryIcon, ListTreeIcon, TriangleAlertIcon } from '@lucide/vue'
@@ -9,6 +9,7 @@ import ProcessesSection from './ProcessesSection.vue'
 import HistorySection from './HistorySection.vue'
 import AlertsSection from './AlertsSection.vue'
 import AuditLogSection from '../AuditLogSection.vue'
+import { livePaused } from '../../lib/live-pause'
 
 const { t } = useI18n()
 
@@ -23,6 +24,8 @@ function openProcesses(key: string | null) {
   focus.value = key
   active.value = 'processes'
 }
+// A pause is for the reading at hand: the next opening is live again.
+onUnmounted(() => { livePaused.value = false })
 const navItems = computed(() => (Object.keys(icons) as SectionId[]).map(id => ({ id, label: t(`monitor.nav.${id}`), icon: icons[id] })))
 </script>
 

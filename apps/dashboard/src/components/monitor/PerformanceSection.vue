@@ -11,6 +11,7 @@ import PerfMemory from './perf/PerfMemory.vue'
 import PerfDisks from './perf/PerfDisks.vue'
 import PerfNetworks from './perf/PerfNetworks.vue'
 import OwnerBoard from './rank/OwnerBoard.vue'
+import LivePauseButton from './LivePauseButton.vue'
 import { perf, perfError, subscribePerf, RESOURCE_COLOR } from '../../lib/perf-live'
 import { fmtRate, fmtUptime } from '../../lib/perf-math'
 import { formatBytes } from '../../lib/file-details'
@@ -64,6 +65,7 @@ const current = computed(() => gauges.value.find(g => g.id === selected.value))
         <span v-if="host"><span class="font-mono text-base-content/90">{{ host.hostname }}</span> · Linux {{ host.release }} ({{ host.arch }})</span>
         <span>{{ t('monitor.perf.uptime') }} <span class="tabular-nums text-base-content/90">{{ fmtUptime(perf.uptime) }}</span></span>
       </p>
+      <LivePauseButton v-if="perf" />
     </div>
 
     <LoadingState v-if="!perf && !perfError" variant="block" />

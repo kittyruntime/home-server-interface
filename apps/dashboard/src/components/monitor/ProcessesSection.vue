@@ -17,6 +17,7 @@ import { trpc } from '../../lib/trpc'
 import { useConfirm } from '../../lib/confirm'
 import { useToast } from '../../lib/toast'
 import { subscribePerf } from '../../lib/perf-live'
+import LivePauseButton from './LivePauseButton.vue'
 import { loadProcs, procs, procsError, procsLoaded, procsPaused, subscribeProcs, type ProcessRow } from '../../lib/proc-live'
 import type { RankMetric } from '../../lib/perf-math'
 
@@ -104,9 +105,12 @@ function onKey(e: KeyboardEvent) {
 
 <template>
   <section class="flex min-h-0 flex-1 flex-col gap-4">
-    <div>
-      <h2 class="text-lg font-semibold text-base-content">{{ t('monitor.proc.title') }}</h2>
-      <p class="text-sm text-base-content/70">{{ t('monitor.proc.subtitle') }}</p>
+    <div class="flex flex-wrap items-end justify-between gap-x-6 gap-y-2">
+      <div>
+        <h2 class="text-lg font-semibold text-base-content">{{ t('monitor.proc.title') }}</h2>
+        <p class="text-sm text-base-content/70">{{ t('monitor.proc.subtitle') }}</p>
+      </div>
+      <LivePauseButton />
     </div>
 
     <div class="flex flex-wrap items-center gap-2">
