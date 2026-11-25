@@ -12,7 +12,7 @@ import { availableUpdate, splitImage } from '../../services/app-update'
 import { parseComposeYaml } from '@app/compose'
 import { resolvePlaceMounts } from './container'
 import { assertDockerReady } from '../../services/docker-status'
-import { preparePlaceDir } from '../../services/sharing.service'
+import { setUpNewPlace } from '../../services/sharing.service'
 
 const zInstallVolume = z.object({
   target: z.string().startsWith('/'),
@@ -157,7 +157,7 @@ export const catalogRouter = router({
           }
           await requestSync('root.fs.mkdirp', { path: s.path }) // idempotent
           const place = await ctx.prisma.place.create({ data: { name: s.name, path: s.path } })
-          await preparePlaceDir(place.path)
+          await setUpNewPlace(ctx.prisma, place.path)
           return { type: 'place' as const, source: place.id, target: mv.target, readOnly }
         }
         if (s.kind === 'bind') return { type: 'bind' as const, source: s.path, target: mv.target, readOnly }
