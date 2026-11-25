@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import StackChain from './StackChain.vue'
+import StorageIntro from './StorageIntro.vue'
 import { useI18n } from 'vue-i18n'
 import { Alert } from '@/components/ui/alert'
 import { Progress } from '@/components/ui/progress'
@@ -175,6 +177,8 @@ async function mount(v: Volume) {
       </Tip>
     </div>
 
+    <StorageIntro tab="lvm" />
+
     <Alert variant="info" v-if="found.arrays || found.vgs" class="mb-4 flex flex-wrap items-center justify-between gap-3" role="note">
       <p class="text-sm text-base-content">
         {{ t('ui.storage.VolumesSection.existingStorageWasFoundOn') }}
@@ -227,6 +231,7 @@ async function mount(v: Volume) {
             </span>
             <span class="truncate text-base-content/70" :title="usedByText(v)">{{ usedByText(v) }}</span>
           </div>
+          <StackChain :volume="v" class="hidden @3xl/content:flex px-4 pb-3 -mt-1" />
 
           <!-- Card (narrow) -->
           <div class="@3xl/content:hidden px-4 py-3 cursor-pointer" @click="openVolume(v)">
@@ -247,6 +252,7 @@ async function mount(v: Volume) {
               <span v-if="v.space" class="tabular-nums">{{ fmtBytes(v.space.used) }} / {{ fmtBytes(v.space.total) }}</span>
               <Button variant="outline" size="xs" v-else-if="v.state === 'not-mounted'" @click.stop="mount(v)">{{ t('ui.storage.VolumesSection.mount') }}</Button>
             </div>
+            <StackChain :volume="v" class="mt-2" />
           </div>
         </div>
       </Card>

@@ -8,7 +8,7 @@ sidebar:
 
 ## Scheduled disk checks
 
-Storage > Maintenance schedules SMART short and extended self-tests and RAID
+Storage > Maintenance shows the next two weeks of checks as a calendar, and schedules SMART short and extended self-tests and RAID
 consistency checks. A systemd timer runs them even when the dashboard is down.
 
 - A check whose time slot was missed (server off or asleep) runs at the next

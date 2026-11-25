@@ -13,7 +13,7 @@ import {
 import { assertDockerReady } from '../../services/docker-status'
 import { assertVolumeAvailable } from '../../services/volume-guard'
 import { planAuditMeta } from '../../services/storage-plan'
-import { preparePlaceDir } from '../../services/sharing.service'
+import { setUpNewPlace } from '../../services/sharing.service'
 import {
   APP_OPS, appAuditInput, appFingerprint, buildAppPlan, executeAppPlan, publicSteps,
   type AppOp, type AppPlan, type AppPlanDeps,
@@ -39,7 +39,7 @@ function deps(ctx: Context, userId: string): AppPlanDeps {
       mkdirp:         async path => { await requestSync('root.fs.mkdirp', { path }) },
       createPlace:    async (name, path) => {
         const place = await ctx.prisma.place.create({ data: { name, path } })
-        await preparePlaceDir(place.path)
+        await setUpNewPlace(ctx.prisma, place.path)
         return place.id
       },
       validate:       async name => { await requestSync('root.container.composeValidate', { name }, 30_000) },

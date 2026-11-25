@@ -291,6 +291,25 @@ export async function preparePlaceDir(path: string): Promise<void> {
   }
 }
 
+/**
+ * Sets up a new Place: its folder joins the share group, then the group's
+ * roster is synced. Without the sync, nobody can write in the first Place of a
+ * fresh install: the group was just created and has no member yet, admins
+ * included. Never fails the creation.
+ */
+export async function setUpNewPlace(
+  prisma: PrismaClient,
+  path: string,
+  deps: { prepare: (path: string) => Promise<void>; syncAccess: (prisma: PrismaClient) => Promise<void> } = { prepare: preparePlaceDir, syncAccess: syncPlaceAccess },
+): Promise<void> {
+  await deps.prepare(path)
+  try {
+    await deps.syncAccess(prisma)
+  } catch (err) {
+    log.warn({ err, path }, 'sharing: could not sync the share group after creating a Place (non-fatal)')
+  }
+}
+
 /** For hooks riding on unrelated mutations (permission edits, role
  *  assignments…): sharing must never break those flows. Covers both the Samba
  *  config and the filesystem access layer. */

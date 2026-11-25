@@ -10,7 +10,8 @@ const { t } = useI18n()
    isn't obvious from their label alone, not as a substitute for good
    labels. Keep `text` to one or two sentences; for anything longer, link
    out to docs instead. */
-defineProps<{ text: string }>()
+/* `href` adds a link under the text (opens in a new tab), named `linkText`. */
+defineProps<{ text: string; href?: string; linkText?: string }>()
 
 const open = ref(false)
 
@@ -40,6 +41,11 @@ function onFocus(e: FocusEvent) {
       class="w-56 p-2.5 text-xs leading-snug text-base-content/80"
       :focus-on-open="false"
       :restore-focus="false"
-    >{{ text }}</PopoverContent>
+      @mouseenter="open = true"
+      @mouseleave="open = false"
+    >
+      {{ text }}
+      <a v-if="href" :href="href" target="_blank" rel="noopener" class="mt-1.5 block text-primary hover:underline">{{ linkText }}</a>
+    </PopoverContent>
   </Popover>
 </template>

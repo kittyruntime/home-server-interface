@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import TermHelp from './TermHelp.vue'
 import { useI18n } from 'vue-i18n'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Progress } from '@/components/ui/progress'
@@ -316,7 +317,7 @@ const shown = computed(() => props.only ? raids.value.filter(x => x.name === pro
   <div>
     <div v-if="!only" class="flex flex-wrap items-start justify-between gap-x-4 gap-y-2 mb-4">
       <div class="min-w-0 flex-1 basis-56">
-        <h2 class="text-lg font-semibold text-base-content">{{ t('ui.storage.RaidSection.arrays') }}</h2>
+        <h2 class="text-lg font-semibold text-base-content flex items-center gap-1.5">{{ t('ui.storage.RaidSection.arrays') }}<TermHelp term="array" /></h2>
         <p class="text-sm text-base-content/70 mt-0.5">{{ t('ui.storage.RaidSection.manageSoftwareRaidArraysMdadm') }}</p>
       </div>
       <div class="flex items-center gap-2">

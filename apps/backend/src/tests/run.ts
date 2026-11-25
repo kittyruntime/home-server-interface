@@ -4795,6 +4795,25 @@ async function testWallDisplaysOnlyReadTheirWidgets() {
 }
 await testWallDisplaysOnlyReadTheirWidgets()
 
+// A new Place: its folder joins the share group, then the group's roster is
+// synced, so admins can write in it at once (on a fresh install the group has
+// no member until then). A roster failure never fails the creation.
+async function testNewPlaceSyncsTheShareGroup() {
+  const { setUpNewPlace } = await import('../services/sharing.service')
+  const calls: string[] = []
+  const prisma = {} as any
+  await setUpNewPlace(prisma, '/srv/new', {
+    prepare: async p => { calls.push(`prepare ${p}`) },
+    syncAccess: async db => { assert.equal(db, prisma); calls.push('sync') },
+  })
+  assert.deepEqual(calls, ['prepare /srv/new', 'sync'], 'the folder is prepared, then the roster synced')
+  await setUpNewPlace(prisma, '/srv/new', {
+    prepare: async () => {},
+    syncAccess: async () => { throw new Error('worker down') },
+  })
+}
+await testNewPlaceSyncsTheShareGroup()
+
 // Monitor's live poll carries the hwmon sensors with the rest of the snapshot.
 async function testPerfSnapshotCarriesSensors() {
   const { perfSnapshot } = await import('../services/system-perf.service')

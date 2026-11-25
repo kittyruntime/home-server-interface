@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import TermHelp from './TermHelp.vue'
 import { useI18n } from 'vue-i18n'
 import { Progress } from '@/components/ui/progress'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
@@ -224,7 +225,7 @@ function diskLabel(d: BlockDev): string {
 
         <!-- 2. Redundancy -->
         <template v-else-if="step === 1">
-          <h3 class="text-sm font-semibold text-base-content mb-3">{{ t('ui.storage.CreateVolumeWizard.howShouldTheDataSurvive') }}</h3>
+          <h3 class="text-sm font-semibold text-base-content mb-3 flex items-center gap-1.5">{{ t('ui.storage.CreateVolumeWizard.howShouldTheDataSurvive') }}<TermHelp term="raidLevel" /></h3>
           <RadioGroup v-model="s.level" class="gap-1.5" @update:model-value="levelPicked = true">
             <label v-for="l in levels" :key="l" class="flex items-start gap-3 rounded-lg border px-3 py-2.5 cursor-pointer transition-colors"
               :class="s.level === l ? 'border-base-content' : 'border-base-300 hover:border-base-300'">

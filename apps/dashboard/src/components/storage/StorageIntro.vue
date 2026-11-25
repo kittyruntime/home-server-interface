@@ -1,0 +1,33 @@
+<script setup lang="ts">
+import { useI18n } from 'vue-i18n'
+import { computed } from 'vue'
+import IntroCard from './IntroCard.vue'
+import { UPSTREAM, type DocPage } from '../../lib/storage-docs'
+
+// The intro card of a Storage tab: its layers, and where to learn more.
+const props = defineProps<{ tab: 'disks' | 'lvm' | 'maintenance' }>()
+const { t } = useI18n()
+
+const STAGES: Record<typeof props.tab, string[]> = {
+  disks: ['disk', 'owner', 'health'],
+  lvm: ['disks', 'volumeGroup', 'volumes'],
+  maintenance: ['smart', 'raidCheck', 'alerts'],
+}
+const GUIDE: Record<typeof props.tab, DocPage> = { disks: 'disks', lvm: 'lvm', maintenance: 'maintenance' }
+
+const card = computed(() => {
+  const k = `ui.storage.intros.${props.tab}`
+  return {
+    title: t(`${k}.title`),
+    stages: STAGES[props.tab].map(s => ({ title: t(`${k}.${s}`), caption: t(`${k}.${s}Caption`) })),
+    note: props.tab === 'lvm' ? t(`${k}.note`) : undefined,
+    upstream: props.tab === 'lvm'
+      ? [{ label: 'LVM2', href: UPSTREAM.lvm }, { label: 'lvm(8)', href: UPSTREAM.lvmMan }, { label: t('ui.storage.intros.linuxRaid'), href: UPSTREAM.mdadm }]
+      : props.tab === 'disks' || props.tab === 'maintenance' ? [{ label: 'smartmontools', href: UPSTREAM.smartmontools }] : [],
+  }
+})
+</script>
+
+<template>
+  <IntroCard :id="props.tab" :title="card.title" :stages="card.stages" :note="card.note" :guide="GUIDE[props.tab]" :upstream="card.upstream" />
+</template>
