@@ -16,7 +16,7 @@ success() { :; }
 warn() { echo "WARN $*"; }
 die() { echo "DIE $*" >&2; exit 1; }
 sed -n '/^# BEGIN release functions/,/^# END release functions/p' "$ROOT/scripts/install.sh" > "$TMP/func.sh"
-for f in is_flat_install convert_flat_install link_flat_paths install_release_dir check_data_paths worker_update prepare_log_dir code_tree_trusted quarantine_untrusted_releases recover_interrupted_update prepare_app_home take_install_root current_release_is resolve_installed release_stage_complete; do
+for f in is_flat_install convert_flat_install link_flat_paths install_release_dir check_data_paths worker_update prepare_log_dir code_tree_trusted quarantine_untrusted_releases recover_interrupted_update prepare_app_home prepare_service_home install_dir_unused take_install_root current_release_is resolve_installed release_stage_complete; do
   grep -q "^$f()" "$TMP/func.sh" || { echo "FAIL $f not found in scripts/install.sh"; exit 1; }
 done
 # shellcheck disable=SC1091
@@ -547,7 +547,7 @@ check "a healthy repair records its result" '[[ $rc -eq 0 ]] && cmp -s "$HEALTH_
 # dir, the legacy migration, the user and nvm.
 line_of() { grep -n -m1 -F -- "$1" "$ROOT/scripts/install.sh" | cut -d: -f1; }
 verify_at=$(line_of 'step "Downloading and verifying $VERSION"')
-for later in 'install -d -m 0700 "$UPDATE_STATE"' '  migrate_legacy_app_install' 'useradd -r -m' 'app_exec "nvm install'; do
+for later in 'install -d -m 0700 "$UPDATE_STATE"' '  migrate_legacy_app_install' 'useradd -r -M -d' 'app_exec "nvm install'; do
   at=$(line_of "$later")
   check "the release is verified before: $later" '[[ -n "$verify_at" && -n "$at" && $verify_at -lt $at ]]'
 done
@@ -630,5 +630,19 @@ REPAIR=1 install_release_dir
 echo repaired > "$STAGED_DIR/server.js"
 worker_update "$TMP/hsi-worker" replace v1.67.0 "$(basename "$STAGED_DIR")"; rc=$?
 check "the worker swaps the repaired copy in" '[[ $rc -eq 0 && "$(cat "$INSTALL_DIR/current/server.js")" == repaired && ! -e "$STAGED_DIR" ]]'
+
+# The app user's home lives in the install dir, never in /home.
+H="$TMP/home-case/opt/hsi"
+( INSTALL_DIR="$H"; APP_USER="$(id -un)"; APP_HOME="$H/home"; prepare_service_home ); rc=$?
+check "a new install gets its home in INSTALL_DIR/home, 0700" '[[ $rc -eq 0 && -d "$H/home" && "$(stat -c %a "$H/home")" == 700 ]]'
+( INSTALL_DIR="$H"; APP_USER="$(id -un)"; APP_HOME="/home/legacy"; prepare_service_home ); rc=$?
+check "an existing home elsewhere is left alone" '[[ $rc -eq 0 && ! -e /home/legacy ]]'
+rm -rf "$H/home"; ln -s "$TMP" "$H/home"
+out="$( (INSTALL_DIR="$H"; APP_USER="$(id -un)"; APP_HOME="$H/home"; prepare_service_home) 2>&1)"; rc=$?
+check "a home that is a link is refused" '[[ $rc -ne 0 && "$out" == *"link"* ]]'
+rm -f "$H/home"; mkdir -p "$H/home"
+check "an install dir holding only the home counts as empty" 'INSTALL_DIR="$H" install_dir_unused'
+touch "$H/stray"
+check "anything else in it does not" '! INSTALL_DIR="$H" install_dir_unused'
 
 exit $FAILED
