@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- ZFS in Storage, on a server that has ZFS (HSI never installs it): a ZFS tab
+  with the pools (state, capacity, layout drawn as a tree with each disk's errors,
+  last scrub or resilver), the datasets, and the pools found on the disks to
+  import. Datasets mounted on a folder of their own are volumes for Places,
+  shares, apps and backups. Watched pools (imported by HSI, or watched from their
+  page) are guarded like any volume when they go missing. Importing mounts
+  datasets only in the data folders, with setuid programs and device files off.
+  Monitor alerts on degraded or failed pools, disk errors and scrub errors.
+
 ## [1.96.0] - 2026-11-25
 
 ### Added
