@@ -357,6 +357,7 @@ export default {
   },
   StoragePanel: {
     installThemWith: 'Installez-les avec',
+    storageTabs: 'Onglets du stockage',
   },
   CreateVolumeWizard: {
     createVolume: 'Créer un volume',
