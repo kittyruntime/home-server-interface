@@ -32,7 +32,8 @@ A dataset ZFS mounts on a folder of its own is a volume like any other: Places,
 shares, apps and data backups use it. Its redundancy comes from its pool (a
 mirror, [raidz](/home-server-interface/guide/features/storage-glossary/#raidz)1,
 2 or 3, or no redundancy for disks striped together). Datasets with the mount
-point `none` or `legacy` are listed under **Datasets** but are not volumes.
+point `none` or `legacy`, and container datasets (`canmount=off` or `noauto`),
+are listed under **Datasets** but are not volumes.
 
 ## Watched pools
 
@@ -41,7 +42,15 @@ this pool**). The datasets of a watched pool are guarded like any HSI volume: if
 the pool is missing at boot, or a dataset is not mounted, the apps using it stop,
 its shares become unavailable and writes are refused until it is back and you
 resume. A pool you import or export by hand is never held unless you watch it.
-The list is kept in `/etc/hsi/zfs-pools.json`.
+A dataset is held on the second check that finds it missing, so a pool slow to
+import at boot does not stop anything. The list is kept in
+`/etc/hsi/zfs-pools.json`.
+
+A watched pool that is gone (destroyed, or its disks removed for good) stays
+listed under **Pools** as missing, with **Stop watching** to release its holds.
+The ZFS tab stays while a pool is watched, even when the ZFS module did not load
+after a kernel update. If the units that import and mount pools at boot
+(`zfs-import-cache`, `zfs-mount`) are disabled, Pools says so.
 
 ## Import a pool
 
@@ -49,10 +58,17 @@ The list is kept in `/etc/hsi/zfs-pools.json`.
 another machine, or after a reinstall. Importing changes no data. HSI imports the
 pool without mounting anything, then mounts its datasets only in the data
 folders (`/srv`, `/mnt`, `/media`, or `/<pool name>`), through folders owned by
-root, never over a folder already in use, with setuid programs and device files
-turned off. If a dataset would mount elsewhere, the pool is exported again and
-nothing is mounted: import it by hand with `zpool import -N`, change its mount
-points with `zfs set mountpoint=...`, export it, then import it in HSI.
+root, never over or inside a folder already in use (another volume), with setuid
+programs, device files and the pool's own NFS and SMB sharing turned off. Every
+dataset is checked, including those mounted only by hand (`canmount=noauto`). If
+one would mount elsewhere, or anything cannot be checked, the pool is exported
+again and nothing is mounted: import it by hand with `zpool import -N`, change
+its mount points with `zfs set mountpoint=...`, export it, then import it in HSI.
+A child dataset whose parent folder belongs to a user is refused for the same
+reason.
+
+A pool last used by another system is marked as such: **Import anyway** imports
+it (`zpool import -f`). Do it only when that system no longer uses the disks.
 
 On a server with less than 2 GB of memory, the import warns that ZFS keeps a
 cache in memory ([ARC](/home-server-interface/guide/features/storage-glossary/#arc))
@@ -62,7 +78,8 @@ that competes with HSI and the apps.
 
 Monitor raises an alert when a pool is degraded (warning) or faulted or
 unavailable (critical), when a disk of a pool reports read, write or checksum
-errors, and when the last scrub found errors.
+errors, and when the last scrub found errors. Each alert closes once the pool is
+healthy again or no longer imported.
 
 ## Coming next
 
