@@ -14,7 +14,7 @@ export type StorageLocation =
 
 // English names; i18n/labels.ts puts them in the interface language.
 export const SECTION_LABELS = reactive<Record<StorageSection, string>>({
-  volumes: 'Volumes', disks: 'Disks', raid: 'Arrays', lvm: 'Volume groups', mounts: 'Mounts', maintenance: 'Maintenance',
+  'volumes': 'Volumes', 'disks': 'Disks', 'raid': 'Arrays', 'lvm': 'Volume groups', 'mounts': 'Mounts', 'maintenance': 'Maintenance',
   'pools': 'Pools', 'datasets': 'Datasets', 'zfs-import': 'Import',
 })
 export const NAV_TEXT = reactive({ createVolume: 'Create volume' })

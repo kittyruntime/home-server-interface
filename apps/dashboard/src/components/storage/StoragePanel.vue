@@ -91,8 +91,8 @@ const installCommand = computed(() =>
   `sudo apt install ${[...new Set(missingTools.value.map(t => t.package))].join(' ')}`)
 
 const ICONS: Record<SectionId, Component> = {
-  volumes: ServerIcon, disks: HardDriveIcon, raid: PackageIcon, lvm: Rows3Icon,
-  mounts: DatabaseIcon, maintenance: CalendarIcon,
+  'volumes': ServerIcon, 'disks': HardDriveIcon, 'raid': PackageIcon, 'lvm': Rows3Icon,
+  'mounts': DatabaseIcon, 'maintenance': CalendarIcon,
   'pools': DatabaseIcon, 'datasets': LayersIcon, 'zfs-import': DownloadIcon,
 }
 const navItems = computed(() => TAB_SECTIONS[tab.value].map(id => ({ id, label: SECTION_LABELS[id], icon: ICONS[id] })))
