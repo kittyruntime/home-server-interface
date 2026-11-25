@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.96.0] - 2026-11-25
+
 ### Added
 
 - Monitor > Performance shows the server's temperatures live, next to CPU,
@@ -2501,7 +2503,8 @@ First stable release.
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.95.1...HEAD
+[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.96.0...HEAD
+[1.96.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.95.1...v1.96.0
 [1.95.1]: https://github.com/kittyruntime/home-server-interface/compare/v1.95.0...v1.95.1
 [1.95.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.94.0...v1.95.0
 [1.94.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.93.0...v1.94.0
