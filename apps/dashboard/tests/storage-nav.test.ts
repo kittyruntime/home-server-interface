@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { createNav, navOpen, navCrumbs, navTo, sectionOf, leavesWizard } from '../src/lib/storage-nav.ts'
+import { createNav, navOpen, navCrumbs, navTo, sectionOf, leavesWizard, TAB_SECTIONS, tabOf, defaultTab, createTabbedNav, tabbedOpen, switchTab, currentNav } from '../src/lib/storage-nav.ts'
 
 test('opening a section resets the stack to it', () => {
   let nav = createNav()
@@ -61,4 +61,37 @@ test('leavesWizard: any move away from Create volume, by crumb or link', () => {
   assert.equal(leavesWizard(inWizard, navOpen(inWizard, { kind: 'section', section: 'disks' })), true)
   assert.equal(leavesWizard(inWizard, inWizard), false)
   assert.equal(leavesWizard(createNav(), navOpen(createNav(), { kind: 'section', section: 'disks' })), false)
+})
+
+test('each section belongs to exactly one tab', () => {
+  const all = Object.values(TAB_SECTIONS).flat()
+  assert.equal(new Set(all).size, all.length)
+  assert.deepEqual([...all].sort(), ['disks', 'lvm', 'maintenance', 'mounts', 'raid', 'volumes'])
+})
+
+test('objects open in their tab', () => {
+  assert.equal(tabOf({ kind: 'volume', id: 'U-1' }), 'lvm')
+  assert.equal(tabOf({ kind: 'array', name: 'md0' }), 'lvm')
+  assert.equal(tabOf({ kind: 'disk', name: 'sdb' }), 'disks')
+  assert.equal(tabOf({ kind: 'create-volume' }), 'lvm')
+})
+
+test('default tab: Disks with no volume, LVM otherwise', () => {
+  assert.equal(defaultTab({ volumes: 0 }), 'disks')
+  assert.equal(defaultTab({ volumes: 2 }), 'lvm')
+})
+
+test('opening an object of another tab switches tab and keeps a valid breadcrumb', () => {
+  let t = tabbedOpen(createTabbedNav('disks'), { kind: 'disk', name: 'sdb' })
+  t = tabbedOpen(t, { kind: 'volume', id: 'U-1' })
+  assert.equal(t.tab, 'lvm')
+  assert.deepEqual(navCrumbs(currentNav(t)).map(c => c.label), ['Volumes', 'U-1'])
+})
+
+test('switching tabs keeps where each tab was', () => {
+  let t = tabbedOpen(createTabbedNav('lvm'), { kind: 'array', name: 'md0' })
+  t = switchTab(t, 'maintenance')
+  assert.deepEqual(currentNav(t).current, { kind: 'section', section: 'maintenance' })
+  t = switchTab(t, 'lvm')
+  assert.deepEqual(currentNav(t).current, { kind: 'array', name: 'md0' })
 })

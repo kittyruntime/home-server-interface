@@ -71,3 +71,60 @@ export function navTo(nav: StorageNav, index: number): StorageNav {
 export function leavesWizard(from: StorageNav, to: StorageNav): boolean {
   return from.current.kind === 'create-volume' && to.current.kind !== 'create-volume'
 }
+
+// ── Tabs ─────────────────────────────────────────────────────────────────────
+// The Storage app is in tabs, one per engine plus the shared ones (Disks,
+// Maintenance). Each tab keeps its own stack of locations.
+
+export type StorageTab = 'disks' | 'lvm' | 'zfs' | 'maintenance'
+
+export const TAB_SECTIONS: Record<StorageTab, StorageSection[]> = {
+  disks: ['disks'],
+  lvm: ['volumes', 'raid', 'lvm', 'mounts'],
+  zfs: [],
+  maintenance: ['maintenance'],
+}
+
+// English names; i18n/labels.ts puts them in the interface language.
+export const TAB_LABELS = reactive<Record<StorageTab, string>>({
+  disks: 'Disks', lvm: 'LVM', zfs: 'ZFS', maintenance: 'Maintenance',
+})
+
+export function tabOf(loc: StorageLocation): StorageTab {
+  const section = sectionOf(loc)
+  return (Object.keys(TAB_SECTIONS) as StorageTab[]).find(t => TAB_SECTIONS[t].includes(section))!
+}
+
+/** The tab Storage opens on: Disks until a volume exists. */
+export function defaultTab(o: { volumes: number }): StorageTab {
+  return o.volumes > 0 ? 'lvm' : 'disks'
+}
+
+export interface TabbedNav { tab: StorageTab; navs: Partial<Record<StorageTab, StorageNav>> }
+
+const firstOf = (tab: StorageTab): StorageNav => createNav({ kind: 'section', section: TAB_SECTIONS[tab][0]! })
+
+export function createTabbedNav(tab: StorageTab): TabbedNav {
+  return { tab, navs: { [tab]: firstOf(tab) } }
+}
+
+export function currentNav(t: TabbedNav): StorageNav {
+  return t.navs[t.tab] ?? firstOf(t.tab)
+}
+
+/** Opens `loc` in its own tab, which becomes the current one. */
+export function tabbedOpen(t: TabbedNav, loc: StorageLocation): TabbedNav {
+  const tab = tabOf(loc)
+  const nav = navOpen(t.navs[tab] ?? firstOf(tab), loc)
+  return { tab, navs: { ...t.navs, [tab]: nav } }
+}
+
+/** Shows `tab` where it was left; a tab never opened starts on its first section. */
+export function switchTab(t: TabbedNav, tab: StorageTab): TabbedNav {
+  return { tab, navs: { ...t.navs, [tab]: t.navs[tab] ?? firstOf(tab) } }
+}
+
+/** Replaces the current tab's stack (breadcrumbs). */
+export function withNav(t: TabbedNav, nav: StorageNav): TabbedNav {
+  return { tab: t.tab, navs: { ...t.navs, [t.tab]: nav } }
+}
