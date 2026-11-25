@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"path/filepath"
+	"regexp"
 	"strings"
 )
 
@@ -127,4 +128,230 @@ func planZfsPoolCreate(raw json.RawMessage) (*opPlan, *fsError) {
 	create := destructiveAll(cmdStep(req.Name,
 		fmt.Sprintf("Create the ZFS pool %s (%s) on %s, erasing their contents, mounted on %s", req.Name, req.Layout, strings.Join(devs, ", "), mp), argv), devs)
 	return &opPlan{Op: "zfs.pool.create", Steps: []planStep{create, watchAfter(req.Name)}, Observed: obs}, nil
+}
+
+// zfsPoolDisks: the whole disks of a pool and the partitions ZFS made on them
+// (sdf1), from its leaves.
+func zfsPoolDisks(p zfsPool) (disks []string, parts map[string][]string) {
+	parts = map[string][]string{}
+	seen := map[string]bool{}
+	var walk func(vs []zfsVdev)
+	walk = func(vs []zfsVdev) {
+		for _, v := range vs {
+			if len(v.Children) == 0 && v.Disk != "" {
+				if !seen[v.Disk] {
+					seen[v.Disk] = true
+					disks = append(disks, v.Disk)
+				}
+				if real, err := zfsResolve(v.Path); err == nil && real != "" {
+					if part := filepath.Base(real); part != v.Disk && reBlockDev.MatchString(part) {
+						parts[v.Disk] = append(parts[v.Disk], part)
+					}
+				}
+			}
+			walk(v.Children)
+		}
+	}
+	walk(p.Vdevs)
+	return disks, parts
+}
+
+func planZfsPoolDestroy(raw json.RawMessage) (*opPlan, *fsError) {
+	var req struct {
+		Name string `json:"name"`
+	}
+	if err := json.Unmarshal(raw, &req); err != nil || !reZpoolName.MatchString(req.Name) {
+		return nil, &fsError{Code: "ERR", Message: "invalid pool"}
+	}
+	info := zfsSnapshot()
+	var pool *zfsPool
+	for i := range info.Pools {
+		if info.Pools[i].Name == req.Name {
+			pool = &info.Pools[i]
+		}
+	}
+	if pool == nil {
+		return nil, &fsError{Code: "ENOENT", Message: "The pool " + req.Name + " is not imported"}
+	}
+	disks, parts := zfsPoolDisks(*pool)
+	var devs []string
+	for _, d := range disks {
+		devs = append(devs, "/dev/"+d)
+	}
+	obs := map[string]string{"pool": pool.GUID}
+	for _, d := range devs {
+		observeDevice(obs, d, d)
+	}
+	steps := []planStep{destructiveAll(cmdStep(req.Name,
+		"Destroy the ZFS pool "+req.Name+" and every dataset and file in it", []string{"zpool", "destroy", req.Name}), devs)}
+	// Wiped so that the disks show as free again.
+	for _, d := range disks {
+		for _, p := range parts[d] {
+			steps = append(steps, cmdStep("/dev/"+p, "Erase the ZFS signature of /dev/"+p, []string{"wipefs", "-a", "/dev/" + p}))
+		}
+		steps = append(steps, cmdStep("/dev/"+d, "Erase the partition table of /dev/"+d+" so it shows as a free disk", []string{"wipefs", "-a", "/dev/" + d}))
+	}
+	steps = append(steps, watchedStep("Stop watching "+req.Name, withoutWatched(loadWatchedPools(), req.Name)))
+	return &opPlan{Op: "zfs.pool.destroy", Steps: steps, Observed: obs}, nil
+}
+
+var reZfsSegment = regexp.MustCompile(`^[A-Za-z0-9_.:-]{1,64}$`)
+
+// splitDataset checks a child dataset name (pool/a/b) and returns its pool,
+// its parent and its last part.
+func splitDataset(name string) (pool, parent, last string, ok bool) {
+	segs := strings.Split(name, "/")
+	if len(segs) < 2 || !reZpoolName.MatchString(segs[0]) {
+		return "", "", "", false
+	}
+	for _, s := range segs[1:] {
+		if !reZfsSegment.MatchString(s) || s == "." || s == ".." {
+			return "", "", "", false
+		}
+	}
+	return segs[0], strings.Join(segs[:len(segs)-1], "/"), segs[len(segs)-1], true
+}
+
+func findDataset(ds []zfsDataset, name string) *zfsDataset {
+	for i := range ds {
+		if ds[i].Name == name {
+			return &ds[i]
+		}
+	}
+	return nil
+}
+
+func isWatchedPool(name string) bool {
+	for _, w := range loadWatchedPools() {
+		if w.Name == name {
+			return true
+		}
+	}
+	return false
+}
+
+func planZfsDatasetCreate(raw json.RawMessage) (*opPlan, *fsError) {
+	var req struct {
+		Name        string `json:"name"`
+		Quota       int64  `json:"quota"`
+		Compression string `json:"compression"`
+	}
+	if err := json.Unmarshal(raw, &req); err != nil {
+		return nil, badRequest(err)
+	}
+	pool, parent, last, ok := splitDataset(req.Name)
+	if !ok {
+		return nil, &fsError{Code: "ERR", Message: "invalid dataset name: pool/name, with letters, digits, - _ . :"}
+	}
+	if req.Quota < 0 {
+		return nil, &fsError{Code: "ERR", Message: "the quota cannot be negative"}
+	}
+	if req.Compression != "" && req.Compression != "inherit" && !zfsCompressions[req.Compression] {
+		return nil, &fsError{Code: "ERR", Message: "unsupported compression " + req.Compression}
+	}
+	info := zfsSnapshot()
+	if findDataset(info.Datasets, req.Name) != nil {
+		return nil, &fsError{Code: "EEXIST", Message: req.Name + " already exists"}
+	}
+	par := findDataset(info.Datasets, parent)
+	if par == nil {
+		return nil, &fsError{Code: "ENOENT", Message: parent + " does not exist"}
+	}
+	mp := ""
+	if strings.HasPrefix(par.MountPoint, "/") {
+		mp = par.MountPoint + "/" + last
+		if !mountPointAllowed(mp, pool, zfsMountTable(), filepath.EvalSymlinks) {
+			return nil, &fsError{Code: "ERR", Message: mp + " is outside the data folders or already in use"}
+		}
+	}
+	argv := []string{"zfs", "create"}
+	if req.Quota > 0 {
+		argv = append(argv, "-o", fmt.Sprintf("quota=%d", req.Quota))
+	}
+	if zfsCompressions[req.Compression] {
+		argv = append(argv, "-o", "compression="+req.Compression)
+	}
+	argv = append(argv, req.Name)
+	summary := "Create the dataset " + req.Name
+	if mp != "" {
+		summary += ", mounted on " + mp
+	}
+	steps := []planStep{cmdStep(req.Name, summary, argv)}
+	if mp != "" && isWatchedPool(pool) {
+		next := []watchedPool{}
+		for _, w := range loadWatchedPools() {
+			if w.Name == pool {
+				w.Datasets = append(append([]watchedDataset{}, w.Datasets...), watchedDataset{Name: req.Name, MountPoint: mp})
+			}
+			next = append(next, w)
+		}
+		steps = append(steps, watchedStep("Guard "+req.Name+" with the rest of "+pool, next))
+	}
+	return &opPlan{Op: "zfs.dataset.create", Steps: steps, Observed: map[string]string{}}, nil
+}
+
+func planZfsDatasetSet(raw json.RawMessage) (*opPlan, *fsError) {
+	var req struct {
+		Name        string `json:"name"`
+		Quota       int64  `json:"quota"`
+		Compression string `json:"compression"`
+	}
+	if err := json.Unmarshal(raw, &req); err != nil {
+		return nil, badRequest(err)
+	}
+	if req.Quota < 0 || !zfsCompressions[req.Compression] {
+		return nil, &fsError{Code: "ERR", Message: "invalid quota or compression"}
+	}
+	if findDataset(zfsSnapshot().Datasets, req.Name) == nil {
+		return nil, &fsError{Code: "ENOENT", Message: req.Name + " does not exist"}
+	}
+	quota := "none"
+	if req.Quota > 0 {
+		quota = fmt.Sprint(req.Quota)
+	}
+	s := cmdStep(req.Name, "Set the quota ("+quota+") and the compression ("+req.Compression+") of "+req.Name,
+		[]string{"zfs", "set", "quota=" + quota, "compression=" + req.Compression, req.Name})
+	return &opPlan{Op: "zfs.dataset.set", Steps: []planStep{s}, Observed: map[string]string{}}, nil
+}
+
+func planZfsDatasetDestroy(raw json.RawMessage) (*opPlan, *fsError) {
+	var req struct {
+		Name string `json:"name"`
+	}
+	if err := json.Unmarshal(raw, &req); err != nil {
+		return nil, badRequest(err)
+	}
+	pool, _, _, ok := splitDataset(req.Name)
+	if !ok {
+		return nil, &fsError{Code: "ERR", Message: "invalid dataset: a pool is deleted as a whole"}
+	}
+	info := zfsSnapshot()
+	if findDataset(info.Datasets, req.Name) == nil {
+		return nil, &fsError{Code: "ENOENT", Message: req.Name + " does not exist"}
+	}
+	for _, d := range info.Datasets {
+		if strings.HasPrefix(d.Name, req.Name+"/") {
+			return nil, &fsError{Code: "ERR", Message: req.Name + " has datasets inside (" + d.Name + "): delete them first"}
+		}
+	}
+	del := cmdStep(req.Name, "Destroy the dataset "+req.Name+" and every file in it", []string{"zfs", "destroy", req.Name})
+	del.Destructive = true
+	steps := []planStep{del}
+	if isWatchedPool(pool) {
+		next := []watchedPool{}
+		for _, w := range loadWatchedPools() {
+			if w.Name == pool {
+				kept := []watchedDataset{}
+				for _, d := range w.Datasets {
+					if d.Name != req.Name {
+						kept = append(kept, d)
+					}
+				}
+				w.Datasets = kept
+			}
+			next = append(next, w)
+		}
+		steps = append(steps, watchedStep("Stop guarding "+req.Name, next))
+	}
+	return &opPlan{Op: "zfs.dataset.destroy", Steps: steps, Observed: map[string]string{}}, nil
 }

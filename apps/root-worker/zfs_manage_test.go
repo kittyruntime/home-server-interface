@@ -150,7 +150,7 @@ func TestPlanZfsPoolDestroyWipesItsDisks(t *testing.T) {
 			cmds = append(cmds, strings.Join(s.Command, " "))
 		}
 	}
-	want := "zpool destroy tank;wipefs -a /dev/sdf;wipefs -a /dev/sdg"
+	want := "zpool destroy tank;wipefs -a /dev/sdf1;wipefs -a /dev/sdf;wipefs -a /dev/sdg1;wipefs -a /dev/sdg"
 	if strings.Join(cmds, ";") != want {
 		t.Errorf("commands:\n%s\nwant:\n%s", strings.Join(cmds, ";"), want)
 	}
