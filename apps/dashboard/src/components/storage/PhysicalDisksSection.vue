@@ -263,7 +263,7 @@ const COLUMNS: { key: SortKey; label: string; class?: string }[] = [
 
           <div v-for="r in visibleRows" :key="r.disk.name" :data-disk="r.disk.name" class="border-b border-base-300 last:border-b-0">
             <!-- Row (desktop) -->
-            <div class="hidden @4xl/content:grid disk-grid gap-3 items-center px-3 py-2 text-xs cursor-pointer hover:bg-base-200/40 transition-colors"
+            <div class="group hidden @4xl/content:grid disk-grid gap-3 items-center px-3 py-2 text-xs cursor-pointer hover:bg-base-200/40 transition-colors"
               @click="emit('open', r.disk.name)">
               <span class="min-w-0">
                 <span class="block font-mono font-semibold text-base-content truncate">/dev/{{ r.disk.name }}</span>
@@ -289,7 +289,7 @@ const COLUMNS: { key: SortKey; label: string; class?: string }[] = [
             </div>
 
             <!-- Row (mobile) -->
-            <div class="@4xl/content:hidden flex items-start gap-2.5 px-3 py-2.5 cursor-pointer" @click="emit('open', r.disk.name)">
+            <div class="group @4xl/content:hidden flex items-start gap-2.5 px-3 py-2.5 cursor-pointer" @click="emit('open', r.disk.name)">
               <div class="flex-1 min-w-0">
                 <div class="flex items-center gap-1.5 flex-wrap">
                   <Badge v-if="usedBy(r).target" as="button" variant="outline" @click.stop="openUser(r)"
