@@ -166,8 +166,13 @@ func planZfsImport(raw json.RawMessage) (*opPlan, *fsError) {
 	if err := json.Unmarshal(raw, &req); err != nil || !reZpoolGUID.MatchString(req.GUID) || !reZpoolName.MatchString(req.Name) {
 		return nil, &fsError{Code: "ERR", Message: "invalid pool"}
 	}
-	imp := cmdStep(req.Name, "Import the ZFS pool "+req.Name+" found on the disks, without changing its data",
-		[]string{"zpool", "import", "-d", "/dev/disk/by-id", req.GUID, req.Name})
+	// Imported without mounting: a pool brought from elsewhere decides where
+	// its datasets mount, and must never mount over a system folder.
+	imp := cmdStep(req.Name, "Import the ZFS pool "+req.Name+" found on the disks, without mounting anything or changing its data",
+		[]string{"zpool", "import", "-N", "-d", "/dev/disk/by-id", req.GUID, req.Name})
+	mount := planStep{Kind: "run", Target: req.Name, Deferred: true,
+		Summary: "Mount its datasets, unless one would mount on a system folder: then export the pool again and stop",
+		run:     func() (string, error) { return "", checkAndMountImported(req.Name) }}
 	// What to watch is known once the pool is imported and its datasets mounted.
 	watch := planStep{Kind: "update", Target: zfsPoolsPath, Deferred: true,
 		Summary: "Watch " + req.Name + ": its datasets are guarded like any HSI volume",
@@ -183,7 +188,7 @@ func planZfsImport(raw json.RawMessage) (*opPlan, *fsError) {
 			}
 			return unifiedDiff(zfsPoolsPath, string(before), string(marshalWatched(next))), nil
 		}}
-	return &opPlan{Op: "zfs.import", Steps: []planStep{imp, watch}, Observed: map[string]string{}}, nil
+	return &opPlan{Op: "zfs.import", Steps: []planStep{imp, mount, watch}, Observed: map[string]string{}}, nil
 }
 
 func planZfsWatch(raw json.RawMessage) (*opPlan, *fsError) {
@@ -210,4 +215,56 @@ func planZfsUnwatch(raw json.RawMessage) (*opPlan, *fsError) {
 	}
 	step := watchedStep("Stop watching "+req.Name+": its datasets are no longer guarded", withoutWatched(loadWatchedPools(), req.Name))
 	return &opPlan{Op: "zfs.unwatch", Steps: []planStep{step}, Observed: map[string]string{}}, nil
+}
+
+// System folders a dataset must never mount on (or under).
+var systemMountPrefixes = []string{"/bin", "/boot", "/dev", "/etc", "/home", "/lib", "/lib32", "/lib64", "/libx32",
+	"/opt/hsi", "/proc", "/root", "/run", "/sbin", "/sys", "/tmp", "/usr", "/var"}
+
+func unsafeMountPoint(mp string) bool {
+	mp = filepath.Clean(mp)
+	if mp == "/" {
+		return true
+	}
+	for _, p := range systemMountPrefixes {
+		if mp == p || strings.HasPrefix(mp, p+"/") {
+			return true
+		}
+	}
+	return false
+}
+
+// checkAndMountImported mounts the datasets of a pool just imported with -N.
+// If one would mount itself on a system folder (canmount=on), nothing is
+// mounted and the pool is exported again, so that it does not mount there at
+// the next boot either.
+func checkAndMountImported(name string) error {
+	out, err := hostOutput("zfs", "list", "-H", "-o", "name,mountpoint,canmount", "-r", "-t", "filesystem", name)
+	if err != nil {
+		return cmdError{"could not list the datasets of " + name + ": " + err.Error()}
+	}
+	var unsafe, mount []string
+	for _, line := range strings.Split(strings.TrimSpace(string(out)), "\n") {
+		f := strings.Split(line, "\t")
+		if len(f) < 3 || f[2] != "on" || !strings.HasPrefix(f[1], "/") {
+			continue
+		}
+		if unsafeMountPoint(f[1]) {
+			unsafe = append(unsafe, f[0]+" ("+f[1]+")")
+		} else {
+			mount = append(mount, f[0])
+		}
+	}
+	if len(unsafe) > 0 {
+		if out, err := runArgv([]string{"zpool", "export", name}); err != nil {
+			return cmdError{"datasets of " + name + " mount on system folders (" + strings.Join(unsafe, ", ") + ") and the pool could not be exported again: " + cmdErrMessage(out, err)}
+		}
+		return cmdError{"Not imported: datasets of " + name + " would mount on system folders: " + strings.Join(unsafe, ", ") + ". Import it by hand with zpool import -N, change their mount points (zfs set mountpoint=...), export it, then import it here."}
+	}
+	for _, ds := range mount {
+		if out, err := runArgv([]string{"zfs", "mount", ds}); err != nil {
+			return cmdError{"could not mount " + ds + ": " + cmdErrMessage(out, err)}
+		}
+	}
+	return nil
 }

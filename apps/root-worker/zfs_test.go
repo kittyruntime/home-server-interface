@@ -275,11 +275,14 @@ func TestPlanZfsImportSteps(t *testing.T) {
 	if fe != nil {
 		t.Fatal(fe.Message)
 	}
-	if len(p.Steps) != 2 || strings.Join(p.Steps[0].Command, " ") != "zpool import -d /dev/disk/by-id 987654321 backup" {
-		t.Fatalf("steps = %+v", p.Steps)
+	if len(p.Steps) != 3 || strings.Join(p.Steps[0].Command, " ") != "zpool import -N -d /dev/disk/by-id 987654321 backup" {
+		t.Fatalf("the pool is imported without mounting anything first: %+v", p.Steps)
 	}
-	if !p.Steps[1].Deferred || p.Steps[1].Target != zfsPoolsPath {
-		t.Errorf("second step = %+v", p.Steps[1])
+	if !p.Steps[1].Deferred || !strings.Contains(p.Steps[1].Summary, "system folder") {
+		t.Errorf("second step checks the mount points before mounting: %+v", p.Steps[1])
+	}
+	if !p.Steps[2].Deferred || p.Steps[2].Target != zfsPoolsPath {
+		t.Errorf("third step = %+v", p.Steps[2])
 	}
 }
 
@@ -331,5 +334,44 @@ func TestPlanZfsImportRejectsBadInput(t *testing.T) {
 	}
 	if _, fe := planZfsWatch([]byte(`{"name":"nope"}`)); fe == nil {
 		t.Errorf("watching a pool that is not imported is refused")
+	}
+}
+
+func TestUnsafeMountPoint(t *testing.T) {
+	for mp, unsafe := range map[string]bool{
+		"/": true, "/etc": true, "/etc/ssh": true, "/usr": true, "/usr/local/bin": true, "/bin": true, "/boot": true,
+		"/root": true, "/var": true, "/var/lib/docker": true, "/home": true, "/opt/hsi": true, "/opt/hsi/data": true, "/lib64": true,
+		"/srv/tank": false, "/tank": false, "/mnt/backup": false, "/media/usb": false, "/opt/data": false, "/data": false, "/var2": false,
+	} {
+		if got := unsafeMountPoint(mp); got != unsafe {
+			t.Errorf("%s: unsafe %v, want %v", mp, got, unsafe)
+		}
+	}
+}
+
+func TestZfsImportRefusesSystemMountPoints(t *testing.T) {
+	prevO, prevR := hostOutput, runArgv
+	t.Cleanup(func() { hostOutput, runArgv = prevO, prevR })
+	var ran []string
+	runArgv = func(argv []string) ([]byte, error) { ran = append(ran, strings.Join(argv, " ")); return nil, nil }
+	hostOutput = func(name string, args ...string) ([]byte, error) {
+		return []byte("backup\t/backup\ton\nbackup/evil\t/etc\ton\nbackup/off\t/usr\toff\nbackup/vm\tnone\ton\n"), nil
+	}
+	err := checkAndMountImported("backup")
+	if err == nil || !strings.Contains(err.Error(), "backup/evil") || strings.Contains(err.Error(), "backup/off") {
+		t.Fatalf("err = %v", err)
+	}
+	if strings.Join(ran, ";") != "zpool export backup" {
+		t.Errorf("an unsafe pool is exported again and nothing is mounted: %v", ran)
+	}
+	ran = nil
+	hostOutput = func(name string, args ...string) ([]byte, error) {
+		return []byte("backup\t/backup\ton\nbackup/media\t/srv/media\ton\nbackup/vm\tnone\ton\nbackup/later\t/srv/later\tnoauto\n"), nil
+	}
+	if err := checkAndMountImported("backup"); err != nil {
+		t.Fatal(err)
+	}
+	if strings.Join(ran, ";") != "zfs mount backup;zfs mount backup/media" {
+		t.Errorf("mounted: %v", ran)
 	}
 }
