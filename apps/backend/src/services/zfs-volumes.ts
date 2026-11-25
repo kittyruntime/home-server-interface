@@ -132,3 +132,16 @@ export function zfsVolumes(zfs: ZfsInfo, guard: VolumeInput['guard'], holds: Vol
   }
   return out
 }
+
+/** Why a ZFS delete must wait: a dataset it removes is used by a Place, a
+ *  share or an app. Null when nothing it removes is in use. */
+export function zfsDestroyBlocker(volumes: Volume[], op: string, input: { name?: unknown }): string | null {
+  if ((op !== 'zfs.dataset.destroy' && op !== 'zfs.pool.destroy') || typeof input.name !== 'string') return null
+  const name = input.name
+  const hit = volumes.filter(v => v.engine === 'zfs' && v.device && (v.device === name || v.device.startsWith(`${name}/`)))
+  for (const v of hit) {
+    const uses = [...v.usedBy.places.map(p => `Place ${p.name}`), ...v.usedBy.shares.map(s => `share ${s}`), ...v.usedBy.apps.map(a => `app ${a}`)]
+    if (uses.length) return `${v.device} is used by ${uses.join(', ')}: stop using it first`
+  }
+  return null
+}

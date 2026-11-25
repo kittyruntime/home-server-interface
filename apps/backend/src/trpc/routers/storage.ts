@@ -9,7 +9,7 @@ import { applyVolumeRemove, previewVolumeRemove, removeTargetOf, type RemoveTarg
 import { expandOptions, type ExpandInput, type PendingExpansion } from '../../services/expand-options'
 import type { DescriptionStatus } from '../../services/storage-descriptions'
 import { buildVolumes, type VDev, type VolumeInput } from '../../services/volumes'
-import { NO_ZFS, type ZfsInfo, type ZfsVdev } from '../../services/zfs-volumes'
+import { NO_ZFS, zfsDestroyBlocker, type ZfsInfo, type ZfsVdev } from '../../services/zfs-volumes'
 import { totalmem } from 'node:os'
 import { currentSmbSettings, desiredShareDefs, effectiveSmbName, syncPlaceAccess, syncSharesBestEffort, withShareLock } from '../../services/sharing.service'
 import { PLAN_OPS, planAuditMeta, type PlanApplyResult, type PlanOp, type PlanStep } from '../../services/storage-plan'
@@ -147,6 +147,24 @@ const PLAN_INPUTS = {
   'zfs.import': z.object({ guid: z.string().regex(/^[0-9]{1,20}$/), name: z.string().regex(/^[A-Za-z][A-Za-z0-9_.:-]{0,63}$/), force: z.boolean().optional() }),
   'zfs.watch': z.object({ name: z.string().regex(/^[A-Za-z][A-Za-z0-9_.:-]{0,63}$/) }),
   'zfs.unwatch': z.object({ name: z.string().regex(/^[A-Za-z][A-Za-z0-9_.:-]{0,63}$/) }),
+  'zfs.pool.create': z.object({
+    name: z.string().regex(/^[A-Za-z][A-Za-z0-9_.:-]{0,63}$/),
+    layout: z.enum(['stripe', 'mirror', 'raidz1', 'raidz2', 'raidz3']),
+    disks: z.array(z.string().regex(/^[a-z][a-z0-9]{1,31}$/)).min(1).max(64),
+    compression: z.enum(['lz4', 'zstd', 'off']),
+  }),
+  'zfs.pool.destroy': z.object({ name: z.string().regex(/^[A-Za-z][A-Za-z0-9_.:-]{0,63}$/) }),
+  'zfs.dataset.create': z.object({
+    name: z.string().regex(/^[A-Za-z][A-Za-z0-9_.:-]{0,63}(\/[A-Za-z0-9_.:-]{1,64})+$/),
+    quota: z.number().int().min(0).optional(),
+    compression: z.enum(['inherit', 'lz4', 'zstd', 'off']).optional(),
+  }),
+  'zfs.dataset.set': z.object({
+    name: z.string().regex(/^[A-Za-z][A-Za-z0-9_.:-]{0,63}(\/[A-Za-z0-9_.:-]{1,64})*$/),
+    quota: z.number().int().min(0),
+    compression: z.enum(['lz4', 'zstd', 'off']),
+  }),
+  'zfs.dataset.destroy': z.object({ name: z.string().regex(/^[A-Za-z][A-Za-z0-9_.:-]{0,63}(\/[A-Za-z0-9_.:-]{1,64})+$/) }),
   // Expand a volume (#7): the filesystem UUID, the way, and the disk to add.
   'volume.expand': z.object({
     uuid: z.string().min(1).max(128).regex(/^[A-Za-z0-9-]+$/),
@@ -214,6 +232,11 @@ async function workerInput(ctx: Context & { user: { userId: string } }, op: Plan
     throw new TRPCError({ code: 'FORBIDDEN', message: 'Only an admin can import or watch a ZFS pool' })
   const parsed = PLAN_INPUTS[op].safeParse(raw)
   if (!parsed.success) throw new TRPCError({ code: 'BAD_REQUEST', message: parsed.error.issues[0]?.message ?? 'Invalid input' })
+  // A ZFS delete waits until nothing uses what it removes, as for an LVM volume.
+  if (op === 'zfs.dataset.destroy' || op === 'zfs.pool.destroy') {
+    const blocker = zfsDestroyBlocker((await loadVolumes(ctx, { strict: true })).volumes, op, parsed.data as { name: string })
+    if (blocker) throw new TRPCError({ code: 'PRECONDITION_FAILED', message: blocker })
+  }
   if (op !== 'mount') return parsed.data as Record<string, unknown>
   const input = parsed.data as z.infer<typeof PLAN_INPUTS['mount']>
   const { ownerUserId, ...rest } = input
