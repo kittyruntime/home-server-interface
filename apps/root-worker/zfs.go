@@ -453,6 +453,8 @@ var (
 
 type zfsInfo struct {
 	Available bool `json:"available"`
+	// Complete: every pool read succeeded; alerts close only on a complete reading.
+	Complete bool `json:"complete"`
 	// BootUnits: the distribution's units that import and mount pools at boot.
 	BootUnits zfsBootUnits  `json:"bootUnits"`
 	Version   string        `json:"version"`
@@ -506,11 +508,21 @@ func zfsSnapshot() zfsInfo {
 	if out, err := hostOutput("zfs", "version"); err == nil {
 		info.Version = parseZfsVersion(string(out))
 	}
+	info.Complete = true
 	if out, err := hostOutput("zpool", "list", "-Hp", "-o", "name,guid,size,allocated,free,fragmentation,health"); err == nil {
 		info.Pools = parseZpoolList(string(out))
+	} else {
+		info.Complete = false
+	}
+	if info.Pools == nil {
+		info.Pools = []zfsPool{}
 	}
 	if len(info.Pools) > 0 {
-		if out, err := hostOutput("zpool", "status", "-P"); err == nil {
+		out, err := hostOutput("zpool", "status", "-P")
+		if err != nil {
+			info.Complete = false
+		}
+		if err == nil {
 			st := parseZpoolStatus(string(out))
 			for i := range info.Pools {
 				if s, ok := st[info.Pools[i].Name]; ok {

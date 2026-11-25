@@ -28,6 +28,8 @@ export type ZfsDataset = {
 }
 export type ZfsInfo = {
   available: boolean
+  /** Every pool read succeeded (absent from older workers: treated as complete). */
+  complete?: boolean
   version: string
   /** The distribution's units importing and mounting pools at boot. */
   bootUnits?: { importCache: boolean; mount: boolean }
@@ -36,7 +38,7 @@ export type ZfsInfo = {
   watched: Array<{ name: string; guid: string; datasets: Array<{ name: string; mountPoint: string }> }>
 }
 
-export const NO_ZFS: ZfsInfo = { available: false, version: '', pools: [], datasets: [], watched: [] }
+export const NO_ZFS: ZfsInfo = { available: false, complete: false, version: '', pools: [], datasets: [], watched: [] }
 
 // Vdevs that hold data: not logs, caches or spares.
 const DATA_TYPES = new Set(['mirror', 'raidz1', 'raidz2', 'raidz3', 'draid', 'disk'])

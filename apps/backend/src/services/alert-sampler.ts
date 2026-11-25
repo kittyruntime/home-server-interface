@@ -42,7 +42,7 @@ async function checkRaid(): Promise<CheckOutcome> {
 
 // ZFS pools (lot 1): a pool not ONLINE, read/write/checksum errors on a disk,
 // a scrub that found errors. Checked on every imported pool.
-export function zfsAlerts(pools: ZfsPool[]): CheckOutcome {
+export function zfsAlerts(pools: ZfsPool[], complete = true): CheckOutcome {
   const found: CheckResult[] = []
   const checked: string[] = []
   for (const p of pools) {
@@ -62,14 +62,14 @@ export function zfsAlerts(pools: ZfsPool[]): CheckOutcome {
     if (p.scan.errors > 0)
       found.push({ target: `scrub:${p.name}`, message: `The last ${p.scan.kind} of ${p.name} found ${p.scan.errors} errors`, severity: 'warning' })
   }
-  // Every imported pool is checked: an alert on a pool exported or repaired
-  // since then closes.
-  return { found, checked, authoritative: true }
+  // A complete reading covers every imported pool: an alert on a pool exported
+  // or repaired since then closes. After a failed read, nothing closes.
+  return { found, checked, authoritative: complete }
 }
 
 async function checkZfs(): Promise<CheckOutcome> {
   const zfs = await requestSync<ZfsInfo>('root.zfs.list', {}, 20_000)
-  return zfs.available ? zfsAlerts(zfs.pools) : { found: [], checked: [] }
+  return zfs.available ? zfsAlerts(zfs.pools, zfs.complete !== false) : { found: [], checked: [] }
 }
 
 // Consistency checks (scheduled from Storage > Maintenance, or the distro's own

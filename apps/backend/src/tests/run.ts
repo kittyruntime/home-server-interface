@@ -4898,6 +4898,7 @@ async function testZfsAlerts() {
   const clean = zPool([zGroup('mirror-0', 'mirror', [zLeaf('sda'), zLeaf('sdb')])]) as any
   assert.deepEqual(zfsAlerts([clean]).found, [])
   assert.equal(zfsAlerts([clean]).authoritative, true, 'it covers every imported pool: an alert on a pool exported or repaired since closes')
+  assert.equal(zfsAlerts([], false).authoritative, false, 'an incomplete reading (zpool failed) closes nothing')
   assert.deepEqual(zfsAlerts([clean]).checked, ['pool:tank', 'errors:tank:sda', 'errors:tank:sdb', 'scrub:tank'], 'every target it can raise is checked, so a cleared one closes')
   const degraded = zfsAlerts([{ ...clean, state: 'DEGRADED' }]).found
   assert.deepEqual(degraded.map(f => [f.target, f.severity]), [['pool:tank', 'warning']])

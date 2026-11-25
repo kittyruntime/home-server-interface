@@ -436,7 +436,7 @@ func checkAndMountImported(name string) error {
 		return undo("could not list the datasets of " + name + ": " + err.Error())
 	}
 	mounts := zfsMountTable()
-	var unsafe, mount []string
+	var unsafe, mount, noauto []string
 	mountPoints := map[string]string{}
 	for _, line := range strings.Split(strings.TrimSpace(string(out)), "\n") {
 		f := strings.Split(line, "\t")
@@ -460,6 +460,8 @@ func checkAndMountImported(name string) error {
 		if f[2] == "on" {
 			mount = append(mount, f[0])
 			mountPoints[f[0]] = f[1]
+		} else {
+			noauto = append(noauto, f[0])
 		}
 	}
 	if len(unsafe) > 0 {
@@ -473,6 +475,12 @@ func checkAndMountImported(name string) error {
 	}
 	if err := off(name); err != nil {
 		return err
+	}
+	// Datasets mounted by hand later (canmount=noauto) get the same.
+	for _, ds := range noauto {
+		if err := off(ds); err != nil {
+			return err
+		}
 	}
 	// Parents first (shallower mount points), each checked again once the
 	// datasets above it are mounted, since their content comes from the pool.

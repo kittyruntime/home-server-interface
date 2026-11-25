@@ -221,7 +221,7 @@ func TestZfsSnapshotFillsDisks(t *testing.T) {
 	}
 	zfsParentOf = func(n string) string { return strings.TrimSuffix(n, "1") }
 	info := zfsSnapshot()
-	if !info.Available || info.Version != "2.2.2" || len(info.Pools) != 2 || len(info.Datasets) != 4 {
+	if !info.Available || !info.Complete || info.Version != "2.2.2" || len(info.Pools) != 2 || len(info.Datasets) != 4 {
 		t.Fatalf("info = %+v", info)
 	}
 	ls := leaves(info.Pools[0].Vdevs[0])
@@ -474,7 +474,8 @@ func TestZfsImportMountsSafely(t *testing.T) {
 	if err := checkAndMountImported("backup"); err != nil {
 		t.Fatal(err)
 	}
-	want := setOff + "backup;" + setOff + "backup;zfs mount backup;" + setOff + "backup/media;zfs mount backup/media;zpool set cachefile= backup"
+	// backup/later (noauto) gets the same hardening: it can be mounted by hand later.
+	want := setOff + "backup;" + setOff + "backup/later;" + setOff + "backup;zfs mount backup;" + setOff + "backup/media;zfs mount backup/media;zpool set cachefile= backup"
 	if strings.Join(*ran, ";") != want {
 		t.Errorf("ran:\n%s\nwant:\n%s", strings.Join(*ran, ";"), want)
 	}
@@ -589,5 +590,21 @@ func TestParseBootUnits(t *testing.T) {
 	}
 	if c, m := parseBootUnits(""); c || m {
 		t.Errorf("no answer reads disabled: %v %v", c, m)
+	}
+}
+
+func TestZfsSnapshotIncompleteOnErrors(t *testing.T) {
+	prevA, prevO, prevU := zfsAvailable, hostOutput, zfsUnitStates
+	t.Cleanup(func() { zfsAvailable, hostOutput, zfsUnitStates = prevA, prevO, prevU })
+	zfsAvailable = func() bool { return true }
+	zfsUnitStates = func() string { return "" }
+	hostOutput = func(name string, args ...string) ([]byte, error) {
+		if name+" "+args[0] == "zpool list" {
+			return nil, os.ErrDeadlineExceeded
+		}
+		return nil, nil
+	}
+	if info := zfsSnapshot(); info.Complete {
+		t.Errorf("a failed zpool list is not a complete reading: %+v", info)
 	}
 }
