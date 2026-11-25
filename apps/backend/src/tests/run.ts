@@ -4794,3 +4794,12 @@ async function testWallDisplaysOnlyReadTheirWidgets() {
   assert.equal(err?.code, 'FORBIDDEN', 'the display endpoint needs a display token')
 }
 await testWallDisplaysOnlyReadTheirWidgets()
+
+// Monitor's live poll carries the hwmon sensors with the rest of the snapshot.
+async function testPerfSnapshotCarriesSensors() {
+  const { perfSnapshot } = await import('../services/system-perf.service')
+  const p = perfSnapshot()
+  assert.ok(Array.isArray(p.sensors), 'system.perf has a sensors list (empty on a machine without hwmon)')
+  for (const s of p.sensors) assert.ok(s.kind === 'temp' || s.kind === 'fan')
+}
+await testPerfSnapshotCarriesSensors()

@@ -1,6 +1,7 @@
 import * as os from 'os'
 import * as fs from 'fs'
 import { requestSync } from '../nats'
+import { readSensors, type Sensor } from './hw-sensors'
 
 // Live performance for the Monitor app: per core CPU, memory detail, each disk
 // and each network port, plus the process list. Rates come from the difference
@@ -214,7 +215,8 @@ function buildPerf(prev: Reading, cur: Reading) {
   }
 }
 
-export type Perf = ReturnType<typeof buildPerf>
+/** With the hwmon temperatures and fans, for Monitor's live view. */
+export type Perf = ReturnType<typeof buildPerf> & { sensors: Sensor[] }
 
 /** Readings closer than this are served from the last one. */
 const MIN_WINDOW_MS = 1000
@@ -227,7 +229,7 @@ export function perfSnapshot(): Perf {
   const cur = takeReading()
   // The first call has nothing to compare against: measure over a short pause.
   const prev = base ?? (() => { const r = takeReading(); r.at = now - MIN_WINDOW_MS; return r })()
-  last = buildPerf(prev, cur)
+  last = { ...buildPerf(prev, cur), sensors: readSensors() }
   base = cur
   return last
 }

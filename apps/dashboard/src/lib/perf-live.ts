@@ -2,6 +2,7 @@ import { reactive, shallowRef } from 'vue'
 import { trpc } from './trpc'
 import { pushSample } from './perf-math'
 import { livePaused } from './live-pause'
+import { sensorKey } from './perf-temps'
 
 export type Perf = Awaited<ReturnType<typeof trpc.system.perf.query>>
 
@@ -14,7 +15,8 @@ export const CAPACITY = 60
 
 export const perf = shallowRef<Perf | null>(null)
 export const perfError = shallowRef<string | null>(null)
-/** Curves by key: cpu, core:N, mem, disk:NAME:busy|read|write, net:NAME:rx|tx. */
+/** Curves by key: cpu, core:N, mem, disk:NAME:busy|read|write, net:NAME:rx|tx,
+ *  temp:CHIP:LABEL (temperatures; fans are shown as figures only). */
 export const history = reactive<Record<string, number[]>>({})
 /** Samples taken so far; moves the graph grid with time. */
 export const tick = shallowRef(0)
@@ -52,6 +54,7 @@ async function poll() {
     record(`net:${n.name}:rx`, n.rxBps)
     record(`net:${n.name}:tx`, n.txBps)
   }
+  for (const s of p.sensors ?? []) if (s.kind === 'temp') record(`temp:${sensorKey(s)}`, s.value)
   perf.value = p
   tick.value++
 }
@@ -81,4 +84,5 @@ export const RESOURCE_COLOR = {
   mem: 'var(--color-secondary)',
   disk: 'var(--color-success)',
   net: 'var(--color-warning)',
+  temp: 'var(--color-error)',
 } as const

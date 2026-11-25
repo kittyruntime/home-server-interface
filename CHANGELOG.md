@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Monitor > Performance shows the server's temperatures live, next to CPU,
+  memory, disks and network: the hottest sensor in the strip, and every sensor
+  with its last two minutes, max and critical points, plus fan speeds. It
+  appears on machines that expose sensors, Raspberry Pi included.
+
 ### Changed
 
 - New installs give the `hsi` service account its home in `/opt/hsi/home` instead of
