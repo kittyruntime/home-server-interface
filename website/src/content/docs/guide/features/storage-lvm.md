@@ -18,6 +18,13 @@ mount point
 A volume on a single disk (a USB disk, for example) has no array and no volume
 group, and is marked as such.
 
+## Partitions & formatting
+
+This section lists the disks no array, volume group, ZFS pool or the system uses,
+with the tools to create a partition table, add or delete partitions, format,
+mount and unmount. Disks in use are left out, so nothing in use can be erased
+from here.
+
 To learn more about the tools themselves: [LVM2](https://sourceware.org/lvm2/),
 the [lvm(8) manual](https://man7.org/linux/man-pages/man8/lvm.8.html) and the
 [Linux RAID documentation](https://docs.kernel.org/admin-guide/md.html).

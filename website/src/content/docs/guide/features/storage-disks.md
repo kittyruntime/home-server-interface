@@ -18,11 +18,12 @@ Each bay shows the disk's name, size, temperature and a health dot from its
 green when the last check passed, orange when an attribute needs watching, red when
 the disk reports a failure. Select a free disk to create a volume on it.
 
-The list under the bays has every detail:
+The list under the bays shows each disk as hardware: its name and label, model
+and serial number, size, type, SMART health and temperature, and **Used by**:
+the array, volume group or ZFS pool built on it, as a link to its page, or Free,
+System. A filter shows only the disks of one use. Select a disk to open its page:
+identity, SMART details, self-tests and its label.
 
-Each disk shows its stable `/dev/disk/by-id` name next to the kernel name
-(`/dev/sdb`), its S.M.A.R.T. health and temperature, and the volumes it carries.
-A disk can be given a label ("bay 3, top") that follows it by serial number.
-Partitions and formatting are available on free disks; disks used by an array or
-a volume group are read-only in the UI.
-
+Partitioning, formatting and mounting are not in this tab: they are in
+**LVM > Partitions & formatting**, which lists only the disks nothing uses. See
+[LVM volumes](/home-server-interface/guide/features/storage-lvm/).
