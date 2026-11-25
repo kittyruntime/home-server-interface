@@ -15,9 +15,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   compression, and their quota and compression changed later. Deleting a pool
   erases its disks so they are free again; nothing used by a Place, a share or an
   app can be deleted.
-
-### Added
-
 - ZFS in Storage, on a server that has ZFS (HSI never installs it): a ZFS tab
   with the pools (state, capacity, layout drawn as a tree with each disk's errors,
   last scrub or resilver), the datasets, and the pools found on the disks to
@@ -33,7 +30,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   disks (identity, SMART health, temperature, label) and what uses each one, with
   a link to it; partitioning, formatting and mounting move to a new LVM >
   Partitions & formatting section, which lists only the disks nothing uses.
-
 
 ## [1.96.0] - 2026-11-25
 
