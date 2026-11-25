@@ -2,7 +2,7 @@ import { z } from 'zod'
 import { TRPCError } from '@trpc/server'
 import { router, protectedProcedure, adminProcedure } from '../index'
 import { requestSync } from '../../nats'
-import { preparePlaceDir, syncSharesBestEffort } from '../../services/sharing.service'
+import { setUpNewPlace, syncSharesBestEffort } from '../../services/sharing.service'
 import { trashRequest } from '../../services/trash'
 
 async function accessiblePlaceIds(
@@ -69,7 +69,7 @@ export const placeRouter = router({
       }
 
       const place = await ctx.prisma.place.create({ data: { name: input.name, path: input.path } })
-      await preparePlaceDir(place.path)
+      await setUpNewPlace(ctx.prisma, place.path)
       return place
     }),
 
