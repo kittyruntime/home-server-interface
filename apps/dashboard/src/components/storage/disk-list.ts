@@ -3,6 +3,7 @@
 // the list offers. No Vue or tRPC imports, so it can be unit tested with node.
 
 import { deviceRole, isFreeDisk } from './device-state.ts'
+import { bayOwner, type BayOwner } from './disk-bays.ts'
 
 export type DiskRole = 'system' | 'raid' | 'lvm' | 'zfs' | 'mounted' | 'free' | 'unmounted'
 export type DiskHealth = 'passed' | 'warning' | 'failed' | 'unknown'
@@ -219,4 +220,21 @@ export function groupRows<R extends DiskRow>(rows: R[]): DiskGroup<R>[] {
 export function isSelectable(r: DiskRow): boolean {
   // role 'free' also covers older workers without the usage field.
   return r.role === 'free' && isFreeDisk({ ...r.disk, usage: 'free', size: r.disk.size })
+}
+
+// ── Used by (the Disks tab shows hardware; this says what is built on it) ────
+
+export type UsedBy = { owner: BayOwner; text: string; target: { kind: 'array' | 'vg' | 'pool'; name: string } | null }
+
+export function usedBy(r: DiskRow): UsedBy {
+  const owner = bayOwner(r.role)
+  if (r.role === 'raid') return { owner, text: r.raidOwners.length ? `RAID ${r.raidOwners.join(', ')}` : 'RAID (inactive)', target: r.raidOwners[0] ? { kind: 'array', name: r.raidOwners[0] } : null }
+  if (r.role === 'lvm') return { owner, text: r.vgOwners.length ? `VG ${r.vgOwners.join(', ')}` : 'LVM (no VG)', target: r.vgOwners[0] ? { kind: 'vg', name: r.vgOwners[0] } : null }
+  if (r.role === 'zfs') return { owner, text: r.poolOwners.length ? `ZFS ${r.poolOwners.join(', ')}` : 'ZFS', target: r.poolOwners[0] ? { kind: 'pool', name: r.poolOwners[0] } : null }
+  return { owner, text: ROLE_LABELS[r.role], target: null }
+}
+
+/** Disks the partition and format tools may touch: none an engine or the system uses. */
+export function toolable(r: DiskRow): boolean {
+  return r.role === 'free' || r.role === 'unmounted' || r.role === 'mounted'
 }
