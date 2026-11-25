@@ -117,6 +117,12 @@ export default {
     removeVolume: 'Remove volume…',
     theDevicesOfThisVolume: 'The devices of this volume are not connected.',
   },
+  DiskBays: {
+    owner: { lvm: 'LVM', zfs: 'ZFS', free: 'Free', system: 'System', other: 'Not managed' },
+    health: { passed: 'healthy', warning: 'to watch', failed: 'failing', unknown: 'health unknown' },
+    free: 'free',
+    pickAFreeDisk: 'Select a free disk to create a volume on it.',
+  },
   IntroCard: {
     dismiss: 'Dismiss',
     dismissThisExplanation: 'Dismiss this explanation',

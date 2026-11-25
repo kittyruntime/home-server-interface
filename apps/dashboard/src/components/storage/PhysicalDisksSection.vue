@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import DiskBays from './DiskBays.vue'
 import StorageIntro from './StorageIntro.vue'
 import { useI18n } from 'vue-i18n'
 import { Alert, AlertDescription } from '@/components/ui/alert'
@@ -326,6 +327,8 @@ function openUmount(dev: BlockDev) { umountDlg.value?.open(dev) }
     </div>
 
     <StorageIntro tab="disks" />
+
+    <DiskBays v-if="rows.length" :rows="rows" @create="disks => emit('create', 'volume', disks)" @open="n => emit('open', n)" />
 
     <LoadingState v-if="loading && !devices.length" variant="block" />
     <Alert variant="destructive" v-else-if="error" class="mt-4"><AlertDescription>{{ error }}</AlertDescription></Alert>

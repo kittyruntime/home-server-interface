@@ -116,6 +116,12 @@ export default {
     removeVolume: 'Supprimer le volume…',
     theDevicesOfThisVolume: 'Les périphériques de ce volume ne sont pas connectés.',
   },
+  DiskBays: {
+    owner: { lvm: 'LVM', zfs: 'ZFS', free: 'Libre', system: 'Système', other: 'Non géré' },
+    health: { passed: 'sain', warning: 'à surveiller', failed: 'défaillant', unknown: 'santé inconnue' },
+    free: 'libre',
+    pickAFreeDisk: 'Sélectionnez un disque libre pour y créer un volume.',
+  },
   IntroCard: {
     dismiss: 'Masquer',
     dismissThisExplanation: 'Masquer cette explication',
