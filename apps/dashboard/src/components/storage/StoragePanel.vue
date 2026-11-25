@@ -1,4 +1,9 @@
 <script setup lang="ts">
+import { loadZfs, zfs } from './zfs-data'
+import ZfsImportSection from './ZfsImportSection.vue'
+import DatasetsSection from './DatasetsSection.vue'
+import PoolsSection from './PoolsSection.vue'
+import PoolPage from './PoolPage.vue'
 import { useI18n } from 'vue-i18n'
 import { Alert } from '@/components/ui/alert'
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from '@/components/ui/breadcrumb'
@@ -21,7 +26,7 @@ import MountsSection from './MountsSection.vue'
 import MaintenanceSection from './MaintenanceSection.vue'
 import { useHostTools } from './tools'
 import { trpc } from '../../lib/trpc'
-import { navCrumbs, navTo, sectionOf, leavesWizard, SECTION_LABELS, TAB_LABELS, TAB_SECTIONS, createTabbedNav, currentNav, defaultTab, switchTab, tabbedOpen, withNav, type StorageLocation, type StorageSection, type StorageTab, type TabbedNav } from '../../lib/storage-nav'
+import { navCrumbs, navTo, sectionOf, leavesWizard, SECTION_LABELS, TAB_LABELS, TAB_SECTIONS, createTabbedNav, currentNav, defaultTab, switchTab, tabbedOpen, visibleTabs, withNav, type StorageLocation, type StorageSection, type StorageTab, type TabbedNav } from '../../lib/storage-nav'
 
 const { t } = useI18n()
 
@@ -36,9 +41,8 @@ const active = computed<SectionId>({
   set: section => open({ kind: 'section', section }),
 })
 // The tabs shown: one without sections (ZFS until it is detected) is hidden.
-const TABS: StorageTab[] = ['disks', 'lvm', 'zfs', 'maintenance']
 const TAB_ICONS: Record<StorageTab, Component> = { disks: HardDriveIcon, lvm: Rows3Icon, zfs: DatabaseIcon, maintenance: CalendarIcon }
-const tabs = computed(() => TABS.filter(id => TAB_SECTIONS[id].length).map(id => ({ id, label: TAB_LABELS[id], icon: TAB_ICONS[id] })))
+const tabs = computed(() => visibleTabs({ zfs: !!zfs.value?.available }).map(id => ({ id, label: TAB_LABELS[id], icon: TAB_ICONS[id] })))
 const tab = computed<StorageTab>({
   get: () => tabbed.value.tab,
   set: next => { void go(switchTab(tabbed.value, next)) },
@@ -68,8 +72,9 @@ function open(loc: StorageLocation) {
 let moved = false
 onMounted(async () => {
   try {
-    const overview = await trpc.storage.volumes.overview.query()
-    if (!moved) tabbed.value = createTabbedNav(defaultTab({ volumes: overview.volumes.length }))
+    const [overview] = await Promise.all([trpc.storage.volumes.overview.query(), loadZfs()])
+    const zfsCount = overview.volumes.filter(v => v.engine === 'zfs').length
+    if (!moved) tabbed.value = createTabbedNav(defaultTab({ volumes: overview.volumes.length - zfsCount, zfsVolumes: zfsCount }))
   } catch { /* stays on Disks */ }
 })
 function focusOn(target: SectionId | StorageLocation) {
@@ -140,6 +145,7 @@ const navItems = computed(() => TAB_SECTIONS[tab.value].map(id => ({ id, label: 
             @navigate="focusOn" @dirty="d => wizardDirty = d" />
           <ArrayPage v-else-if="location.current.kind === 'array'" :name="location.current.name" @navigate="focusOn" />
           <VgPage v-else-if="location.current.kind === 'vg'" :name="location.current.name" @navigate="focusOn" />
+          <PoolPage v-else-if="location.current.kind === 'pool'" :name="location.current.name" @navigate="focusOn" />
           <DiskPage v-else-if="location.current.kind === 'disk'" :name="location.current.name" @navigate="focusOn"
             @named="n => { if (location.current.kind === 'disk') names = { ...names, [`disk:${location.current.name}`]: n } }" />
           <VolumesSection v-else-if="active === 'volumes'" @navigate="focusOn" />
@@ -150,6 +156,9 @@ const navItems = computed(() => TAB_SECTIONS[tab.value].map(id => ({ id, label: 
             :preselect="preselect?.kind === 'lvm' ? preselect.devices : undefined" @preselected="preselect = null" />
           <MountsSection v-else-if="active === 'mounts'" @navigate="focusOn" />
           <MaintenanceSection v-else-if="active === 'maintenance'" />
+          <PoolsSection v-else-if="active === 'pools'" @navigate="focusOn" />
+          <DatasetsSection v-else-if="active === 'datasets'" @navigate="focusOn" />
+          <ZfsImportSection v-else-if="active === 'zfs-import'" @navigate="focusOn" />
         </div>
       </div>
 

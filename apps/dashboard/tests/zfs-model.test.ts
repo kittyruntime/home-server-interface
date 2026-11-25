@@ -36,3 +36,14 @@ test('the topology of a pool, row by row', () => {
   assert.equal(rows[3]!.errors, 12)
   assert.equal(rows[0]!.state, 'DEGRADED')
 })
+
+test('a pool layout in one line', async () => {
+  const { layoutOf, scanLine } = await import('../src/components/storage/pool-summary.ts')
+  const d = { type: 'disk', children: [] }
+  assert.deepEqual(layoutOf([{ type: 'mirror', children: [d, d] }]), { kind: 'mirror', groups: 1, disks: 2 })
+  assert.deepEqual(layoutOf([{ type: 'raidz2', children: [d, d, d, d] }, { type: 'raidz2', children: [d, d, d, d] }, { type: 'log', children: [d] }]), { kind: 'raidz2', groups: 2, disks: 8 })
+  assert.deepEqual(layoutOf([d, d, d]), { kind: 'stripe', groups: 0, disks: 3 })
+  assert.deepEqual(scanLine({ kind: 'none', state: 'none', errors: 0 }), { kind: 'never' })
+  assert.deepEqual(scanLine({ kind: 'resilver', state: 'running', errors: 0, percent: 42.5 }), { kind: 'running', what: 'resilver', percent: 42.5 })
+  assert.deepEqual(scanLine({ kind: 'scrub', state: 'finished', end: 'Sun Nov 22', errors: 3 }), { kind: 'done', what: 'scrub', end: 'Sun Nov 22', errors: 3 })
+})

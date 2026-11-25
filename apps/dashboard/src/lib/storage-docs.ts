@@ -5,12 +5,13 @@
 
 const GUIDE_BASE = 'https://kittyruntime.github.io/home-server-interface/'
 
-export type DocPage = 'storage' | 'disks' | 'lvm' | 'maintenance' | 'glossary'
+export type DocPage = 'storage' | 'disks' | 'lvm' | 'zfs' | 'maintenance' | 'glossary'
 
 export const GUIDE_PAGES: Record<DocPage, string> = {
   storage:     'guide/features/storage/',
   disks:       'guide/features/storage-disks/',
   lvm:         'guide/features/storage-lvm/',
+  zfs:         'guide/features/storage-zfs/',
   maintenance: 'guide/features/maintenance/',
   glossary:    'guide/features/storage-glossary/',
 }

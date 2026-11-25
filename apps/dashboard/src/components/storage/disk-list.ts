@@ -116,7 +116,7 @@ export type DiskSummary = {
 }
 
 export function summarize(rows: DiskRow[]): DiskSummary {
-  const roles  = { system: 0, raid: 0, lvm: 0, mounted: 0, free: 0, unmounted: 0 } as Record<DiskRole, number>
+  const roles  = { system: 0, raid: 0, lvm: 0, zfs: 0, mounted: 0, free: 0, unmounted: 0 } as Record<DiskRole, number>
   const health = { passed: 0, warning: 0, failed: 0, unknown: 0 } as Record<DiskHealth, number>
   let totalBytes = 0, freeBytes = 0
   for (const r of rows) {

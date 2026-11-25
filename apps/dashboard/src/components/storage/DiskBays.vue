@@ -18,14 +18,14 @@ const present = computed(() => OWNERS.filter(o => bays.value.some(b => b.owner =
 
 // Engine colors come from theme tokens, so every theme keeps them readable.
 const BORDER: Record<BayOwner, string> = {
-  lvm: 'border-secondary', zfs: 'border-accent', free: 'border-base-content/40 border-dashed',
+  lvm: 'border-secondary', zfs: 'border-engine-zfs', free: 'border-base-content/40 border-dashed',
   system: 'border-base-content/25', other: 'border-base-300',
 }
 const ICON: Record<BayOwner, string> = {
-  lvm: 'text-secondary', zfs: 'text-accent', free: 'text-base-content/50', system: 'text-base-content/60', other: 'text-base-content/50',
+  lvm: 'text-secondary', zfs: 'text-engine-zfs', free: 'text-base-content/50', system: 'text-base-content/60', other: 'text-base-content/50',
 }
 const SWATCH: Record<BayOwner, string> = {
-  lvm: 'bg-secondary', zfs: 'bg-accent', free: 'border border-dashed border-base-content/50', system: 'bg-base-content/25', other: 'bg-base-300',
+  lvm: 'bg-secondary', zfs: 'bg-engine-zfs', free: 'border border-dashed border-base-content/50', system: 'bg-base-content/25', other: 'bg-base-300',
 }
 const DOT: Record<DiskHealth, string> = { passed: 'bg-success', warning: 'bg-warning', failed: 'bg-error', unknown: 'bg-base-content/25' }
 

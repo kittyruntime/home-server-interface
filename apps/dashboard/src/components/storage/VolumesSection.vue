@@ -105,6 +105,7 @@ const HEALTH_TEXT: Record<Health, string> = { ok: 'text-base-content/80', idle: 
 const REDUNDANCY: Record<string, string> = {
   none: t('ui.storage.VolumesSection.redundancyNone'), raid0: t('ui.storage.VolumesSection.redundancyStriped'), raid1: t('ui.storage.VolumesSection.redundancyMirror'),
   raid4: 'RAID 4', raid5: 'RAID 5', raid6: 'RAID 6', raid10: 'RAID 10',
+  raidz1: 'RAID-Z1', raidz2: 'RAID-Z2', raidz3: 'RAID-Z3',
 }
 
 function usedByText(v: Volume): string {
@@ -122,8 +123,11 @@ const sortKey = ref<SortKey>('health')
 const HEALTH_RANK: Record<Health, number> = { danger: 0, warning: 1, idle: 2, ok: 3 }
 const unlisted = computed(() => unlistedDrift(descriptions.value, (overview.value?.volumes ?? []).map(v => v.mountPoint ?? '')))
 
+// The LVM tab: ZFS datasets are in the ZFS tab.
+const lvmVolumes = computed(() => (overview.value?.volumes ?? []).filter(v => v.engine !== 'zfs'))
+
 const volumes = computed(() => {
-  const vs = [...(overview.value?.volumes ?? [])]
+  const vs = [...lvmVolumes.value]
   if (sortKey.value === 'name')   vs.sort((a, b) => a.name.localeCompare(b.name))
   if (sortKey.value === 'space')  vs.sort((a, b) => usedPct(b) - usedPct(a))
   if (sortKey.value === 'health') vs.sort((a, b) => HEALTH_RANK[health(a).level] - HEALTH_RANK[health(b).level] || a.name.localeCompare(b.name))
@@ -131,10 +135,10 @@ const volumes = computed(() => {
 })
 
 const diskCount = computed(() => new Set([
-  ...(overview.value?.volumes ?? []).flatMap(v => v.disks.map(d => d.name)),
+  ...lvmVolumes.value.flatMap(v => v.disks.map(d => d.name)),
   ...(overview.value?.freeDisks ?? []).map(d => d.name),
 ]).size)
-const warnings = computed(() => (overview.value?.volumes ?? []).filter(v => health(v).level === 'warning' || health(v).level === 'danger').length)
+const warnings = computed(() => lvmVolumes.value.filter(v => health(v).level === 'warning' || health(v).level === 'danger').length)
 
 function openVolume(v: Volume) {
   emit('navigate', { kind: 'volume', id: v.id })
@@ -167,7 +171,7 @@ async function mount(v: Volume) {
       <div class="min-w-0 flex-1 basis-56">
         <h2 class="text-lg font-semibold text-base-content">{{ t('ui.storage.VolumesSection.volumes') }}</h2>
         <p v-if="overview" class="text-sm text-base-content/70 mt-0.5">
-          {{ t('ui.storage.VolumesSection.volumesCount', overview.volumes.length) }}
+          {{ t('ui.storage.VolumesSection.volumesCount', lvmVolumes.length) }}
           · {{ t('ui.storage.VolumesSection.disksCount', diskCount) }}
           <span v-if="warnings" class="text-warning"> · {{ t('ui.storage.VolumesSection.needAttention', warnings) }}</span>
         </p>
