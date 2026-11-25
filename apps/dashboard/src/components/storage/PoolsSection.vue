@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { trpc } from '../../lib/trpc'
+import CreatePoolDialog from './CreatePoolDialog.vue'
 import { useI18n } from 'vue-i18n'
 import { computed, onMounted, ref } from 'vue'
 import { Card } from '@/components/ui/card'
@@ -20,6 +22,13 @@ const { t } = useI18n()
 const toast = useToast()
 const loading = ref(!zfs.value)
 onMounted(async () => { await loadZfs(); loading.value = false })
+
+const createOpen = ref(false)
+const freeDisks = ref<Array<{ name: string; size: number; model: string; serial?: string }>>([])
+async function openCreate() {
+  try { freeDisks.value = (await trpc.storage.volumes.overview.query()).freeDisks } catch { freeDisks.value = [] }
+  createOpen.value = true
+}
 
 const missing = computed(() => (zfs.value ? missingWatched(zfs.value.watched, zfs.value.pools) : []))
 const bootOff = computed(() => !!zfs.value?.available && !!zfs.value.bootUnits && (!zfs.value.bootUnits.importCache || !zfs.value.bootUnits.mount))
@@ -47,10 +56,15 @@ async function watch(p: ZfsPool) {
 
 <template>
   <div>
-    <div class="mb-4">
-      <h2 class="flex items-center gap-1.5 text-lg font-semibold text-base-content">{{ t('ui.storage.Zfs.pools') }}<TermHelp term="vdev" /></h2>
-      <p class="mt-0.5 text-sm text-base-content/70">{{ t('ui.storage.Zfs.poolsSubtitle') }}</p>
+    <div class="mb-4 flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
+      <div class="min-w-0 flex-1 basis-56">
+        <h2 class="flex items-center gap-1.5 text-lg font-semibold text-base-content">{{ t('ui.storage.Zfs.pools') }}<TermHelp term="vdev" /></h2>
+        <p class="mt-0.5 text-sm text-base-content/70">{{ t('ui.storage.Zfs.poolsSubtitle') }}</p>
+      </div>
+      <Button v-if="zfs?.available" size="sm" class="shrink-0" @click="openCreate">{{ t('ui.storage.ZfsCreate.heading') }}</Button>
     </div>
+    <CreatePoolDialog v-if="createOpen" :free-disks="freeDisks" :taken="zfs?.pools.map(p => p.name) ?? []"
+      @close="createOpen = false" @created="name => { createOpen = false; void loadZfs(); emit('navigate', { kind: 'pool', name }) }" />
     <StorageIntro tab="zfs" />
     <LoadingState v-if="loading" variant="block" />
     <p v-else-if="zfsError && !zfs" role="alert" class="status-text text-error"><span class="status-tag">[ERR]</span> {{ zfsError }}</p>

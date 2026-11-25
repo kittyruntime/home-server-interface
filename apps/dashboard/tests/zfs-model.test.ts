@@ -54,3 +54,15 @@ test('watched pools that are not imported', async () => {
   assert.deepEqual(missingWatched(watched, [{ guid: '1' }]).map(w => w.name), ['old'])
   assert.deepEqual(missingWatched([], []), [])
 })
+
+test('usable capacity and failures tolerated of a new pool', async () => {
+  const { poolCapacity } = await import('../src/components/storage/pool-summary.ts')
+  const T = 1e12
+  assert.deepEqual(poolCapacity('stripe', [4 * T, 2 * T]), { usable: 6 * T, tolerates: 0, enough: true })
+  assert.deepEqual(poolCapacity('mirror', [4 * T, 2 * T]), { usable: 2 * T, tolerates: 1, enough: true })
+  assert.deepEqual(poolCapacity('mirror', [4 * T, 4 * T, 4 * T]), { usable: 4 * T, tolerates: 2, enough: true })
+  assert.deepEqual(poolCapacity('raidz1', [4 * T, 4 * T, 4 * T]), { usable: 8 * T, tolerates: 1, enough: true })
+  assert.deepEqual(poolCapacity('raidz2', [4 * T, 4 * T, 4 * T, 3 * T]), { usable: 6 * T, tolerates: 2, enough: true })
+  assert.deepEqual(poolCapacity('raidz3', [4 * T, 4 * T]), { usable: 0, tolerates: 3, enough: false })
+  assert.equal(poolCapacity('mirror', [4 * T]).enough, false)
+})
