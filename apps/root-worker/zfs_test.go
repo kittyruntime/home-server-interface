@@ -218,3 +218,118 @@ func TestZfsSnapshotFillsDisks(t *testing.T) {
 		t.Errorf("status not attached: %+v", info.Pools[0].Scan)
 	}
 }
+
+func mountsOf(m map[string][2]string) func(string) (string, bool, bool) {
+	return func(mp string) (string, bool, bool) {
+		e, ok := m[mp]
+		return e[0], e[1] == "ro", ok
+	}
+}
+
+var tankWatched = []watchedPool{{Name: "tank", GUID: "123", Datasets: []watchedDataset{{Name: "tank/media", MountPoint: "/tank/media"}, {Name: "tank/docs", MountPoint: "/tank/docs"}}}}
+
+func TestZfsGuardIgnoresUnwatched(t *testing.T) {
+	pools := []zfsPool{{Name: "other", GUID: "9"}}
+	if got := zfsGuardStates(nil, pools, nil, mountsOf(nil)); len(got) != 0 {
+		t.Errorf("an unwatched pool is not guarded: %+v", got)
+	}
+}
+
+func TestZfsGuardMissingPool(t *testing.T) {
+	got := zfsGuardStates(tankWatched, nil, nil, mountsOf(nil))
+	if len(got) != 2 || got[0].State != "missing" || got[1].State != "missing" || got[0].UUID != "zfs:123:tank/media" || got[0].MountPoint != "/tank/media" {
+		t.Errorf("states = %+v", got)
+	}
+}
+
+func TestZfsGuardWrongAndReadonly(t *testing.T) {
+	pools := []zfsPool{{Name: "tank", GUID: "123"}}
+	got := zfsGuardStates(tankWatched, pools, nil, mountsOf(map[string][2]string{
+		"/tank/media": {"/dev/sdz1", "rw"},
+		"/tank/docs":  {"tank/docs", "ro"},
+	}))
+	if got[0].State != "wrong" || got[1].State != "readonly" {
+		t.Errorf("states = %+v", got)
+	}
+	got = zfsGuardStates(tankWatched, pools, nil, mountsOf(map[string][2]string{"/tank/media": {"tank/media", "rw"}}))
+	if got[0].State != "ok" || got[1].State != "missing" {
+		t.Errorf("states = %+v", got)
+	}
+}
+
+func withPoolsFile(t *testing.T, content string) {
+	t.Helper()
+	prev := zfsPoolsPath
+	zfsPoolsPath = filepath.Join(t.TempDir(), "zfs-pools.json")
+	t.Cleanup(func() { zfsPoolsPath = prev })
+	if content != "" {
+		if err := os.WriteFile(zfsPoolsPath, []byte(content), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
+func TestPlanZfsImportSteps(t *testing.T) {
+	withPoolsFile(t, "")
+	p, fe := planZfsImport([]byte(`{"guid":"987654321","name":"backup"}`))
+	if fe != nil {
+		t.Fatal(fe.Message)
+	}
+	if len(p.Steps) != 2 || strings.Join(p.Steps[0].Command, " ") != "zpool import -d /dev/disk/by-id 987654321 backup" {
+		t.Fatalf("steps = %+v", p.Steps)
+	}
+	if !p.Steps[1].Deferred || p.Steps[1].Target != zfsPoolsPath {
+		t.Errorf("second step = %+v", p.Steps[1])
+	}
+}
+
+func TestPlanZfsWatchDiff(t *testing.T) {
+	withPoolsFile(t, "")
+	prevO, prevA := hostOutput, zfsAvailable
+	t.Cleanup(func() { hostOutput, zfsAvailable = prevO, prevA })
+	zfsAvailable = func() bool { return true }
+	hostOutput = func(name string, args ...string) ([]byte, error) {
+		switch name + " " + args[0] {
+		case "zpool list":
+			return []byte(zfsFixture(t, "list-2.2.txt")), nil
+		case "zfs list":
+			return []byte(zfsFixture(t, "zfs-list.txt")), nil
+		}
+		return nil, nil
+	}
+	p, fe := planZfsWatch([]byte(`{"name":"tank"}`))
+	if fe != nil {
+		t.Fatal(fe.Message)
+	}
+	d := p.Steps[0].Diff
+	if !strings.Contains(d, `"name": "tank"`) || !strings.Contains(d, `"guid": "1234567890"`) || !strings.Contains(d, `"mountPoint": "/tank/media"`) || strings.Contains(d, "tank/vm") {
+		t.Errorf("diff = %s", d)
+	}
+	if _, err := p.Steps[0].run(); err != nil {
+		t.Fatal(err)
+	}
+	if w := loadWatchedPools(); len(w) != 1 || w[0].GUID != "1234567890" || len(w[0].Datasets) != 2 {
+		t.Errorf("watched = %+v", w)
+	}
+	u, fe := planZfsUnwatch([]byte(`{"name":"tank"}`))
+	if fe != nil {
+		t.Fatal(fe.Message)
+	}
+	if _, err := u.Steps[0].run(); err != nil {
+		t.Fatal(err)
+	}
+	if w := loadWatchedPools(); len(w) != 0 {
+		t.Errorf("after unwatch: %+v", w)
+	}
+}
+
+func TestPlanZfsImportRejectsBadInput(t *testing.T) {
+	for _, in := range []string{`{"guid":"12a","name":"x"}`, `{"guid":"1","name":"../x"}`, `{"guid":"1","name":""}`} {
+		if _, fe := planZfsImport([]byte(in)); fe == nil {
+			t.Errorf("%s accepted", in)
+		}
+	}
+	if _, fe := planZfsWatch([]byte(`{"name":"nope"}`)); fe == nil {
+		t.Errorf("watching a pool that is not imported is refused")
+	}
+}
