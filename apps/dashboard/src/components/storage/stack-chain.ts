@@ -3,8 +3,8 @@
 // disks: services/volumes.ts); this turns them into the steps the LVM tab
 // draws. Pure, tested with node (tests/stack-chain.test.ts).
 
-export type StackLayer = { kind: 'filesystem' | 'partition' | 'lv' | 'vg' | 'array' | 'disk'; name: string }
-export type ChainStep = { kind: 'disks' | 'array' | 'vg' | 'filesystem' | 'mount'; names: string[] }
+export type StackLayer = { kind: 'filesystem' | 'partition' | 'lv' | 'vg' | 'array' | 'disk' | 'dataset' | 'pool' | 'vdev'; name: string }
+export type ChainStep = { kind: 'disks' | 'array' | 'vdev' | 'vg' | 'pool' | 'dataset' | 'filesystem' | 'mount'; names: string[] }
 
 const byName = (a: string, b: string) => a.localeCompare(b, undefined, { numeric: true })
 
@@ -15,8 +15,12 @@ export function chainOf(v: { stack: StackLayer[]; mountPoint?: string; fstype?: 
   const push = (kind: ChainStep['kind'], list: string[]) => { if (list.length) steps.push({ kind, names: list }) }
   push('disks', names('disk'))
   push('array', names('array'))
+  push('vdev', names('vdev'))
   push('vg', names('vg'))
-  push('filesystem', v.fstype ? [v.fstype] : [])
+  push('pool', names('pool'))
+  push('dataset', names('dataset'))
+  // A dataset is its own filesystem: no separate step for it.
+  if (!steps.some(s => s.kind === 'dataset')) push('filesystem', v.fstype ? [v.fstype] : [])
   push('mount', v.mountPoint ? [v.mountPoint] : [])
   return steps
 }

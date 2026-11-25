@@ -13,6 +13,8 @@ LVM and mounts. It is organized in tabs:
   by what uses it. See [Disks](/home-server-interface/guide/features/storage-disks/).
 - **LVM**: the volumes, RAID arrays, volume groups and mounts. See
   [LVM volumes](/home-server-interface/guide/features/storage-lvm/).
+- **ZFS**, on a server that has ZFS: pools, datasets and import. See
+  [ZFS](/home-server-interface/guide/features/storage-zfs/).
 - **Maintenance**: scheduled SMART self-tests and RAID checks, with a calendar of
   the next two weeks. See [Maintenance](/home-server-interface/guide/features/maintenance/).
 

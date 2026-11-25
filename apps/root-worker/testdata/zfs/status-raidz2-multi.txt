@@ -1,0 +1,36 @@
+  pool: big
+ state: ONLINE
+  scan: scrub repaired 1.50M in 05:00:00 with 3 errors on Mon Nov 23 05:00:00 2026
+config:
+
+	NAME                STATE     READ WRITE CKSUM
+	big                 ONLINE       0     0     0
+	  raidz2-0          ONLINE       0     0     0
+	    /dev/sda1       ONLINE       0     0     0
+	    /dev/sdb1       ONLINE       0     0     0
+	    /dev/sdc1       ONLINE       0     0     0
+	    /dev/sdd1       ONLINE       0     0     0
+	  raidz2-1          ONLINE       0     0     0
+	    /dev/sde1       ONLINE       0     0     0
+	    /dev/sdf1       ONLINE       0     0     0
+	    /dev/sdg1       ONLINE       0     0     0
+	    /dev/sdh1       ONLINE    1.2K     0     0
+	logs
+	  mirror-2          ONLINE       0     0     0
+	    /dev/nvme0n1p1  ONLINE       0     0     0
+	    /dev/nvme1n1p1  ONLINE       0     0     0
+	cache
+	  /dev/nvme2n1p1    ONLINE       0     0     0
+
+errors: No known data errors
+
+  pool: solo
+ state: ONLINE
+  scan: none requested
+config:
+
+	NAME         STATE     READ WRITE CKSUM
+	solo         ONLINE       0     0     0
+	  /dev/sdi   ONLINE       0     0     0
+
+errors: No known data errors

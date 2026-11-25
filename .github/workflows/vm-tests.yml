@@ -95,7 +95,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        scenario: [fresh, update, storage, network, recovery, features, restore, faults, interrupted]
+        scenario: [fresh, update, storage, network, recovery, features, restore, faults, interrupted, zfs]
     steps:
       - uses: actions/checkout@v7
 

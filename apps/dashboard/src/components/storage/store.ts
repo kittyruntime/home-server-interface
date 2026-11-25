@@ -76,7 +76,7 @@ export function claimableDevices(devices: BlockDev[], includeArrays = false): Bl
 }
 
 export function roleLabel(role: DeviceRole): string {
-  const what = role.kind === 'raid' ? 'RAID' : 'LVM'
+  const what = role.kind === 'raid' ? 'RAID' : role.kind === 'zfs' ? 'ZFS' : 'LVM'
   return role.owner ? `${what} ${role.owner}` : `${what} member (inactive)`
 }
 

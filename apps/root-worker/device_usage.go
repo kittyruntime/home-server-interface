@@ -11,6 +11,7 @@ const (
 	usageMounted     = "mounted"     // filesystem mounted somewhere
 	usageFilesystem  = "filesystem"  // holds a filesystem that is not mounted
 	usagePartitioned = "partitioned" // disk whose space is split into partitions
+	usageZfsMember   = "zfs-member"  // a ZFS pool member (Owner: the pool name blkid records)
 	usageFree        = "free"        // nothing on it: can be partitioned, formatted, or joined to an array/VG
 )
 
@@ -39,6 +40,9 @@ func assignUsage(dev *BlockDev, pvVG map[string]string) {
 				break
 			}
 		}
+	case dev.FsType == "zfs_member":
+		dev.Usage = usageZfsMember
+		dev.Owner = dev.Label
 	case dev.FsType == "LVM2_member":
 		dev.Usage = usageLvmPV
 		dev.Owner = pvVG[dev.Path]

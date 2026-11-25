@@ -1241,6 +1241,8 @@ func main() {
 		"root.sys.expansions.retry":      handleExpansionRetry,
 		"root.sys.expansions.ack":        handleExpansionAck,
 		"root.sys.import.scan":           handleImportScan,
+		"root.zfs.list":                  handleZfsList,
+		"root.zfs.import.scan":           handleZfsImportScan,
 		"root.docker.status":             handleDockerStatus,
 		"root.sys.port.check":            handleCheckPort,
 		"root.sys.reboot":                handleHostReboot,

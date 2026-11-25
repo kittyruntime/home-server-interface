@@ -2,7 +2,7 @@ import { reactive } from 'vue'
 // Where the Storage app is (#40): a section, or an object shown in its
 // section. Each Storage panel keeps its own stack of locations.
 
-export type StorageSection = 'volumes' | 'disks' | 'raid' | 'lvm' | 'mounts' | 'maintenance'
+export type StorageSection = 'volumes' | 'disks' | 'raid' | 'lvm' | 'mounts' | 'maintenance' | 'pools' | 'datasets' | 'zfs-import'
 export type StorageLocation =
   | { kind: 'section'; section: StorageSection }
   | { kind: 'volume'; id: string }
@@ -10,10 +10,12 @@ export type StorageLocation =
   | { kind: 'disk'; name: string }
   | { kind: 'array'; name: string }
   | { kind: 'vg'; name: string }
+  | { kind: 'pool'; name: string }
 
 // English names; i18n/labels.ts puts them in the interface language.
 export const SECTION_LABELS = reactive<Record<StorageSection, string>>({
-  volumes: 'Volumes', disks: 'Disks', raid: 'Arrays', lvm: 'Volume groups', mounts: 'Mounts', maintenance: 'Maintenance',
+  'volumes': 'Volumes', 'disks': 'Disks', 'raid': 'Arrays', 'lvm': 'Volume groups', 'mounts': 'Mounts', 'maintenance': 'Maintenance',
+  'pools': 'Pools', 'datasets': 'Datasets', 'zfs-import': 'Import',
 })
 export const NAV_TEXT = reactive({ createVolume: 'Create volume' })
 
@@ -25,6 +27,7 @@ export function sectionOf(loc: StorageLocation): StorageSection {
     case 'disk':    return 'disks'
     case 'array':   return 'raid'
     case 'vg':      return 'lvm'
+    case 'pool':    return 'pools'
   }
 }
 
@@ -81,7 +84,7 @@ export type StorageTab = 'disks' | 'lvm' | 'zfs' | 'maintenance'
 export const TAB_SECTIONS: Record<StorageTab, StorageSection[]> = {
   disks: ['disks'],
   lvm: ['volumes', 'raid', 'lvm', 'mounts'],
-  zfs: [],
+  zfs: ['pools', 'datasets', 'zfs-import'],
   maintenance: ['maintenance'],
 }
 
@@ -95,9 +98,17 @@ export function tabOf(loc: StorageLocation): StorageTab {
   return (Object.keys(TAB_SECTIONS) as StorageTab[]).find(t => TAB_SECTIONS[t].includes(section))!
 }
 
-/** The tab Storage opens on: Disks until a volume exists. */
-export function defaultTab(o: { volumes: number }): StorageTab {
-  return o.volumes > 0 ? 'lvm' : 'disks'
+/** The tabs shown: ZFS only on a host that has it. */
+export function visibleTabs(o: { zfs: boolean }): StorageTab[] {
+  return o.zfs ? ['disks', 'lvm', 'zfs', 'maintenance'] : ['disks', 'lvm', 'maintenance']
+}
+
+/** The tab Storage opens on: Disks until a volume exists, then the engine
+ *  holding most of them (`volumes` counts the LVM ones). */
+export function defaultTab(o: { volumes: number; zfsVolumes?: number }): StorageTab {
+  const zfs = o.zfsVolumes ?? 0
+  if (o.volumes === 0 && zfs === 0) return 'disks'
+  return zfs > o.volumes ? 'zfs' : 'lvm'
 }
 
 export interface TabbedNav { tab: StorageTab; navs: Partial<Record<StorageTab, StorageNav>> }

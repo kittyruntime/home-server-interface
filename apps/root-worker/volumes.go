@@ -407,6 +407,7 @@ func volumeStatuses() ([]volumeStatus, error) {
 		out = append(out, volumeStatus{MountPoint: v.MountPoint, UUID: v.UUID, State: state, StrayFiles: volumeStray[v.MountPoint], GuardError: volumeGuardEr[v.MountPoint]})
 		volumeGuardMu.Unlock()
 	}
+	out = append(out, zfsVolumeStatuses()...)
 	return out, nil
 }
 

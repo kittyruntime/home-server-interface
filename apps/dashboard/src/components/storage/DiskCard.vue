@@ -37,7 +37,7 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  navigate:    [target: 'raid' | 'lvm' | StorageLocation]
+  navigate:    [target: 'raid' | 'lvm' | 'pools' | StorageLocation]
   toggleSmart: []
   format:      [dev: BlockDev]
   mount:       [dev: BlockDev]
@@ -64,7 +64,8 @@ function roleOf(dev: BlockDev): DeviceRole | null {
 }
 
 // A member opens the page of its array or volume group when it is known.
-function openRole(role: { kind: 'raid' | 'lvm'; owner: string | null }) {
+function openRole(role: DeviceRole) {
+  if (role.kind === 'zfs') { emit('navigate', role.owner ? { kind: 'pool', name: role.owner } : 'pools'); return }
   if (role.owner) emit('navigate', role.kind === 'raid' ? { kind: 'array', name: role.owner } : { kind: 'vg', name: role.owner })
   else emit('navigate', role.kind)
 }

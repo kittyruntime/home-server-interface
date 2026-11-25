@@ -102,6 +102,7 @@ watch(() => props.id, () => { loading.value = true; tab.value = 'overview'; void
 const REDUNDANCY: Record<string, string> = {
   none: 'No redundancy', raid0: 'Striped, no redundancy', raid1: 'Mirror',
   raid4: 'RAID 4', raid5: 'RAID 5', raid6: 'RAID 6', raid10: 'RAID 10',
+  raidz1: 'RAID-Z1', raidz2: 'RAID-Z2', raidz3: 'RAID-Z3',
 }
 const LAYER: Record<string, string> = {
   filesystem: 'Folder', lv: 'Logical volume', vg: 'Volume group', array: 'RAID array', partition: 'Partition', disk: 'Disk',

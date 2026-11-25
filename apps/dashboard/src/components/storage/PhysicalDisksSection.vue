@@ -38,7 +38,7 @@ const { t } = useI18n()
 
 const emit = defineEmits<{
   open:     [disk: string]
-  navigate: [target: 'raid' | 'lvm' | StorageLocation]
+  navigate: [target: 'raid' | 'lvm' | 'pools' | StorageLocation]
   // Start creating an array or a volume group with these whole disks.
   create:   [kind: 'raid' | 'lvm' | 'volume', devices: string[]]
 }>()
@@ -174,6 +174,7 @@ const ROLE_CLASS: Record<DiskRole, string> = {
   system:    'bg-warning/10 text-warning border-warning/20',
   raid:      'bg-info/10 text-info border-info/20',
   lvm:       'bg-secondary/10 text-secondary border-secondary/20',
+  zfs:       'bg-engine-zfs/10 text-engine-zfs border-engine-zfs/30',
   mounted:   'bg-accent/10 text-accent border-accent/20',
   free:      'bg-success/10 text-success border-success/20',
   unmounted: 'bg-base-200 text-base-content/70 border-base-300',
@@ -345,7 +346,7 @@ function openUmount(dev: BlockDev) { umountDlg.value?.open(dev) }
             <span v-if="summary.roles.free" class="text-base-content/70 tabular-nums">{{ t('uip.storage.PhysicalDisksSection.onFreeDisks', { p0: fmtBytes(summary.freeBytes) }) }}</span>
           </div>
           <div class="flex flex-wrap gap-1.5 mt-2.5">
-            <template v-for="role in (['free', 'raid', 'lvm', 'mounted', 'unmounted', 'system'] as DiskRole[])" :key="role">
+            <template v-for="role in (['free', 'raid', 'lvm', 'zfs', 'mounted', 'unmounted', 'system'] as DiskRole[])" :key="role">
               <Toggle v-if="summary.roles[role]" variant="outline" size="sm" class="h-7 text-xs"
                 :model-value="prefs.role === role" @update:model-value="toggleRole(role)">
                 {{ ROLE_LABELS[role] }}

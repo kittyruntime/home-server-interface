@@ -51,3 +51,22 @@ func TestAssignUsage(t *testing.T) {
 	check(disks[3].Children[1], usageFree, "")
 	check(disks[4], usageFree, "")
 }
+
+func TestAssignUsageZfsMember(t *testing.T) {
+	d := BlockDev{Name: "sdb", Path: "/dev/sdb", Type: "disk", Children: []BlockDev{
+		{Name: "sdb1", Path: "/dev/sdb1", Type: "part", FsType: "zfs_member", Label: "tank"},
+		{Name: "sdb9", Path: "/dev/sdb9", Type: "part"},
+	}}
+	assignUsage(&d, nil)
+	if d.Usage != usagePartitioned {
+		t.Errorf("disk usage = %q, want partitioned", d.Usage)
+	}
+	if p := d.Children[0]; p.Usage != usageZfsMember || p.Owner != "tank" {
+		t.Errorf("zfs partition = %q owner %q", p.Usage, p.Owner)
+	}
+	whole := BlockDev{Name: "sdc", Path: "/dev/sdc", Type: "disk", FsType: "zfs_member", Label: "tank"}
+	assignUsage(&whole, nil)
+	if whole.Usage != usageZfsMember || whole.Owner != "tank" {
+		t.Errorf("whole-disk member = %q owner %q", whole.Usage, whole.Owner)
+	}
+}

@@ -1,4 +1,5 @@
 import { pathUnder } from './volume-guard'
+import { zfsVolumes, type ZfsInfo } from './zfs-volumes'
 
 // Volumes (#40): where the data lives. A volume is a data filesystem (on a
 // partition, an array, a logical volume or a whole disk, outside the system
@@ -37,11 +38,13 @@ export type VolumeInput = {
   places: Array<{ id: string; name: string; path: string }>
   shares: Array<{ placeId: string; name: string }>
   apps: Array<{ name: string; sources: string[] }>
+  /** ZFS pools and datasets (lot 1); absent without ZFS or from an older worker. */
+  zfs?: ZfsInfo | null
 }
 
-export type Redundancy = 'none' | 'raid0' | 'raid1' | 'raid4' | 'raid5' | 'raid6' | 'raid10'
+export type Redundancy = 'none' | 'raid0' | 'raid1' | 'raid4' | 'raid5' | 'raid6' | 'raid10' | 'raidz1' | 'raidz2' | 'raidz3'
 export type VolumeIssue = { kind: 'degraded' | 'rebuilding' | 'missing' | 'blocked' | 'nearly-full'; text: string }
-export type StackLayer = { kind: 'filesystem' | 'partition' | 'lv' | 'vg' | 'array' | 'disk'; name: string }
+export type StackLayer = { kind: 'filesystem' | 'partition' | 'lv' | 'vg' | 'array' | 'disk' | 'dataset' | 'pool' | 'vdev'; name: string }
 
 export type Volume = {
   id: string
@@ -59,6 +62,8 @@ export type Volume = {
   space?: { total: number; used: number; free: number }
   issues: VolumeIssue[]
   usedBy: { places: Array<{ id: string; name: string }>; shares: string[]; apps: string[] }
+  /** The engine holding it: LVM (mdadm, LVM, a plain filesystem) or ZFS. */
+  engine?: 'lvm' | 'zfs'
 }
 
 export type VolumeOverview = {
@@ -222,8 +227,11 @@ export function buildVolumes(input: VolumeInput): VolumeOverview {
       space,
       issues,
       usedBy: { places: [], shares: [], apps: [] },
+      engine: 'lvm',
     })
   }
+
+  if (input.zfs?.available) volumes.push(...zfsVolumes(input.zfs, input.guard, input.holds))
 
   // HSI volumes missing at boot (#3): known by their mount point only.
   const uuids = new Set(volumes.map(v => v.id))
@@ -234,6 +242,7 @@ export function buildVolumes(input: VolumeInput): VolumeOverview {
       redundancy: 'none', tolerates: 0, stack: [], disks: [],
       issues: [{ kind: 'missing', text: 'Not found at boot' }],
       usedBy: { places: [], shares: [], apps: [] },
+      engine: g.uuid.startsWith('zfs:') ? 'zfs' : 'lvm',
     })
   }
 

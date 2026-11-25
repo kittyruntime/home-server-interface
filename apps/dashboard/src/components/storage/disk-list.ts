@@ -4,7 +4,7 @@
 
 import { deviceRole, isFreeDisk } from './device-state.ts'
 
-export type DiskRole = 'system' | 'raid' | 'lvm' | 'mounted' | 'free' | 'unmounted'
+export type DiskRole = 'system' | 'raid' | 'lvm' | 'zfs' | 'mounted' | 'free' | 'unmounted'
 export type DiskHealth = 'passed' | 'warning' | 'failed' | 'unknown'
 export type DiskKind = 'NVMe' | 'SSD' | 'HDD' | 'USB' | ''
 
@@ -36,6 +36,8 @@ export type DiskRow<D extends ListDev = ListDev> = {
   raidOwners:  string[]
   /** Volume groups using the disk, a partition, or an array built on it. */
   vgOwners:    string[]
+  /** ZFS pools using the disk or one of its partitions. */
+  poolOwners:  string[]
   health:      DiskHealth
   temperature: number
   kind:        DiskKind
@@ -47,13 +49,14 @@ export const ROLE_LABELS: Record<DiskRole, string> = {
   system:    'System',
   raid:      'RAID member',
   lvm:       'LVM PV',
+  zfs:       'ZFS pool',
   mounted:   'Mounted',
   free:      'Free',
   unmounted: 'Not mounted',
 }
 
 // Order used when sorting or grouping by role.
-const ROLE_ORDER: DiskRole[] = ['system', 'raid', 'lvm', 'mounted', 'unmounted', 'free']
+const ROLE_ORDER: DiskRole[] = ['system', 'raid', 'lvm', 'zfs', 'mounted', 'unmounted', 'free']
 const HEALTH_ORDER: DiskHealth[] = ['failed', 'warning', 'unknown', 'passed']
 
 function walk(dev: ListDev, fn: (d: ListDev) => void) {
@@ -73,17 +76,20 @@ export function diskKind(disk: ListDev, smart?: DiskSmart): DiskKind {
 export function diskRow<D extends ListDev>(disk: D, smart?: DiskSmart, label = ''): DiskRow<D> {
   const raidOwners = new Set<string>()
   const vgOwners   = new Set<string>()
-  let raid = false, lvm = false, mounted = false
+  const poolOwners = new Set<string>()
+  let raid = false, lvm = false, zfs = false, mounted = false
   walk(disk, d => {
     const kind = deviceRole(d)?.kind ?? null
     if (kind === 'raid') { raid = true; if (d.owner) raidOwners.add(d.owner) }
     if (kind === 'lvm')  { lvm = true;  if (d.owner) vgOwners.add(d.owner) }
+    if (kind === 'zfs')  { zfs = true;  if (d.owner) poolOwners.add(d.owner) }
     if (d.mountpoint) mounted = true
   })
   const role: DiskRole =
     disk.isSystem ? 'system'
     : raid ? 'raid'
     : lvm ? 'lvm'
+    : zfs ? 'zfs'
     : mounted ? 'mounted'
     : disk.usage === 'free' || (!disk.usage && !disk.fstype && !disk.children?.length) ? 'free'
     : 'unmounted'
@@ -91,6 +97,7 @@ export function diskRow<D extends ListDev>(disk: D, smart?: DiskSmart, label = '
     disk, role,
     raidOwners: [...raidOwners].sort(),
     vgOwners:   [...vgOwners].sort(),
+    poolOwners: [...poolOwners].sort(),
     health:      smart?.health ?? 'unknown',
     temperature: smart?.temperature ?? 0,
     kind:        diskKind(disk, smart),
@@ -109,7 +116,7 @@ export type DiskSummary = {
 }
 
 export function summarize(rows: DiskRow[]): DiskSummary {
-  const roles  = { system: 0, raid: 0, lvm: 0, mounted: 0, free: 0, unmounted: 0 } as Record<DiskRole, number>
+  const roles  = { system: 0, raid: 0, lvm: 0, zfs: 0, mounted: 0, free: 0, unmounted: 0 } as Record<DiskRole, number>
   const health = { passed: 0, warning: 0, failed: 0, unknown: 0 } as Record<DiskHealth, number>
   let totalBytes = 0, freeBytes = 0
   for (const r of rows) {

@@ -1162,7 +1162,7 @@ await testVolumeGuard()
 const sp = await import('../services/storage-plan')
 
 async function testStoragePlanAudit() {
-  assert.ok(sp.PLAN_OPS.includes('format') && sp.PLAN_OPS.includes('raid.stop') && sp.PLAN_OPS.includes('storage.reapply') && sp.PLAN_OPS.includes('storage.accept') && sp.PLAN_OPS.includes('system.identity') && sp.PLAN_OPS.includes('network.ipv4') && sp.PLAN_OPS.length === 33)
+  assert.ok(sp.PLAN_OPS.includes('format') && sp.PLAN_OPS.includes('raid.stop') && sp.PLAN_OPS.includes('storage.reapply') && sp.PLAN_OPS.includes('storage.accept') && sp.PLAN_OPS.includes('system.identity') && sp.PLAN_OPS.includes('network.ipv4') && sp.PLAN_OPS.length === 36)
   const meta = sp.planAuditMeta('format',
     [{ kind: 'run', target: '/dev/sdb1', summary: 'Create ext4', command: ['mkfs.ext4', '-F', '/dev/sdb1'], destructive: true },
       { kind: 'update', target: '/etc/mdadm/mdadm.conf', summary: 'Add ARRAY', diff: '+ARRAY' }],
@@ -4822,3 +4822,91 @@ async function testPerfSnapshotCarriesSensors() {
   for (const s of p.sensors) assert.ok(s.kind === 'temp' || s.kind === 'fan')
 }
 await testPerfSnapshotCarriesSensors()
+
+// ZFS lot 1: a pool's redundancy, and datasets as volumes.
+const zLeaf = (disk: string, extra: Record<string, unknown> = {}) => ({ name: `/dev/${disk}1`, type: 'disk', state: 'ONLINE', path: `/dev/${disk}1`, disk, read: 0, write: 0, checksum: 0, children: [], ...extra })
+const zGroup = (name: string, type: string, children: any[]) => ({ name, type, state: 'ONLINE', read: 0, write: 0, checksum: 0, children })
+const zPool = (vdevs: any[], extra: Record<string, unknown> = {}) => ({ name: 'tank', guid: '123', state: 'ONLINE', size: 8e12, alloc: 3e12, free: 5e12, frag: 2, vdevs, scan: { kind: 'none', state: 'none', repaired: 0, errors: 0 }, ...extra })
+
+async function testZfsPoolRedundancy() {
+  const { poolRedundancy } = await import('../services/zfs-volumes')
+  assert.deepEqual(poolRedundancy(zPool([zGroup('mirror-0', 'mirror', [zLeaf('sda'), zLeaf('sdb')])]) as any), { level: 'raid1', tolerates: 1 })
+  assert.deepEqual(poolRedundancy(zPool([zGroup('raidz2-0', 'raidz2', []), zGroup('raidz2-1', 'raidz2', [])]) as any), { level: 'raidz2', tolerates: 2 })
+  assert.deepEqual(poolRedundancy(zPool([zGroup('raidz1-0', 'raidz1', []), zGroup('mirror-1', 'mirror', [zLeaf('a'), zLeaf('b'), zLeaf('c')])]) as any), { level: 'raidz1', tolerates: 1 })
+  assert.deepEqual(poolRedundancy(zPool([zLeaf('sda'), zLeaf('sdb')]) as any), { level: 'raid0', tolerates: 0 })
+  assert.deepEqual(poolRedundancy(zPool([zLeaf('sda')]) as any), { level: 'none', tolerates: 0 })
+  assert.deepEqual(poolRedundancy(zPool([zGroup('mirror-0', 'mirror', [zLeaf('sda'), zLeaf('sdb')]), zGroup('mirror-1', 'log', [zLeaf('n1')]), zLeaf('n2', { type: 'cache' })]) as any), { level: 'raid1', tolerates: 1 }, 'logs and cache ignored')
+}
+await testZfsPoolRedundancy()
+
+const zfsInfo = (pool: any) => ({
+  available: true, version: '2.2.2', pools: [pool], watched: [],
+  datasets: [
+    { name: 'tank', pool: 'tank', mountPoint: '/tank', compression: 'lz4', used: 3e12, avail: 4e12, quota: 0, mounted: true, ratio: 1.2 },
+    { name: 'tank/media', pool: 'tank', mountPoint: '/tank/media', compression: 'lz4', used: 2e12, avail: 4e12, quota: 0, mounted: true, ratio: 1.31 },
+    { name: 'tank/vm', pool: 'tank', mountPoint: 'none', compression: 'off', used: 100, avail: 4e12, quota: 0, mounted: false, ratio: 1 },
+  ],
+})
+const emptyVolumeInput = { devices: [], raids: [], lvm: { pvs: [], vgs: [], lvs: [] }, guard: [], holds: [], places: [], shares: [], apps: [] }
+
+async function testZfsVolumes() {
+  const { buildVolumes } = await import('../services/volumes')
+  const mirror = zPool([zGroup('mirror-0', 'mirror', [zLeaf('sdb'), zLeaf('sda')])])
+  const { volumes } = buildVolumes({ ...emptyVolumeInput, zfs: zfsInfo(mirror) as any, places: [{ id: 'p', name: 'Media', path: '/tank/media/films' }] })
+  const media = volumes.find(v => v.id === 'zfs:123:tank/media')!
+  assert.ok(media, 'a mounted dataset is a volume')
+  assert.equal(media.engine, 'zfs')
+  assert.equal(media.fstype, 'zfs')
+  assert.equal(media.redundancy, 'raid1')
+  assert.deepEqual(media.stack, [
+    { kind: 'filesystem', name: '/tank/media' }, { kind: 'dataset', name: 'tank/media' }, { kind: 'pool', name: 'tank' },
+    { kind: 'vdev', name: 'mirror-0' }, { kind: 'disk', name: 'sda' }, { kind: 'disk', name: 'sdb' },
+  ])
+  assert.deepEqual(media.space, { total: 6e12, used: 2e12, free: 4e12 })
+  assert.deepEqual(media.usedBy.places, [{ id: 'p', name: 'Media' }], 'the most specific dataset holds the Place')
+  assert.ok(!volumes.some(v => v.id === 'zfs:123:tank/vm'), 'mountpoint=none is not a volume')
+  const container = buildVolumes({ ...emptyVolumeInput, zfs: { ...zfsInfo(mirror), datasets: zfsInfo(mirror).datasets.map(d => d.name === 'tank' ? { ...d, canMount: 'off' } : d) } as any })
+  assert.ok(!container.volumes.some(v => v.id === 'zfs:123:tank'), 'a container dataset (canmount=off) is not a volume')
+  assert.ok(container.volumes.some(v => v.id === 'zfs:123:tank/media'))
+  const degraded = buildVolumes({ ...emptyVolumeInput, zfs: zfsInfo({ ...mirror, state: 'DEGRADED' }) as any,
+    guard: [{ uuid: 'zfs:123:tank/media', state: 'wrong', mountPoint: '/tank/media' }] })
+  const d = degraded.volumes.find(v => v.id === 'zfs:123:tank/media')!
+  assert.deepEqual(d.issues.map(i => i.kind).sort(), ['blocked', 'degraded'])
+}
+await testZfsVolumes()
+
+async function testBuildVolumesMissingZfs() {
+  const { buildVolumes } = await import('../services/volumes')
+  const { volumes } = buildVolumes({ ...emptyVolumeInput, guard: [{ uuid: 'zfs:123:tank/media', state: 'missing', mountPoint: '/tank/media' }] })
+  assert.equal(volumes.length, 1)
+  assert.equal(volumes[0]!.state, 'missing')
+  assert.equal(volumes[0]!.engine, 'zfs')
+}
+await testBuildVolumesMissingZfs()
+
+async function testBuildVolumesWithoutZfs() {
+  const { buildVolumes } = await import('../services/volumes')
+  const dev = { name: 'sdb', type: 'disk', fstype: 'ext4', mountpoint: '/srv/data', uuid: 'U1', size: 4e12, model: 'M', isSystem: false, usageTotal: 4e12, usageUsed: 1e12, usageFree: 3e12 }
+  const { volumes } = buildVolumes({ ...emptyVolumeInput, devices: [dev] })
+  assert.equal(volumes.length, 1)
+  assert.equal(volumes[0]!.engine, 'lvm', 'volumes HSI builds without ZFS are the LVM engine')
+}
+await testBuildVolumesWithoutZfs()
+
+async function testZfsAlerts() {
+  const { zfsAlerts } = await import('../services/alert-sampler')
+  const clean = zPool([zGroup('mirror-0', 'mirror', [zLeaf('sda'), zLeaf('sdb')])]) as any
+  assert.deepEqual(zfsAlerts([clean]).found, [])
+  assert.equal(zfsAlerts([clean]).authoritative, true, 'it covers every imported pool: an alert on a pool exported or repaired since closes')
+  assert.equal(zfsAlerts([], false).authoritative, false, 'an incomplete reading (zpool failed) closes nothing')
+  assert.deepEqual(zfsAlerts([clean]).checked, ['pool:tank', 'errors:tank:sda', 'errors:tank:sdb', 'scrub:tank'], 'every target it can raise is checked, so a cleared one closes')
+  const degraded = zfsAlerts([{ ...clean, state: 'DEGRADED' }]).found
+  assert.deepEqual(degraded.map(f => [f.target, f.severity]), [['pool:tank', 'warning']])
+  assert.equal(zfsAlerts([{ ...clean, state: 'FAULTED' }]).found[0]!.severity, 'critical')
+  const errs = zfsAlerts([zPool([zGroup('mirror-0', 'mirror', [zLeaf('sda'), zLeaf('sdc', { checksum: 12 })])])] as any).found
+  assert.deepEqual(errs.map(f => [f.target, f.severity]), [['errors:tank:sdc', 'warning']])
+  assert.match(errs[0]!.message, /12/)
+  const scrub = zfsAlerts([{ ...clean, scan: { kind: 'scrub', state: 'finished', repaired: 0, errors: 3 } }]).found
+  assert.deepEqual(scrub.map(f => f.target), ['scrub:tank'])
+}
+await testZfsAlerts()

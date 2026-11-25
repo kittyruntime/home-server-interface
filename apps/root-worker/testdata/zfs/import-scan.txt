@@ -1,0 +1,34 @@
+   pool: backup
+     id: 987654321
+  state: ONLINE
+ action: The pool can be imported using its name or numeric identifier.
+ config:
+
+	backup      ONLINE
+	  mirror-0  ONLINE
+	    ata-WDC_3  ONLINE
+	    ata-WDC_4  ONLINE
+
+   pool: old
+     id: 111
+  state: UNAVAIL
+ status: One or more devices are missing from the system.
+ action: The pool cannot be imported. Attach the missing
+	devices and try again.
+   see: https://openzfs.github.io/openzfs-docs/msg/ZFS-8000-3C
+ config:
+
+	old         UNAVAIL  insufficient replicas
+	  sdz       UNAVAIL
+
+   pool: away
+     id: 222
+  state: ONLINE
+ status: The pool was last accessed by another system.
+ action: The pool can be imported using its name or numeric identifier and
+	the '-f' flag.
+   see: https://openzfs.github.io/openzfs-docs/msg/ZFS-8000-EY
+ config:
+
+	away        ONLINE
+	  sdy       ONLINE

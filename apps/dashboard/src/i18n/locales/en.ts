@@ -45,10 +45,10 @@ export default {
     },
   },
   storage: {
-    nav: { volumes: 'Volumes', disks: 'Disks', raid: 'Arrays', lvm: 'Volume groups', mounts: 'Mounts', maintenance: 'Maintenance' },
+    nav: { 'volumes': 'Volumes', 'disks': 'Disks', 'raid': 'Arrays', 'lvm': 'Volume groups', 'mounts': 'Mounts', 'maintenance': 'Maintenance', 'pools': 'Pools', 'datasets': 'Datasets', 'zfs-import': 'Import' },
     tabs: { disks: 'Disks', lvm: 'LVM', zfs: 'ZFS', maintenance: 'Maintenance' },
     createVolume: 'Create volume',
-    roles: { system: 'System', raid: 'RAID member', lvm: 'LVM PV', mounted: 'Mounted', free: 'Free', unmounted: 'Not mounted' },
+    roles: { system: 'System', raid: 'RAID member', lvm: 'LVM PV', zfs: 'ZFS pool', mounted: 'Mounted', free: 'Free', unmounted: 'Not mounted' },
   },
   monitor: {
     nav: { performance: 'Performance', processes: 'Processes', history: 'History', alerts: 'Alerts', audit: 'Audit log' },
