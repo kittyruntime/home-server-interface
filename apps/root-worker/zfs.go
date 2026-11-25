@@ -1,10 +1,14 @@
 package main
 
 import (
+	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
+
+	nats "github.com/nats-io/nats.go"
 )
 
 // ── ZFS (lot 1) ──────────────────────────────────────────────────────────────
@@ -407,4 +411,114 @@ func wholeDiskOf(path string, resolve func(string) (string, error), parentOf fun
 		return p
 	}
 	return name
+}
+
+// ── Reading the host ─────────────────────────────────────────────────────────
+
+// zfsAvailable: the zfs module is loaded and its commands are installed.
+var zfsAvailable = func() bool {
+	if _, err := os.Stat("/sys/module/zfs"); err != nil {
+		return false
+	}
+	for _, c := range []string{"zpool", "zfs"} {
+		if _, err := exec.LookPath(c); err != nil {
+			return false
+		}
+	}
+	return true
+}
+
+// zfsResolve and zfsParentOf find a leaf's whole disk; tests swap them.
+var (
+	zfsResolve  = filepath.EvalSymlinks
+	zfsParentOf = func(name string) string {
+		if _, err := os.Stat("/sys/class/block/" + name + "/partition"); err != nil {
+			return ""
+		}
+		real, err := filepath.EvalSymlinks("/sys/class/block/" + name)
+		if err != nil {
+			return ""
+		}
+		return filepath.Base(filepath.Dir(real))
+	}
+)
+
+type zfsInfo struct {
+	Available bool          `json:"available"`
+	Version   string        `json:"version"`
+	Pools     []zfsPool     `json:"pools"`
+	Datasets  []zfsDataset  `json:"datasets"`
+	Watched   []watchedPool `json:"watched"`
+}
+
+func fillDisks(vs []zfsVdev) {
+	for i := range vs {
+		if vs[i].Path != "" {
+			path := vs[i].Path
+			if !strings.HasPrefix(path, "/") {
+				path = "/dev/disk/by-id/" + path
+			}
+			vs[i].Disk = wholeDiskOf(path, zfsResolve, zfsParentOf)
+		}
+		fillDisks(vs[i].Children)
+	}
+}
+
+// zfsSnapshot reads every pool and filesystem dataset. Without ZFS it runs
+// nothing and says so.
+func zfsSnapshot() zfsInfo {
+	info := zfsInfo{Pools: []zfsPool{}, Datasets: []zfsDataset{}, Watched: loadWatchedPools()}
+	if !zfsAvailable() {
+		return info
+	}
+	info.Available = true
+	if out, err := hostOutput("zfs", "version"); err == nil {
+		info.Version = parseZfsVersion(string(out))
+	}
+	if out, err := hostOutput("zpool", "list", "-Hp", "-o", "name,guid,size,allocated,free,fragmentation,health"); err == nil {
+		info.Pools = parseZpoolList(string(out))
+	}
+	if len(info.Pools) > 0 {
+		if out, err := hostOutput("zpool", "status", "-P"); err == nil {
+			st := parseZpoolStatus(string(out))
+			for i := range info.Pools {
+				if s, ok := st[info.Pools[i].Name]; ok {
+					info.Pools[i].Vdevs, info.Pools[i].Scan = s.Vdevs, s.Scan
+				}
+				fillDisks(info.Pools[i].Vdevs)
+			}
+		}
+	}
+	if out, err := hostOutput("zfs", "list", "-Hp", "-t", "filesystem", "-o", "name,used,available,quota,mountpoint,mounted,compression,compressratio"); err == nil {
+		info.Datasets = parseZfsList(string(out))
+	}
+	if info.Datasets == nil {
+		info.Datasets = []zfsDataset{}
+	}
+	return info
+}
+
+// zfsImportScan lists the pools on the disks that are not imported. zpool
+// exits 1 with "no pools available to import" when there is none.
+func zfsImportScan() []zfsImportable {
+	if !zfsAvailable() {
+		return []zfsImportable{}
+	}
+	out, _ := hostOutput("zpool", "import", "-d", "/dev/disk/by-id")
+	pools := parseZpoolImport(string(out))
+	for i := range pools {
+		fillDisks(pools[i].Vdevs)
+	}
+	if pools == nil {
+		pools = []zfsImportable{}
+	}
+	return pools
+}
+
+func handleZfsList(nc *nats.Conn, msg *nats.Msg) {
+	replyOk(nc, msg.Reply, zfsSnapshot())
+}
+
+func handleZfsImportScan(nc *nats.Conn, msg *nats.Msg) {
+	replyOk(nc, msg.Reply, map[string]any{"pools": zfsImportScan()})
 }

@@ -175,3 +175,46 @@ func TestWholeDiskOf(t *testing.T) {
 		}
 	}
 }
+
+func TestZfsSnapshotUnavailable(t *testing.T) {
+	prevA, prevO := zfsAvailable, hostOutput
+	t.Cleanup(func() { zfsAvailable, hostOutput = prevA, prevO })
+	zfsAvailable = func() bool { return false }
+	hostOutput = func(name string, args ...string) ([]byte, error) {
+		t.Fatalf("no command may run without ZFS, ran %s", name)
+		return nil, nil
+	}
+	if info := zfsSnapshot(); info.Available || len(info.Pools) != 0 {
+		t.Errorf("info = %+v", info)
+	}
+}
+
+func TestZfsSnapshotFillsDisks(t *testing.T) {
+	prevA, prevO, prevR, prevP := zfsAvailable, hostOutput, zfsResolve, zfsParentOf
+	t.Cleanup(func() { zfsAvailable, hostOutput, zfsResolve, zfsParentOf = prevA, prevO, prevR, prevP })
+	zfsAvailable = func() bool { return true }
+	out := map[string]string{
+		"zfs version":  "version-2.2.txt",
+		"zpool list":   "list-2.2.txt",
+		"zpool status": "status-mirror-2.2.txt",
+		"zfs list":     "zfs-list.txt",
+	}
+	hostOutput = func(name string, args ...string) ([]byte, error) {
+		return []byte(zfsFixture(t, out[name+" "+args[0]])), nil
+	}
+	zfsResolve = func(p string) (string, error) {
+		return map[string]string{"/dev/disk/by-id/ata-WDC_1-part1": "/dev/sdb1", "/dev/disk/by-id/ata-WDC_2-part1": "/dev/sdc1"}[p], nil
+	}
+	zfsParentOf = func(n string) string { return strings.TrimSuffix(n, "1") }
+	info := zfsSnapshot()
+	if !info.Available || info.Version != "2.2.2" || len(info.Pools) != 2 || len(info.Datasets) != 4 {
+		t.Fatalf("info = %+v", info)
+	}
+	ls := leaves(info.Pools[0].Vdevs[0])
+	if ls[0].Disk != "sdb" || ls[1].Disk != "sdc" {
+		t.Errorf("disks = %q %q", ls[0].Disk, ls[1].Disk)
+	}
+	if info.Pools[0].Scan.Kind != "scrub" {
+		t.Errorf("status not attached: %+v", info.Pools[0].Scan)
+	}
+}
