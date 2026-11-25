@@ -33,7 +33,6 @@ export default {
     onFreeDisks: '{p0} on free disks',
     sort: 'Sort: {p0}',
     showingOfDisks: 'Showing {p0} of {p1} disks ·',
-    freeSelected: '{p0} free {p1} selected',
   },
   DiskCard: {
     poweredOn: '{p0} powered on',

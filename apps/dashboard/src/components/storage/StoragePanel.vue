@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import PartitionsSection from './PartitionsSection.vue'
 import { loadZfs, zfs } from './zfs-data'
 import ZfsImportSection from './ZfsImportSection.vue'
 import DatasetsSection from './DatasetsSection.vue'
@@ -9,7 +10,7 @@ import { Alert } from '@/components/ui/alert'
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from '@/components/ui/breadcrumb'
 import SectionNav from '@/components/ui/SectionNav.vue'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { CalendarIcon, DatabaseIcon, DownloadIcon, HardDriveIcon, LayersIcon, PackageIcon, Rows3Icon, ServerIcon } from '@lucide/vue'
+import { CalendarIcon, DatabaseIcon, DownloadIcon, ScissorsIcon, HardDriveIcon, LayersIcon, PackageIcon, Rows3Icon, ServerIcon } from '@lucide/vue'
 import { ref, computed, onMounted, watch } from 'vue'
 import type { Component } from 'vue'
 import PhysicalDisksSection from './PhysicalDisksSection.vue'
@@ -97,7 +98,7 @@ const installCommand = computed(() =>
 
 const ICONS: Record<SectionId, Component> = {
   'volumes': ServerIcon, 'disks': HardDriveIcon, 'raid': PackageIcon, 'lvm': Rows3Icon,
-  'mounts': DatabaseIcon, 'maintenance': CalendarIcon,
+  'mounts': DatabaseIcon, 'maintenance': CalendarIcon, 'partitions': ScissorsIcon,
   'pools': DatabaseIcon, 'datasets': LayersIcon, 'zfs-import': DownloadIcon,
 }
 const navItems = computed(() => TAB_SECTIONS[tab.value].map(id => ({ id, label: SECTION_LABELS[id], icon: ICONS[id] })))
@@ -155,6 +156,7 @@ const navItems = computed(() => TAB_SECTIONS[tab.value].map(id => ({ id, label: 
           <LvmSection v-else-if="active === 'lvm'" @navigate="focusOn"
             :preselect="preselect?.kind === 'lvm' ? preselect.devices : undefined" @preselected="preselect = null" />
           <MountsSection v-else-if="active === 'mounts'" @navigate="focusOn" />
+          <PartitionsSection v-else-if="active === 'partitions'" @navigate="focusOn" />
           <MaintenanceSection v-else-if="active === 'maintenance'" />
           <PoolsSection v-else-if="active === 'pools'" @navigate="focusOn" />
           <DatasetsSection v-else-if="active === 'datasets'" @navigate="focusOn" />

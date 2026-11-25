@@ -30,7 +30,6 @@ export default {
     onFreeDisks: '{p0} sur des disques libres',
     sort: 'Tri : {p0}',
     showingOfDisks: '{p0} disques affichés sur {p1} ·',
-    freeSelected: '{p0} {p1} libre(s) sélectionné(s)',
   },
   DiskCard: {
     poweredOn: '{p0} sous tension',

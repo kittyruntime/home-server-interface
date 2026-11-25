@@ -18,6 +18,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   datasets only in the data folders, with setuid programs and device files off.
   Monitor alerts on degraded or failed pools, disk errors and scrub errors.
 
+### Changed
+
+- Storage keeps hardware apart from what is built on it: the Disks tab shows the
+  disks (identity, SMART health, temperature, label) and what uses each one, with
+  a link to it; partitioning, formatting and mounting move to a new LVM >
+  Partitions & formatting section, which lists only the disks nothing uses.
+
+
 ## [1.96.0] - 2026-11-25
 
 ### Added

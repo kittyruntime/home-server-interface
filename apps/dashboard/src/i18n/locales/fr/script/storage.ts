@@ -79,7 +79,6 @@ export default {
     serialWwn: 'Série / WWN',
     size: 'Taille',
     type: 'Type',
-    role: 'Rôle',
     health: 'Santé',
     temp: 'Temp.',
     newPartitionTableOnDev: 'Nouvelle table de partitions sur /dev/{p0}',
