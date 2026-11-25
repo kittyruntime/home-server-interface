@@ -1029,6 +1029,8 @@ case "$scenario" in
   fresh)
     install_build
     expect_running "$version"; expect_ledger
+    [[ $(vm_ssh 'getent passwd hsi | cut -d: -f6; stat -c "%U %a" /opt/hsi/home; if test -e /home/hsi; then echo home-exists; fi') == $'/opt/hsi/home\nhsi 700' ]] \
+      || fail "the hsi account's home is not /opt/hsi/home (hsi's, 0700), or /home/hsi exists"
     add_data
     vm_reboot
     expect_running "$version"; expect_data

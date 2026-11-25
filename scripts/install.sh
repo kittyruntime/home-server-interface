@@ -694,6 +694,27 @@ prepare_app_home() {
   done
 }
 
+# prepare_service_home: the app user's home is INSTALL_DIR/home (nvm, npm and node
+# write there), the app user's own and closed to others. A home elsewhere (an older
+# install's /home/<user>, or INSTALL_DIR itself) is left as it is. A link or a file in
+# its place is refused, never followed.
+prepare_service_home() {
+  local h="$INSTALL_DIR/home"
+  [[ "$APP_HOME" == "$h" ]] || return 0
+  mkdir -p "$INSTALL_DIR" || return 1
+  if [[ -L "$h" || ( -e "$h" && ! -d "$h" ) ]]; then
+    die "$h is a link or not a folder: the installer refuses to work through it. Replace it with a real folder, then re-run."
+  fi
+  [[ -d "$h" ]] || mkdir -m 0700 -- "$h" || return 1
+  chown -h "$APP_USER:" "$h" && chmod 0700 "$h"
+}
+
+# install_dir_unused: INSTALL_DIR is missing, empty, or holds only the app user's
+# home (an install stopped right after the user was created).
+install_dir_unused() {
+  [[ ! -d "$INSTALL_DIR" ]] || [[ -z "$(ls -A -- "$INSTALL_DIR" 2>/dev/null | grep -vx home)" ]]
+}
+
 # version_lt <a> <b>: a sorts before b, the way compareVersions in the worker orders
 # them (a test keeps both in step): X.Y.Z numerically, then a version with a suffix
 # ("-rc1") before the same one without, two suffixes in byte order.
@@ -1309,7 +1330,7 @@ else
     || die "INSTALL_DIR must be nested under a dedicated parent (for example /opt/$APP_NAME)."
   [[ ! -e "$INSTALL_DIR" || -d "$INSTALL_DIR" ]] \
     || die "INSTALL_DIR exists but is not a directory: $INSTALL_DIR"
-  if [[ -d "$INSTALL_DIR" && -n "$(ls -A "$INSTALL_DIR" 2>/dev/null)" ]]; then
+  if ! install_dir_unused; then
     [[ -L "$INSTALL_DIR/current" || -d "$INSTALL_DIR/releases" \
        || ( -f "$INSTALL_DIR/server.js" && -d "$INSTALL_DIR/database/prisma" \
             && ( -f "$INSTALL_DIR/VERSION" || -f "$INSTALL_DIR/.env" ) ) ]] \
@@ -1330,12 +1351,14 @@ else
   if id "$APP_USER" &>/dev/null; then
     success "User '$APP_USER' already exists"
   else
-    useradd -r -m -s /usr/sbin/nologin "$APP_USER"
+    # The home is INSTALL_DIR/home, never /home: made below by prepare_service_home.
+    useradd -r -M -d "$INSTALL_DIR/home" -s /usr/sbin/nologin "$APP_USER"
     success "Created system user '$APP_USER'"
   fi
 
   APP_HOME=$(getent passwd "$APP_USER" | cut -d: -f6)
   NVM_DIR="$APP_HOME/.nvm"
+  prepare_service_home || die "Could not prepare the home of $APP_USER in $APP_HOME."
   prepare_app_home || die "Could not prepare the folders of $APP_USER in $APP_HOME."
 
   app_exec() {
