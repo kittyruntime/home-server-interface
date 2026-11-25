@@ -41,11 +41,6 @@ export default {
     notMounted: 'Non monté',
     healthy: 'Sain',
   },
-  LvmIntro: {
-    disks: 'Disques',
-    volumeGroup: 'Groupe de volumes',
-    logicalVolumes: 'Volumes logiques',
-  },
   DiskPage: {
     smartFailed: 'SMART en échec',
     smartWarning: 'Avertissement SMART',

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import TermHelp from './TermHelp.vue'
 import { useI18n } from 'vue-i18n'
 import { Separator } from '@/components/ui/separator'
 import { Alert, AlertDescription } from '@/components/ui/alert'
@@ -18,7 +19,7 @@ import DeviceMountDialog from './dialogs/DeviceMountDialog.vue'
 import DeviceUnmountDialog from './dialogs/DeviceUnmountDialog.vue'
 import ConfirmDestroyDialog from './dialogs/ConfirmDestroyDialog.vue'
 import Modal from '../ui/Modal.vue'
-import LvmIntro from './LvmIntro.vue'
+import StorageIntro from './StorageIntro.vue'
 import ImportFound from './ImportFound.vue'
 import { Button } from '@/components/ui/button'
 import Tip from '../ui/Tip.vue'
@@ -206,7 +207,7 @@ const shown = computed(() => props.only ? lvmVGs.value.filter(x => x.name === pr
   <div>
     <div v-if="!only" class="flex flex-wrap items-start justify-between gap-x-4 gap-y-2 mb-4">
       <div class="min-w-0 flex-1 basis-56">
-        <h2 class="text-lg font-semibold text-base-content">{{ t('ui.storage.LvmSection.volumeGroups') }}</h2>
+        <h2 class="text-lg font-semibold text-base-content flex items-center gap-1.5">{{ t('ui.storage.LvmSection.volumeGroups') }}<TermHelp term="volumeGroup" /></h2>
         <p class="text-sm text-base-content/70 mt-0.5">{{ t('ui.storage.LvmSection.physicalVolumesVolumeGroupsAnd') }}</p>
       </div>
       <div class="flex items-center gap-2">
@@ -223,7 +224,7 @@ const shown = computed(() => props.only ? lvmVGs.value.filter(x => x.name === pr
       </div>
     </div>
 
-    <LvmIntro v-if="!only" />
+    <StorageIntro v-if="!only" tab="lvm" />
 
     <ImportFound v-if="!only" kind="lvm" @imported="refresh" />
 

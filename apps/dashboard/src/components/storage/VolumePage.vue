@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import StackChain from './StackChain.vue'
 import { useI18n } from 'vue-i18n'
 import { Alert } from '@/components/ui/alert'
 import { Progress } from '@/components/ui/progress'
@@ -185,6 +186,7 @@ async function afterChange() { await refreshDevices(); await load() }
         </div>
         <Progress class="mt-2 h-1.5 rounded-full bg-base-200" :model-value="usedPct" :indicator-class="['rounded-full', usedPct > 90 ? 'bg-warning' : 'bg-base-content']" />
       </div>
+      <StackChain :volume="volume" class="mt-3" />
     </template>
 
     <template v-if="volume" #actions>

@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import MaintenanceCalendar from './MaintenanceCalendar.vue'
+import TermHelp from './TermHelp.vue'
+import StorageIntro from './StorageIntro.vue'
 import { useI18n } from 'vue-i18n'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Card } from '@/components/ui/card'
@@ -30,6 +33,8 @@ const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Frida
 
 const data = ref<Data | null>(null)
 const draft = ref<Record<TaskId, Schedule> | null>(null)
+// What is saved on the server: the calendar shows that, not the draft.
+const savedSchedules = computed(() => Object.fromEntries(TASKS.map(t => [t.id, data.value!.tasks[t.id].schedule])))
 const loading = ref(true)
 const error = ref('')
 const saving = ref(false)
@@ -107,6 +112,10 @@ const statusClass: Record<string, string> = {
       </p>
     </div>
 
+    <StorageIntro tab="maintenance" />
+
+    <MaintenanceCalendar v-if="data" :schedules="savedSchedules" />
+
     <LoadingState v-if="loading && !data" variant="block" />
     <Alert variant="destructive" v-else-if="error" class="mt-4"><AlertDescription>{{ error }}</AlertDescription></Alert>
 
@@ -119,7 +128,7 @@ const statusClass: Record<string, string> = {
         <Card v-for="t in TASKS" :key="t.id" class="block gap-0 py-0 shadow-none p-4">
           <div class="flex flex-wrap items-start justify-between gap-3">
             <div class="min-w-0 flex-1">
-              <h3 class="text-sm font-semibold text-base-content">{{ t.title }}</h3>
+              <h3 class="text-sm font-semibold text-base-content flex items-center gap-1.5">{{ t.title }}<TermHelp :term="t.id === 'raidCheck' ? 'raidCheck' : 'smart'" /></h3>
               <p class="text-xs text-base-content/70 mt-0.5">{{ t.desc }}</p>
               <p v-if="t.id === 'raidCheck'" class="text-2xs text-base-content/70 mt-1">
                 {{ $t('ui.storage.MaintenanceSection.ubuntuSMdadmPackageAlready') }}<code class="font-mono">mdcheck_start.timer</code>{{ $t('ui.storage.MaintenanceSection.ifYouScheduleOneHere') }} <code class="font-mono">sudo systemctl disable --now mdcheck_start.timer</code>.
