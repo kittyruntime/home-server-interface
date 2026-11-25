@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import StorageIntro from './StorageIntro.vue'
 import { useI18n } from 'vue-i18n'
 import { Alert } from '@/components/ui/alert'
 import { Progress } from '@/components/ui/progress'
@@ -174,6 +175,8 @@ async function mount(v: Volume) {
         <Button size="sm" class="shrink-0" :disabled="!overview?.freeDisks.length" @click="createVolume">{{ t('ui.storage.VolumesSection.createVolume') }}</Button>
       </Tip>
     </div>
+
+    <StorageIntro tab="lvm" />
 
     <Alert variant="info" v-if="found.arrays || found.vgs" class="mb-4 flex flex-wrap items-center justify-between gap-3" role="note">
       <p class="text-sm text-base-content">
