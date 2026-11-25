@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import MaintenanceCalendar from './MaintenanceCalendar.vue'
 import TermHelp from './TermHelp.vue'
 import StorageIntro from './StorageIntro.vue'
 import { useI18n } from 'vue-i18n'
@@ -32,6 +33,8 @@ const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Frida
 
 const data = ref<Data | null>(null)
 const draft = ref<Record<TaskId, Schedule> | null>(null)
+// What is saved on the server: the calendar shows that, not the draft.
+const savedSchedules = computed(() => Object.fromEntries(TASKS.map(t => [t.id, data.value!.tasks[t.id].schedule])))
 const loading = ref(true)
 const error = ref('')
 const saving = ref(false)
@@ -110,6 +113,8 @@ const statusClass: Record<string, string> = {
     </div>
 
     <StorageIntro tab="maintenance" />
+
+    <MaintenanceCalendar v-if="data" :schedules="savedSchedules" />
 
     <LoadingState v-if="loading && !data" variant="block" />
     <Alert variant="destructive" v-else-if="error" class="mt-4"><AlertDescription>{{ error }}</AlertDescription></Alert>

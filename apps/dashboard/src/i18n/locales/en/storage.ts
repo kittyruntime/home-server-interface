@@ -128,6 +128,11 @@ export default {
     kind: { disks: 'Disks', array: 'RAID array', vg: 'Volume group', filesystem: 'Filesystem', mount: 'Folder' },
     singleDisk: 'single disk',
   },
+  MaintenanceCalendar: {
+    nextTwoWeeks: 'The next two weeks',
+    kind: { smart: 'SMART self-test', raid: 'RAID check' },
+    nothing: 'nothing scheduled',
+  },
   IntroCard: {
     dismiss: 'Dismiss',
     dismissThisExplanation: 'Dismiss this explanation',

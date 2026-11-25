@@ -127,6 +127,11 @@ export default {
     kind: { disks: 'Disques', array: 'Grappe RAID', vg: 'Groupe de volumes', filesystem: 'Système de fichiers', mount: 'Dossier' },
     singleDisk: 'disque seul',
   },
+  MaintenanceCalendar: {
+    nextTwoWeeks: 'Les deux prochaines semaines',
+    kind: { smart: 'Autotest SMART', raid: 'Vérification RAID' },
+    nothing: 'rien de prévu',
+  },
   IntroCard: {
     dismiss: 'Masquer',
     dismissThisExplanation: 'Masquer cette explication',
