@@ -1,0 +1,12 @@
+  pool: tank
+ state: ONLINE
+  scan: scrub repaired 0B in 00:24:01 with 0 errors on Sun Nov 22 00:24:01 2026
+config:
+
+	NAME                                   STATE     READ WRITE CKSUM
+	tank                                   ONLINE       0     0     0
+	  mirror-0                             ONLINE       0     0     0
+	    /dev/disk/by-id/ata-WDC_1-part1    ONLINE       0     0     0
+	    /dev/disk/by-id/ata-WDC_2-part1    ONLINE       0     0     0
+
+errors: No known data errors

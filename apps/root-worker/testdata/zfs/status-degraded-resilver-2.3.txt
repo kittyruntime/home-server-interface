@@ -1,0 +1,20 @@
+  pool: tank
+ state: DEGRADED
+status: One or more devices is currently being resilvered.  The pool will
+	continue to function, possibly in a degraded state.
+action: Wait for the resilver to complete.
+  scan: resilver in progress since Wed Nov 25 10:00:00 2026
+	1.20T / 2.80T scanned at 400M/s, 1.10T / 2.80T issued at 380M/s
+	510G resilvered, 42.50% done, 01:15:00 to go
+config:
+
+	NAME             STATE     READ WRITE CKSUM
+	tank             DEGRADED     0     0     0
+	  raidz1-0       DEGRADED     0     0     0
+	    /dev/sdb1    ONLINE       0     0     0
+	    /dev/sdc1    ONLINE       0     0    12
+	    replacing-2  DEGRADED     0     0     0
+	      /dev/sdd1  UNAVAIL      0     0     0  cannot open
+	      /dev/sde1  ONLINE       0     0     0  (resilvering)
+
+errors: No known data errors
