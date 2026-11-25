@@ -275,7 +275,7 @@ func TestPlanZfsImportSteps(t *testing.T) {
 	if fe != nil {
 		t.Fatal(fe.Message)
 	}
-	if len(p.Steps) != 3 || strings.Join(p.Steps[0].Command, " ") != "zpool import -N -d /dev/disk/by-id 987654321 backup" {
+	if len(p.Steps) != 3 || strings.Join(p.Steps[0].Command, " ") != "zpool import -N -o cachefile=none -d /dev/disk/by-id 987654321 backup" {
 		t.Fatalf("the pool is imported without mounting anything first: %+v", p.Steps)
 	}
 	if !p.Steps[1].Deferred || !strings.Contains(p.Steps[1].Summary, "system folder") {
@@ -348,12 +348,12 @@ func TestMountPointAllowed(t *testing.T) {
 	for mp, ok := range map[string]bool{
 		"/srv/tank": true, "/srv/tank/media": true, "/mnt/backup": true, "/media/usb": true, "/tank": true, "/tank/media": true,
 		"/srv/data/inner": true, // inside a volume: hides nothing
-		"/": false, "/etc": false, "/usr/local": false, "/opt": false, "/opt/containers": false, "/var/lib/docker": false,
-		"/srv": false,      // the root of the allowed folders itself
-		"/srv/data": false, // on top of a mounted volume
-		"/mnt": false,
-		"/srv/link": false, // a link to /etc
-		"/other": false,    // a top-level folder that is not the pool's name
+		"/":               false, "/etc": false, "/usr/local": false, "/opt": false, "/opt/containers": false, "/var/lib/docker": false,
+		"/srv":        false, // the root of the allowed folders itself
+		"/srv/data":   false, // on top of a mounted volume
+		"/mnt":        false,
+		"/srv/link":   false, // a link to /etc
+		"/other":      false, // a top-level folder that is not the pool's name
 		"/srv/../etc": false,
 	} {
 		if got := mountPointAllowed(mp, "tank", mounts, resolve); got != ok {
@@ -370,7 +370,7 @@ func TestMountPointAllowed(t *testing.T) {
 	}
 }
 
-func TestPathHasLink(t *testing.T) {
+func TestPathSafe(t *testing.T) {
 	dir := t.TempDir()
 	if err := os.MkdirAll(filepath.Join(dir, "real", "sub"), 0o755); err != nil {
 		t.Fatal(err)
@@ -378,11 +378,31 @@ func TestPathHasLink(t *testing.T) {
 	if err := os.Symlink(filepath.Join(dir, "real"), filepath.Join(dir, "link")); err != nil {
 		t.Fatal(err)
 	}
-	if pathHasLink(filepath.Join(dir, "real", "sub", "new")) {
-		t.Errorf("a real path has no link")
+	if err := os.MkdirAll(filepath.Join(dir, "open"), 0o777); err != nil {
+		t.Fatal(err)
 	}
-	if !pathHasLink(filepath.Join(dir, "link", "sub")) || !pathHasLink(filepath.Join(dir, "link")) {
-		t.Errorf("a path through a link is refused")
+	_ = os.Chmod(filepath.Join(dir, "open"), 0o777)
+	// Tests do not run as root: the owner check reads every folder as root's
+	// except one marked as a user's.
+	owner := func(p string, fi os.FileInfo) uint32 {
+		if strings.HasSuffix(p, "/user") {
+			return 1000
+		}
+		return 0
+	}
+	if err := os.MkdirAll(filepath.Join(dir, "user"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	for p, ok := range map[string]bool{
+		filepath.Join(dir, "real", "sub", "new"): true,
+		filepath.Join(dir, "link", "sub"):        false, // through a link
+		filepath.Join(dir, "link"):               false,
+		filepath.Join(dir, "open", "x"):          false, // a folder others can write in
+		filepath.Join(dir, "user", "x"):          false, // a folder a user owns
+	} {
+		if got := pathSafeFrom(dir, p, owner); got != ok {
+			t.Errorf("%s: safe %v, want %v", p, got, ok)
+		}
 	}
 }
 
@@ -408,10 +428,22 @@ func TestZfsImportRefusesSystemMountPoints(t *testing.T) {
 	hostOutput = func(name string, args ...string) ([]byte, error) {
 		return []byte("backup\t/backup\ton\nbackup/media\t/srv/media\ton\nbackup/vm\tnone\ton\nbackup/later\t/srv/later\tnoauto\n"), nil
 	}
+	prevS := zfsPathSafe
+	t.Cleanup(func() { zfsPathSafe = prevS })
+	zfsPathSafe = func(string) bool { return true }
 	if err := checkAndMountImported("backup"); err != nil {
 		t.Fatal(err)
 	}
-	if strings.Join(ran, ";") != "zfs set setuid=off devices=off backup;zfs mount backup;zfs set setuid=off devices=off backup/media;zfs mount backup/media" {
+	if strings.Join(ran, ";") != "zfs set setuid=off devices=off backup;zfs set setuid=off devices=off backup;zfs mount backup;zfs set setuid=off devices=off backup/media;zfs mount backup/media;zpool set cachefile= backup" {
 		t.Errorf("mounted: %v", ran)
+	}
+	// A mount point found unsafe in the loop: everything is undone.
+	ran = nil
+	zfsPathSafe = func(p string) bool { return p != "/srv/media" }
+	if err := checkAndMountImported("backup"); err == nil || !strings.Contains(err.Error(), "backup/media") {
+		t.Fatalf("err = %v", err)
+	}
+	if last := ran[len(ran)-1]; last != "zpool export backup" {
+		t.Errorf("a failure in the loop exports the pool again: %v", ran)
 	}
 }

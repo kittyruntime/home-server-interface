@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"syscall"
 )
 
 // Watched pools (ZFS lot 1): the pools HSI imported or the admin chose to
@@ -169,7 +170,7 @@ func planZfsImport(raw json.RawMessage) (*opPlan, *fsError) {
 	// Imported without mounting: a pool brought from elsewhere decides where
 	// its datasets mount, and must never mount over a system folder.
 	imp := cmdStep(req.Name, "Import the ZFS pool "+req.Name+" found on the disks, without mounting anything or changing its data",
-		[]string{"zpool", "import", "-N", "-d", "/dev/disk/by-id", req.GUID, req.Name})
+		[]string{"zpool", "import", "-N", "-o", "cachefile=none", "-d", "/dev/disk/by-id", req.GUID, req.Name})
 	mount := planStep{Kind: "run", Target: req.Name, Deferred: true,
 		Summary: "Mount its datasets without setuid programs or device files, unless one would mount outside /srv, /mnt, /media or /" + req.Name + " (a system folder): then export the pool again and stop",
 		run:     func() (string, error) { return "", checkAndMountImported(req.Name) }}
@@ -322,38 +323,74 @@ func checkAndMountImported(name string) error {
 		}
 		return cmdError{"Not imported: datasets of " + name + " would mount outside /srv, /mnt, /media and /" + name + ", or over a mounted folder: " + strings.Join(unsafe, ", ") + ". Import it by hand with zpool import -N, change their mount points (zfs set mountpoint=...), export it, then import it here."}
 	}
+	// Every failure from here on exports the pool again: nothing stays
+	// mounted, and it is not in the import cache until every check passed.
+	undo := func(msg string) error {
+		if out, err := runArgv([]string{"zpool", "export", name}); err != nil {
+			msg += "; the pool could not be exported again: " + cmdErrMessage(out, err)
+		}
+		return cmdError{msg}
+	}
+	if out, err := runArgv([]string{"zfs", "set", "setuid=off", "devices=off", name}); err != nil {
+		return undo("could not turn off setuid and device files on " + name + ": " + cmdErrMessage(out, err))
+	}
 	// One by one, parents first: each mount point is checked again once the
 	// datasets above it are mounted, since their content comes from the pool.
 	for _, ds := range mount {
 		mp := mountPoints[ds]
-		if pathHasLink(mp) || !mountPointAllowed(mp, name, zfsCurrentMounts(), filepath.EvalSymlinks) {
-			return cmdError{"stopped before mounting " + ds + ": its mount point " + mp + " goes through a link or over a mounted folder"}
+		if !zfsPathSafe(mp) || !mountPointAllowed(mp, name, zfsCurrentMounts(), filepath.EvalSymlinks) {
+			return undo("stopped before mounting " + ds + ": its mount point " + mp + " goes through a link, a folder that is not root's, or over a mounted folder")
 		}
 		if out, err := runArgv([]string{"zfs", "set", "setuid=off", "devices=off", ds}); err != nil {
-			return cmdError{"could not turn off setuid and device files on " + ds + ": " + cmdErrMessage(out, err)}
+			return undo("could not turn off setuid and device files on " + ds + ": " + cmdErrMessage(out, err))
 		}
 		if out, err := runArgv([]string{"zfs", "mount", ds}); err != nil {
-			return cmdError{"could not mount " + ds + ": " + cmdErrMessage(out, err)}
+			return undo("could not mount " + ds + ": " + cmdErrMessage(out, err))
 		}
+	}
+	// Checked and mounted: the pool joins the import cache, to come back at boot.
+	if out, err := runArgv([]string{"zpool", "set", "cachefile=", name}); err != nil {
+		return undo("could not add " + name + " to the import cache: " + cmdErrMessage(out, err))
 	}
 	return nil
 }
 
-// pathHasLink: some existing part of p is a symbolic link.
-func pathHasLink(p string) bool {
-	cur := "/"
-	for _, part := range strings.Split(strings.Trim(filepath.Clean(p), "/"), "/") {
-		if part == "" {
+// zfsPathSafe checks a mount point right before mounting (tests swap it).
+var zfsPathSafe = func(p string) bool {
+	return pathSafe(p, func(_ string, fi os.FileInfo) uint32 {
+		if st, ok := fi.Sys().(*syscall.Stat_t); ok {
+			return st.Uid
+		}
+		return 1
+	})
+}
+
+// pathSafe: no existing part of p is a link, and each existing folder is
+// root's and writable by nobody else, so no one can swap a folder for a link
+// between this check and the mount.
+func pathSafe(p string, ownerOf func(path string, fi os.FileInfo) uint32) bool {
+	return pathSafeFrom("/", p, ownerOf)
+}
+
+// pathSafeFrom checks the parts of p below from (a folder trusted as is).
+func pathSafeFrom(from, p string, ownerOf func(path string, fi os.FileInfo) uint32) bool {
+	rel, err := filepath.Rel(from, filepath.Clean(p))
+	if err != nil || strings.HasPrefix(rel, "..") {
+		return false
+	}
+	cur := from
+	for _, part := range strings.Split(rel, "/") {
+		if part == "" || part == "." {
 			continue
 		}
 		cur = filepath.Join(cur, part)
 		fi, err := os.Lstat(cur)
 		if err != nil {
-			return false // the rest does not exist yet: ZFS creates it
+			return true // the rest does not exist yet: ZFS creates it
 		}
-		if fi.Mode()&os.ModeSymlink != 0 {
-			return true
+		if fi.Mode()&os.ModeSymlink != 0 || !fi.IsDir() || ownerOf(cur, fi) != 0 || fi.Mode().Perm()&0o022 != 0 {
+			return false
 		}
 	}
-	return false
+	return true
 }
