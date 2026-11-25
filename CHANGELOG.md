@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- ZFS pools and datasets can be created and deleted from Storage: a pool from free
+  whole disks (stripe, mirror, RAID-Z1, Z2 or Z3, with the space it holds and the
+  failures it survives shown as you choose), datasets with a quota and their
+  compression, and their quota and compression changed later. Deleting a pool
+  erases its disks so they are free again; nothing used by a Place, a share or an
+  app can be deleted.
+
+### Added
+
 - ZFS in Storage, on a server that has ZFS (HSI never installs it): a ZFS tab
   with the pools (state, capacity, layout drawn as a tree with each disk's errors,
   last scrub or resilver), the datasets, and the pools found on the disks to
