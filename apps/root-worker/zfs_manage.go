@@ -130,30 +130,116 @@ func planZfsPoolCreate(raw json.RawMessage) (*opPlan, *fsError) {
 	return &opPlan{Op: "zfs.pool.create", Steps: []planStep{create, watchAfter(req.Name)}, Observed: obs}, nil
 }
 
-// zfsPoolDisks: the whole disks of a pool and the partitions ZFS made on them
-// (sdf1), from its leaves.
-func zfsPoolDisks(p zfsPool) (disks []string, parts map[string][]string) {
-	parts = map[string][]string{}
-	seen := map[string]bool{}
-	var walk func(vs []zfsVdev)
-	walk = func(vs []zfsVdev) {
-		for _, v := range vs {
-			if len(v.Children) == 0 && v.Disk != "" {
-				if !seen[v.Disk] {
-					seen[v.Disk] = true
-					disks = append(disks, v.Disk)
-				}
-				if real, err := zfsResolve(v.Path); err == nil && real != "" {
-					if part := filepath.Base(real); part != v.Disk && reBlockDev.MatchString(part) {
-						parts[v.Disk] = append(parts[v.Disk], part)
+type diskPart struct{ Name, FSType string }
+
+// zfsDiskParts lists the partitions of a disk with their filesystem type
+// (tests swap it).
+var zfsDiskParts = func(disk string) []diskPart {
+	out, err := hostOutput("lsblk", "-nr", "-o", "NAME,TYPE,FSTYPE", "/dev/"+disk)
+	if err != nil {
+		return nil
+	}
+	var parts []diskPart
+	for _, line := range strings.Split(strings.TrimSpace(string(out)), "\n") {
+		f := strings.Fields(line)
+		if len(f) >= 2 && f[1] == "part" {
+			p := diskPart{Name: f[0]}
+			if len(f) > 2 {
+				p.FSType = f[2]
+			}
+			parts = append(parts, p)
+		}
+	}
+	return parts
+}
+
+// zfsWipeTargets: what to erase once a pool is destroyed so its disks show as
+// free, and only that. A leaf counts when it is online (or an available
+// spare not shared with another pool), resolves to a device of this host, and
+// carries this pool's label (blkid TYPE zfs_member, UUID the pool guid). The
+// whole disk is wiped only when every partition on it is this pool's (the
+// layout zpool makes on a whole disk: the data partition and the small
+// reserved partition 9); otherwise only the pool's partitions are. Nothing on
+// the system disk is touched.
+func zfsWipeTargets(pool zfsPool, others []zfsPool) (wipes []string, disks []string) {
+	sys := hostSystemDevs()
+	sharedSpare := map[string]bool{}
+	for _, o := range others {
+		for _, top := range o.Vdevs {
+			if top.Type == "spare" {
+				for _, l := range leavesOf(top) {
+					if real, err := zfsResolve(l.Path); err == nil {
+						sharedSpare[filepath.Base(real)] = true
 					}
 				}
 			}
-			walk(v.Children)
 		}
 	}
-	walk(p.Vdevs)
-	return disks, parts
+	leavesByDisk := map[string][]string{}
+	seenDisk := map[string]bool{}
+	var order []string
+	for _, top := range pool.Vdevs {
+		spare := top.Type == "spare"
+		for _, l := range leavesOf(top) {
+			if !(l.State == "ONLINE" || (spare && l.State == "AVAIL")) || !strings.HasPrefix(l.Path, "/") {
+				continue
+			}
+			real, err := zfsResolve(l.Path)
+			if err != nil || real == "" {
+				continue
+			}
+			name := filepath.Base(real)
+			if !reBlockDev.MatchString(name) || (spare && sharedSpare[name]) {
+				continue
+			}
+			if hostBlkid("/dev/"+name, "TYPE") != "zfs_member" || hostBlkid("/dev/"+name, "UUID") != pool.GUID {
+				continue
+			}
+			disk := zfsParentOf(name)
+			if disk == "" {
+				disk = name
+			}
+			if sys[disk] || sys[name] {
+				continue
+			}
+			if !seenDisk[disk] {
+				seenDisk[disk] = true
+				order = append(order, disk)
+			}
+			if name != disk {
+				leavesByDisk[disk] = append(leavesByDisk[disk], name)
+			}
+		}
+	}
+	for _, disk := range order {
+		mine := map[string]bool{}
+		for _, p := range leavesByDisk[disk] {
+			mine[p] = true
+			wipes = append(wipes, p)
+		}
+		whole := true
+		for _, p := range zfsDiskParts(disk) {
+			if !mine[p.Name] && !(p.FSType == "" && strings.HasSuffix(p.Name, "9")) {
+				whole = false
+			}
+		}
+		if whole {
+			wipes = append(wipes, disk)
+			disks = append(disks, disk)
+		}
+	}
+	return wipes, disks
+}
+
+func leavesOf(v zfsVdev) []zfsVdev {
+	if len(v.Children) == 0 {
+		return []zfsVdev{v}
+	}
+	var out []zfsVdev
+	for _, c := range v.Children {
+		out = append(out, leavesOf(c)...)
+	}
+	return out
 }
 
 func planZfsPoolDestroy(raw json.RawMessage) (*opPlan, *fsError) {
@@ -165,33 +251,44 @@ func planZfsPoolDestroy(raw json.RawMessage) (*opPlan, *fsError) {
 	}
 	info := zfsSnapshot()
 	var pool *zfsPool
+	var others []zfsPool
 	for i := range info.Pools {
 		if info.Pools[i].Name == req.Name {
 			pool = &info.Pools[i]
+		} else {
+			others = append(others, info.Pools[i])
 		}
 	}
 	if pool == nil {
 		return nil, &fsError{Code: "ENOENT", Message: "The pool " + req.Name + " is not imported"}
 	}
-	disks, parts := zfsPoolDisks(*pool)
+	wipes, disks := zfsWipeTargets(*pool, others)
 	var devs []string
-	for _, d := range disks {
-		devs = append(devs, "/dev/"+d)
+	for _, w := range wipes {
+		devs = append(devs, "/dev/"+w)
 	}
 	obs := map[string]string{"pool": pool.GUID}
 	for _, d := range devs {
 		observeDevice(obs, d, d)
 	}
-	steps := []planStep{destructiveAll(cmdStep(req.Name,
-		"Destroy the ZFS pool "+req.Name+" and every dataset and file in it", []string{"zpool", "destroy", req.Name}), devs)}
-	// Wiped so that the disks show as free again.
+	diskDevs := []string{}
 	for _, d := range disks {
-		for _, p := range parts[d] {
-			steps = append(steps, cmdStep("/dev/"+p, "Erase the ZFS signature of /dev/"+p, []string{"wipefs", "-a", "/dev/" + p}))
-		}
-		steps = append(steps, cmdStep("/dev/"+d, "Erase the partition table of /dev/"+d+" so it shows as a free disk", []string{"wipefs", "-a", "/dev/" + d}))
+		diskDevs = append(diskDevs, "/dev/"+d)
 	}
-	steps = append(steps, watchedStep("Stop watching "+req.Name, withoutWatched(loadWatchedPools(), req.Name)))
+	steps := []planStep{destructiveAll(cmdStep(req.Name,
+		"Destroy the ZFS pool "+req.Name+" and every dataset and file in it", []string{"zpool", "destroy", req.Name}), diskDevs),
+		// Unwatched at once: a pool that is gone must not be reported missing.
+		watchedStep("Stop watching "+req.Name, withoutWatched(loadWatchedPools(), req.Name))}
+	// Wiped so that the disks show as free again; a wipe that fails only warns.
+	for _, w := range wipes {
+		summary := "Erase the ZFS signature of /dev/" + w
+		if containsString(disks, w) {
+			summary = "Erase the partition table of /dev/" + w + " so it shows as a free disk"
+		}
+		s := cmdStep("/dev/"+w, summary, []string{"wipefs", "-a", "/dev/" + w})
+		s.OnFailure = "warn"
+		steps = append(steps, s)
+	}
 	return &opPlan{Op: "zfs.pool.destroy", Steps: steps, Observed: obs}, nil
 }
 

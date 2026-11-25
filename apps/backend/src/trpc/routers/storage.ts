@@ -229,12 +229,19 @@ async function workerInput(ctx: Context & { user: { userId: string } }, op: Plan
     throw new TRPCError({ code: 'FORBIDDEN', message: 'Only an admin can change backups' })
   // Importing a pool mounts disks brought from elsewhere: admins only.
   if (op.startsWith('zfs.') && !ctx.user?.isAdmin)
-    throw new TRPCError({ code: 'FORBIDDEN', message: 'Only an admin can import or watch a ZFS pool' })
+    throw new TRPCError({ code: 'FORBIDDEN', message: 'Only an admin can manage ZFS pools and datasets' })
   const parsed = PLAN_INPUTS[op].safeParse(raw)
   if (!parsed.success) throw new TRPCError({ code: 'BAD_REQUEST', message: parsed.error.issues[0]?.message ?? 'Invalid input' })
   // A ZFS delete waits until nothing uses what it removes, as for an LVM volume.
   if (op === 'zfs.dataset.destroy' || op === 'zfs.pool.destroy') {
-    const blocker = zfsDestroyBlocker((await loadVolumes(ctx, { strict: true })).volumes, op, parsed.data as { name: string })
+    const [overview, zfs, places, apps] = await Promise.all([
+      loadVolumes(ctx, { strict: true }), loadZfs(),
+      ctx.prisma.place.findMany({ select: { name: true, path: true } }), appSources(),
+    ])
+    const datasets = [...zfs.datasets, ...zfs.watched.flatMap(w => w.datasets)]
+    // Shares are on Places: a Place under the dataset covers its share.
+    const uses = [...places.map(p => ({ what: `Place ${p.name}`, path: p.path })), ...apps.flatMap(a => a.sources.map(path => ({ what: `app ${a.name}`, path })))]
+    const blocker = zfsDestroyBlocker(overview.volumes, op, parsed.data as { name: string }, datasets, uses)
     if (blocker) throw new TRPCError({ code: 'PRECONDITION_FAILED', message: blocker })
   }
   if (op !== 'mount') return parsed.data as Record<string, unknown>

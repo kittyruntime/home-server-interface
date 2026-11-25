@@ -4924,5 +4924,11 @@ async function testZfsDestroyBlocker() {
   assert.match(zfsDestroyBlocker(vols, 'zfs.pool.destroy', { name: 'tank' }) ?? '', /tank\/media/)
   assert.equal(zfsDestroyBlocker(vols.filter(x => x.device !== 'tank/media'), 'zfs.pool.destroy', { name: 'tank' }), null, 'tankette is another pool')
   assert.equal(zfsDestroyBlocker(vols, 'zfs.dataset.create', { name: 'tank/new' }), null)
+  // A dataset that is not a volume (canmount=noauto, mounted by hand) holding a Place.
+  const ds = [{ name: 'tank/x', mountPoint: '/srv/tank/x' }, { name: 'tank', mountPoint: '/srv/tank' }]
+  const uses = [{ what: 'Place Hidden', path: '/srv/tank/x/files' }, { what: 'app nextcloud', path: '/srv/other' }]
+  assert.match(zfsDestroyBlocker([], 'zfs.dataset.destroy', { name: 'tank/x' }, ds, uses) ?? '', /Place Hidden/)
+  assert.match(zfsDestroyBlocker([], 'zfs.pool.destroy', { name: 'tank' }, ds, uses) ?? '', /Place Hidden/)
+  assert.equal(zfsDestroyBlocker([], 'zfs.dataset.destroy', { name: 'tank/x' }, ds, [{ what: 'Place Top', path: '/srv/tank/y' }]), null, 'a Place outside the dataset')
 }
 await testZfsDestroyBlocker()

@@ -72,6 +72,10 @@ export function isVolumeDataset(d: ZfsDataset): boolean {
   return d.mountPoint.startsWith('/') && (d.canMount ?? 'on') === 'on'
 }
 
+// The same rule as volume-guard's, kept here: that module imports the alert
+// sampler, which imports this one.
+const pathUnder = (path: string, mountPoint: string) => path === mountPoint || path.startsWith(mountPoint.replace(/\/$/, '') + '/')
+
 export const zfsVolumeId = (guid: string, dataset: string) => `zfs:${guid}:${dataset}`
 
 function poolIssues(p: ZfsPool): VolumeIssue[] {
@@ -134,14 +138,24 @@ export function zfsVolumes(zfs: ZfsInfo, guard: VolumeInput['guard'], holds: Vol
 }
 
 /** Why a ZFS delete must wait: a dataset it removes is used by a Place, a
- *  share or an app. Null when nothing it removes is in use. */
-export function zfsDestroyBlocker(volumes: Volume[], op: string, input: { name?: unknown }): string | null {
+ *  share or an app. Checked on the volumes, and on the mount points of every
+ *  dataset it removes (`datasets`: from zfs list and the watched pools, so a
+ *  dataset that is not a volume, or is missing now, counts too) against the
+ *  paths things use (`uses`). Null when nothing it removes is in use. */
+export function zfsDestroyBlocker(
+  volumes: Volume[], op: string, input: { name?: unknown },
+  datasets: Array<{ name: string; mountPoint: string }> = [], uses: Array<{ what: string; path: string }> = [],
+): string | null {
   if ((op !== 'zfs.dataset.destroy' && op !== 'zfs.pool.destroy') || typeof input.name !== 'string') return null
   const name = input.name
-  const hit = volumes.filter(v => v.engine === 'zfs' && v.device && (v.device === name || v.device.startsWith(`${name}/`)))
-  for (const v of hit) {
-    const uses = [...v.usedBy.places.map(p => `Place ${p.name}`), ...v.usedBy.shares.map(s => `share ${s}`), ...v.usedBy.apps.map(a => `app ${a}`)]
-    if (uses.length) return `${v.device} is used by ${uses.join(', ')}: stop using it first`
+  const removed = (n: string) => n === name || n.startsWith(`${name}/`)
+  for (const v of volumes.filter(x => x.engine === 'zfs' && x.device && removed(x.device))) {
+    const used = [...v.usedBy.places.map(p => `Place ${p.name}`), ...v.usedBy.shares.map(s => `share ${s}`), ...v.usedBy.apps.map(a => `app ${a}`)]
+    if (used.length) return `${v.device} is used by ${used.join(', ')}: stop using it first`
+  }
+  for (const d of datasets.filter(x => removed(x.name) && x.mountPoint.startsWith('/'))) {
+    const used = uses.filter(u => pathUnder(u.path, d.mountPoint)).map(u => u.what)
+    if (used.length) return `${d.name} is used by ${[...new Set(used)].join(', ')}: stop using it first`
   }
   return null
 }

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"regexp"
 	"strings"
 	"testing"
 )
@@ -138,30 +139,137 @@ func stubTankPool(t *testing.T) {
 	}
 }
 
-func TestPlanZfsPoolDestroyWipesItsDisks(t *testing.T) {
+// destroyHost: zpool status text, the partitions lsblk shows per disk, and
+// what blkid reads on each device (TYPE and UUID, the pool guid).
+func destroyHost(t *testing.T, status string, parts map[string][]diskPart, blk map[string][2]string) {
+	t.Helper()
 	stubTankPool(t)
+	prevD, prevB, prevR := zfsDiskParts, hostBlkid, zfsResolve
+	t.Cleanup(func() { zfsDiskParts, hostBlkid, zfsResolve = prevD, prevB, prevR })
+	zfsDiskParts = func(disk string) []diskPart { return parts[disk] }
+	hostBlkid = func(dev, tag string) string {
+		if tag == "TYPE" {
+			return blk[dev][0]
+		}
+		return blk[dev][1]
+	}
+	zfsResolve = func(p string) (string, error) { return p, nil }
+	prevP := zfsParentOf
+	t.Cleanup(func() { zfsParentOf = prevP })
+	zfsParentOf = func(n string) string {
+		if m := regexp.MustCompile(`^(nvme\d+n\d+)p\d+$`).FindStringSubmatch(n); m != nil {
+			return m[1]
+		}
+		if m := regexp.MustCompile(`^([a-z]+)\d+$`).FindStringSubmatch(n); m != nil {
+			return m[1]
+		}
+		return ""
+	}
+	inner := hostOutput
+	hostOutput = func(name string, args ...string) ([]byte, error) {
+		if name == "zpool" && args[0] == "status" {
+			return []byte(status), nil
+		}
+		if name == "zpool" && args[0] == "list" {
+			return []byte("tank\t1234567890\t1\t1\t1\t0\tONLINE\nother\t555\t1\t1\t1\t0\tONLINE\n"), nil
+		}
+		return inner(name, args...)
+	}
+}
+
+func poolStatus(pool, body string) string {
+	return "  pool: " + pool + "\n state: ONLINE\n  scan: none requested\nconfig:\n\n\tNAME STATE READ WRITE CKSUM\n\t" + pool + " ONLINE 0 0 0\n" + body + "\nerrors: No known data errors\n\n"
+}
+
+func commands(p *opPlan) string {
+	var c []string
+	for _, s := range p.Steps {
+		if len(s.Command) > 0 {
+			c = append(c, strings.Join(s.Command, " "))
+		}
+	}
+	return strings.Join(c, ";")
+}
+
+func TestPlanZfsPoolDestroyWipesItsDisks(t *testing.T) {
+	destroyHost(t, poolStatus("tank", "\t  mirror-0 ONLINE 0 0 0\n\t    /dev/sdf1 ONLINE 0 0 0\n\t    /dev/sdg1 ONLINE 0 0 0\n"),
+		map[string][]diskPart{"sdf": {{"sdf1", "zfs_member"}, {"sdf9", ""}}, "sdg": {{"sdg1", "zfs_member"}, {"sdg9", ""}}},
+		map[string][2]string{"/dev/sdf1": {"zfs_member", "1234567890"}, "/dev/sdg1": {"zfs_member", "1234567890"}})
 	p, fe := planZfsPoolDestroy([]byte(`{"name":"tank"}`))
 	if fe != nil {
 		t.Fatal(fe.Message)
 	}
-	var cmds []string
-	for _, s := range p.Steps {
-		if len(s.Command) > 0 {
-			cmds = append(cmds, strings.Join(s.Command, " "))
-		}
-	}
 	want := "zpool destroy tank;wipefs -a /dev/sdf1;wipefs -a /dev/sdf;wipefs -a /dev/sdg1;wipefs -a /dev/sdg"
-	if strings.Join(cmds, ";") != want {
-		t.Errorf("commands:\n%s\nwant:\n%s", strings.Join(cmds, ";"), want)
+	if got := commands(p); got != want {
+		t.Errorf("commands:\n%s\nwant:\n%s", got, want)
 	}
 	if !p.Steps[0].Destructive || len(p.Steps[0].Devices) != 2 {
 		t.Errorf("the destroy step lists the two disks it erases: %+v", p.Steps[0])
 	}
-	if last := p.Steps[len(p.Steps)-1]; last.Target != zfsPoolsPath {
-		t.Errorf("the pool is unwatched: %+v", last)
+	if p.Steps[1].Target != zfsPoolsPath {
+		t.Errorf("the pool is unwatched right after it is destroyed: %+v", p.Steps[1])
+	}
+	for _, s := range p.Steps[2:] {
+		if s.OnFailure != "warn" {
+			t.Errorf("a wipe that fails only warns: %+v", s)
+		}
 	}
 	if _, fe := planZfsPoolDestroy([]byte(`{"name":"nope"}`)); fe == nil {
 		t.Errorf("a pool that does not exist was accepted")
+	}
+}
+
+func TestPlanZfsPoolDestroyKeepsOtherPartitions(t *testing.T) {
+	destroyHost(t, poolStatus("tank", "\t  /dev/sdb3 ONLINE 0 0 0\n"),
+		map[string][]diskPart{"sdb": {{"sdb1", "ext4"}, {"sdb3", "zfs_member"}}},
+		map[string][2]string{"/dev/sdb3": {"zfs_member", "1234567890"}})
+	p, fe := planZfsPoolDestroy([]byte(`{"name":"tank"}`))
+	if fe != nil {
+		t.Fatal(fe.Message)
+	}
+	if got := commands(p); got != "zpool destroy tank;wipefs -a /dev/sdb3" {
+		t.Errorf("only the pool's partition is wiped, the disk keeps sdb1: %s", got)
+	}
+}
+
+func TestPlanZfsPoolDestroyNeverWipesTheSystemDisk(t *testing.T) {
+	destroyHost(t, poolStatus("tank", "\t  /dev/nvme0n1p4 ONLINE 0 0 0\n"),
+		map[string][]diskPart{"nvme0n1": {{"nvme0n1p4", "zfs_member"}}},
+		map[string][2]string{"/dev/nvme0n1p4": {"zfs_member", "1234567890"}})
+	hostSystemDevs = func() map[string]bool { return map[string]bool{"nvme0n1": true, "nvme0n1p2": true} }
+	p, fe := planZfsPoolDestroy([]byte(`{"name":"tank"}`))
+	if fe != nil {
+		t.Fatal(fe.Message)
+	}
+	if got := commands(p); got != "zpool destroy tank" {
+		t.Errorf("nothing on the system disk is wiped: %s", got)
+	}
+}
+
+func TestPlanZfsPoolDestroySkipsDoubtfulLeaves(t *testing.T) {
+	destroyHost(t, poolStatus("tank", "\t  mirror-0 DEGRADED 0 0 0\n\t    /dev/sdf1 ONLINE 0 0 0\n\t    /dev/sdc1 UNAVAIL 0 0 0\n\t    /dev/sdh1 ONLINE 0 0 0\n\t    1234512345 UNAVAIL 0 0 0\n\tspares\n\t  /dev/sdk1 AVAIL\n"),
+		map[string][]diskPart{"sdf": {{"sdf1", "zfs_member"}, {"sdf9", ""}}, "sdc": {{"sdc1", "ext4"}}, "sdh": {{"sdh1", "zfs_member"}}, "sdk": {{"sdk1", "zfs_member"}}},
+		map[string][2]string{
+			"/dev/sdf1": {"zfs_member", "1234567890"},
+			"/dev/sdc1": {"ext4", ""},          // UNAVAIL: sdc is another disk now
+			"/dev/sdh1": {"zfs_member", "999"}, // a label of another pool
+			"/dev/sdk1": {"zfs_member", "1234567890"},
+		})
+	prev := hostOutput
+	hostOutput = func(name string, args ...string) ([]byte, error) {
+		if name == "zpool" && args[0] == "status" {
+			// The spare is shared with "other".
+			return []byte(poolStatus("tank", "\t  mirror-0 DEGRADED 0 0 0\n\t    /dev/sdf1 ONLINE 0 0 0\n\t    /dev/sdc1 UNAVAIL 0 0 0\n\t    /dev/sdh1 ONLINE 0 0 0\n\t    1234512345 UNAVAIL 0 0 0\n\tspares\n\t  /dev/sdk1 AVAIL\n") +
+				poolStatus("other", "\t  /dev/sdm1 ONLINE 0 0 0\n\tspares\n\t  /dev/sdk1 AVAIL\n")), nil
+		}
+		return prev(name, args...)
+	}
+	p, fe := planZfsPoolDestroy([]byte(`{"name":"tank"}`))
+	if fe != nil {
+		t.Fatal(fe.Message)
+	}
+	if got := commands(p); got != "zpool destroy tank;wipefs -a /dev/sdf1;wipefs -a /dev/sdf" {
+		t.Errorf("only sdf is wiped (sdc unavailable, sdh another pool's, the guid leaf unknown, sdk a spare of other): %s", got)
 	}
 }
 
