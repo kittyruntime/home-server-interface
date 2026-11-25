@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Storage is organized in tabs: Disks, LVM and Maintenance. Each tab keeps its
+  place, and Storage opens on Disks until a volume exists.
+- The Disks tab draws the server's disks as bays, colored by what uses them, with
+  their health and temperature; a free bay starts a new volume.
+- Each LVM volume shows how it is built, from its disks to its folder.
+- Maintenance shows the checks of the next two weeks as a calendar.
+- Each tab explains what it shows, technical terms have a help icon, and links
+  lead to the guide (split into Disks, LVM and a storage glossary) and to the
+  tools' own documentation.
+
 ## [1.95.1] - 2026-11-25
 
 ### Fixed
