@@ -4889,3 +4889,19 @@ async function testBuildVolumesWithoutZfs() {
   assert.equal(volumes[0]!.engine, 'lvm', 'volumes HSI builds without ZFS are the LVM engine')
 }
 await testBuildVolumesWithoutZfs()
+
+async function testZfsAlerts() {
+  const { zfsAlerts } = await import('../services/alert-sampler')
+  const clean = zPool([zGroup('mirror-0', 'mirror', [zLeaf('sda'), zLeaf('sdb')])]) as any
+  assert.deepEqual(zfsAlerts([clean]).found, [])
+  assert.deepEqual(zfsAlerts([clean]).checked, ['pool:tank', 'errors:tank:sda', 'errors:tank:sdb', 'scrub:tank'], 'every target it can raise is checked, so a cleared one closes')
+  const degraded = zfsAlerts([{ ...clean, state: 'DEGRADED' }]).found
+  assert.deepEqual(degraded.map(f => [f.target, f.severity]), [['pool:tank', 'warning']])
+  assert.equal(zfsAlerts([{ ...clean, state: 'FAULTED' }]).found[0]!.severity, 'critical')
+  const errs = zfsAlerts([zPool([zGroup('mirror-0', 'mirror', [zLeaf('sda'), zLeaf('sdc', { checksum: 12 })])])] as any).found
+  assert.deepEqual(errs.map(f => [f.target, f.severity]), [['errors:tank:sdc', 'warning']])
+  assert.match(errs[0]!.message, /12/)
+  const scrub = zfsAlerts([{ ...clean, scan: { kind: 'scrub', state: 'finished', repaired: 0, errors: 3 } }]).found
+  assert.deepEqual(scrub.map(f => f.target), ['scrub:tank'])
+}
+await testZfsAlerts()

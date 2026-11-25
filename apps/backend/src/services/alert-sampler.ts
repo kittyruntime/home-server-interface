@@ -1,4 +1,5 @@
 import { prisma } from '@app/database'
+import { leavesOf, type ZfsInfo, type ZfsPool } from './zfs-volumes'
 import { requestSync } from '../nats'
 import { dispatchEvent, type NotificationEvent, type Severity } from './notifications'
 import { log } from '../utils/log'
@@ -37,6 +38,36 @@ async function checkRaid(): Promise<CheckOutcome> {
       severity: r.active === 0 ? 'critical' : 'warning',
     }))
   return { found, checked }
+}
+
+// ZFS pools (lot 1): a pool not ONLINE, read/write/checksum errors on a disk,
+// a scrub that found errors. Checked on every imported pool.
+export function zfsAlerts(pools: ZfsPool[]): CheckOutcome {
+  const found: CheckResult[] = []
+  const checked: string[] = []
+  for (const p of pools) {
+    checked.push(`pool:${p.name}`)
+    if (p.state !== 'ONLINE')
+      found.push({ target: `pool:${p.name}`, message: `ZFS pool ${p.name} is ${p.state}`, severity: p.state === 'DEGRADED' ? 'warning' : 'critical' })
+    for (const leaf of p.vdevs.flatMap(leavesOf)) {
+      const disk = leaf.disk || leaf.name
+      checked.push(`errors:${p.name}:${disk}`)
+      const n = leaf.read + leaf.write + leaf.checksum
+      if (n > 0) {
+        found.push({ target: `errors:${p.name}:${disk}`, severity: 'warning',
+          message: `${disk} in ${p.name}: ${leaf.read} read, ${leaf.write} write, ${leaf.checksum} checksum errors` })
+      }
+    }
+    checked.push(`scrub:${p.name}`)
+    if (p.scan.errors > 0)
+      found.push({ target: `scrub:${p.name}`, message: `The last ${p.scan.kind} of ${p.name} found ${p.scan.errors} errors`, severity: 'warning' })
+  }
+  return { found, checked }
+}
+
+async function checkZfs(): Promise<CheckOutcome> {
+  const zfs = await requestSync<ZfsInfo>('root.zfs.list', {}, 20_000)
+  return zfs.available ? zfsAlerts(zfs.pools) : { found: [], checked: [] }
 }
 
 // Consistency checks (scheduled from Storage > Maintenance, or the distro's own
@@ -175,6 +206,7 @@ const checkers: Checker[] = [
   { source: 'storage.raid', check: checkRaid },
   { source: 'storage.smart', check: checkSmart },
   { source: 'storage.raid-check', check: checkRaidConsistency },
+  { source: 'storage.zfs', check: checkZfs },
   { source: 'storage.disk-usage', check: checkDiskUsage },
   { source: 'storage.expand', check: checkExpansions },
   { source: 'storage.description', check: checkDescriptions },
