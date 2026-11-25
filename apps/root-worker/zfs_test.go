@@ -360,6 +360,30 @@ func TestMountPointAllowed(t *testing.T) {
 			t.Errorf("%s: allowed %v, want %v", mp, got, ok)
 		}
 	}
+	// A pool named after a system folder gets no folder of its own.
+	for _, pool := range []string{"etc", "usr", "srv", "mnt", "media", "opt", "var", "home", "boot"} {
+		// (/srv/x stays a data folder whatever the pool is called.)
+		inner := pool != "srv" && pool != "mnt" && pool != "media" && mountPointAllowed("/"+pool+"/x", pool, mounts, resolve)
+		if mountPointAllowed("/"+pool, pool, mounts, resolve) || inner {
+			t.Errorf("pool %q may mount on /%s", pool, pool)
+		}
+	}
+}
+
+func TestPathHasLink(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(dir, "real", "sub"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(filepath.Join(dir, "real"), filepath.Join(dir, "link")); err != nil {
+		t.Fatal(err)
+	}
+	if pathHasLink(filepath.Join(dir, "real", "sub", "new")) {
+		t.Errorf("a real path has no link")
+	}
+	if !pathHasLink(filepath.Join(dir, "link", "sub")) || !pathHasLink(filepath.Join(dir, "link")) {
+		t.Errorf("a path through a link is refused")
+	}
 }
 
 func TestZfsImportRefusesSystemMountPoints(t *testing.T) {
@@ -387,7 +411,7 @@ func TestZfsImportRefusesSystemMountPoints(t *testing.T) {
 	if err := checkAndMountImported("backup"); err != nil {
 		t.Fatal(err)
 	}
-	if strings.Join(ran, ";") != "zfs set setuid=off devices=off backup;zfs mount backup;zfs mount backup/media" {
+	if strings.Join(ran, ";") != "zfs set setuid=off devices=off backup;zfs mount backup;zfs set setuid=off devices=off backup/media;zfs mount backup/media" {
 		t.Errorf("mounted: %v", ran)
 	}
 }

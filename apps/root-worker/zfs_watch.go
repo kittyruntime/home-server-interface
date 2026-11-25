@@ -246,10 +246,19 @@ func resolvePrefix(p string, resolve func(string) (string, error)) string {
 	}
 }
 
+// Top-level folders of a Linux system: a pool named after one gets no folder
+// of its own at the root.
+var systemTopLevel = map[string]bool{
+	"bin": true, "boot": true, "cdrom": true, "dev": true, "etc": true, "home": true, "lib": true, "lib32": true,
+	"lib64": true, "libx32": true, "lost+found": true, "media": true, "mnt": true, "opt": true, "proc": true,
+	"root": true, "run": true, "sbin": true, "snap": true, "srv": true, "sys": true, "tmp": true, "usr": true, "var": true,
+}
+
 // underAllowedRoot: inside /srv, /mnt or /media (never those folders
-// themselves), or in /<pool>, the place ZFS gives a pool by default.
+// themselves), or in /<pool>, the place ZFS gives a pool by default, unless
+// the pool is named after a system folder.
 func underAllowedRoot(p, pool string) bool {
-	if p == "/"+pool || strings.HasPrefix(p, "/"+pool+"/") {
+	if !systemTopLevel[pool] && (p == "/"+pool || strings.HasPrefix(p, "/"+pool+"/")) {
 		return true
 	}
 	for _, r := range []string{"/srv", "/mnt", "/media"} {
@@ -294,6 +303,7 @@ func checkAndMountImported(name string) error {
 	}
 	mounts := zfsCurrentMounts()
 	var unsafe, mount []string
+	mountPoints := map[string]string{}
 	for _, line := range strings.Split(strings.TrimSpace(string(out)), "\n") {
 		f := strings.Split(line, "\t")
 		if len(f) < 3 || f[2] != "on" || !strings.HasPrefix(f[1], "/") {
@@ -303,6 +313,7 @@ func checkAndMountImported(name string) error {
 			unsafe = append(unsafe, f[0]+" ("+f[1]+")")
 		} else {
 			mount = append(mount, f[0])
+			mountPoints[f[0]] = f[1]
 		}
 	}
 	if len(unsafe) > 0 {
@@ -311,13 +322,38 @@ func checkAndMountImported(name string) error {
 		}
 		return cmdError{"Not imported: datasets of " + name + " would mount outside /srv, /mnt, /media and /" + name + ", or over a mounted folder: " + strings.Join(unsafe, ", ") + ". Import it by hand with zpool import -N, change their mount points (zfs set mountpoint=...), export it, then import it here."}
 	}
-	if out, err := runArgv([]string{"zfs", "set", "setuid=off", "devices=off", name}); err != nil {
-		return cmdError{"could not turn off setuid and device files on " + name + ": " + cmdErrMessage(out, err)}
-	}
+	// One by one, parents first: each mount point is checked again once the
+	// datasets above it are mounted, since their content comes from the pool.
 	for _, ds := range mount {
+		mp := mountPoints[ds]
+		if pathHasLink(mp) || !mountPointAllowed(mp, name, zfsCurrentMounts(), filepath.EvalSymlinks) {
+			return cmdError{"stopped before mounting " + ds + ": its mount point " + mp + " goes through a link or over a mounted folder"}
+		}
+		if out, err := runArgv([]string{"zfs", "set", "setuid=off", "devices=off", ds}); err != nil {
+			return cmdError{"could not turn off setuid and device files on " + ds + ": " + cmdErrMessage(out, err)}
+		}
 		if out, err := runArgv([]string{"zfs", "mount", ds}); err != nil {
 			return cmdError{"could not mount " + ds + ": " + cmdErrMessage(out, err)}
 		}
 	}
 	return nil
+}
+
+// pathHasLink: some existing part of p is a symbolic link.
+func pathHasLink(p string) bool {
+	cur := "/"
+	for _, part := range strings.Split(strings.Trim(filepath.Clean(p), "/"), "/") {
+		if part == "" {
+			continue
+		}
+		cur = filepath.Join(cur, part)
+		fi, err := os.Lstat(cur)
+		if err != nil {
+			return false // the rest does not exist yet: ZFS creates it
+		}
+		if fi.Mode()&os.ModeSymlink != 0 {
+			return true
+		}
+	}
+	return false
 }
