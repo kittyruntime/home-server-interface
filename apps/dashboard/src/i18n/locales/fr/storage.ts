@@ -124,7 +124,7 @@ export default {
   },
   StackChain: {
     howItIsBuilt: 'Comment ce volume est construit',
-    kind: { disks: 'Disques', array: 'Grappe RAID', vg: 'Groupe de volumes', filesystem: 'Système de fichiers', mount: 'Dossier' },
+    kind: { disks: 'Disques', array: 'Grappe RAID', vg: 'Groupe de volumes', filesystem: 'Système de fichiers', mount: 'Dossier', vdev: 'Vdev', pool: 'Pool', dataset: 'Dataset' },
     singleDisk: 'disque seul',
   },
   MaintenanceCalendar: {

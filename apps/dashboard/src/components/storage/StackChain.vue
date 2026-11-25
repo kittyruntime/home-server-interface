@@ -2,7 +2,7 @@
 import { useI18n } from 'vue-i18n'
 import { computed } from 'vue'
 import type { Component } from 'vue'
-import { ChevronRightIcon, FolderIcon, HardDriveIcon, LayersIcon, PackageIcon, Rows3Icon } from '@lucide/vue'
+import { ChevronRightIcon, DatabaseIcon, FolderIcon, HardDriveIcon, LayersIcon, PackageIcon, Rows3Icon } from '@lucide/vue'
 import { chainOf, type ChainStep, type StackLayer } from './stack-chain'
 
 // How a volume is built, from its disks to its folder (LVM tab).
@@ -13,6 +13,7 @@ const steps = computed(() => chainOf(props.volume))
 const singleDisk = computed(() => steps.value.length > 0 && !steps.value.some(s => s.kind === 'array' || s.kind === 'vg'))
 const ICON: Record<ChainStep['kind'], Component> = {
   disks: HardDriveIcon, array: PackageIcon, vg: Rows3Icon, filesystem: LayersIcon, mount: FolderIcon,
+  vdev: PackageIcon, pool: DatabaseIcon, dataset: LayersIcon,
 }
 </script>
 

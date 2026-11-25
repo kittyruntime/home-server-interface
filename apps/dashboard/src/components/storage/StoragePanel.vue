@@ -4,7 +4,7 @@ import { Alert } from '@/components/ui/alert'
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from '@/components/ui/breadcrumb'
 import SectionNav from '@/components/ui/SectionNav.vue'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { CalendarIcon, DatabaseIcon, HardDriveIcon, PackageIcon, Rows3Icon, ServerIcon } from '@lucide/vue'
+import { CalendarIcon, DatabaseIcon, DownloadIcon, HardDriveIcon, LayersIcon, PackageIcon, Rows3Icon, ServerIcon } from '@lucide/vue'
 import { ref, computed, onMounted, watch } from 'vue'
 import type { Component } from 'vue'
 import PhysicalDisksSection from './PhysicalDisksSection.vue'
@@ -93,6 +93,7 @@ const installCommand = computed(() =>
 const ICONS: Record<SectionId, Component> = {
   volumes: ServerIcon, disks: HardDriveIcon, raid: PackageIcon, lvm: Rows3Icon,
   mounts: DatabaseIcon, maintenance: CalendarIcon,
+  'pools': DatabaseIcon, 'datasets': LayersIcon, 'zfs-import': DownloadIcon,
 }
 const navItems = computed(() => TAB_SECTIONS[tab.value].map(id => ({ id, label: SECTION_LABELS[id], icon: ICONS[id] })))
 </script>

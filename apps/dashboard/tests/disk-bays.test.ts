@@ -37,3 +37,7 @@ test('a disk without a temperature reading has none', () => {
   const [b] = bayModel([row('sdc', 'lvm', { temperature: 0 })])
   assert.equal(b!.temperature, undefined)
 })
+
+test('a ZFS pool member is a ZFS bay', () => {
+  assert.equal(bayOwner('zfs'), 'zfs')
+})

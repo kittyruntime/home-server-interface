@@ -22,6 +22,7 @@ export function bayOwner(role: DiskRole): BayOwner {
     case 'raid':
     case 'lvm':
     case 'mounted':   return 'lvm'
+    case 'zfs':       return 'zfs'
     case 'free':      return 'free'
     case 'system':    return 'system'
     case 'unmounted': return 'other'

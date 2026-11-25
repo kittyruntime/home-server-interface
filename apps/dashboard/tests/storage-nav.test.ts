@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { createNav, navOpen, navCrumbs, navTo, sectionOf, leavesWizard, TAB_SECTIONS, tabOf, defaultTab, createTabbedNav, tabbedOpen, switchTab, currentNav } from '../src/lib/storage-nav.ts'
+import { createNav, navOpen, navCrumbs, navTo, sectionOf, leavesWizard, TAB_SECTIONS, tabOf, defaultTab, createTabbedNav, tabbedOpen, switchTab, currentNav, visibleTabs } from '../src/lib/storage-nav.ts'
 
 test('opening a section resets the stack to it', () => {
   let nav = createNav()
@@ -66,7 +66,7 @@ test('leavesWizard: any move away from Create volume, by crumb or link', () => {
 test('each section belongs to exactly one tab', () => {
   const all = Object.values(TAB_SECTIONS).flat()
   assert.equal(new Set(all).size, all.length)
-  assert.deepEqual([...all].sort(), ['disks', 'lvm', 'maintenance', 'mounts', 'raid', 'volumes'])
+  assert.deepEqual([...all].sort(), ['datasets', 'disks', 'lvm', 'maintenance', 'mounts', 'pools', 'raid', 'volumes', 'zfs-import'])
 })
 
 test('objects open in their tab', () => {
@@ -112,4 +112,21 @@ test('a free bay opens the wizard on top of Volumes, whatever the LVM tab showed
   t = switchTab(t, 'disks')
   t = tabbedOpen(t, { kind: 'create-volume', disks: ['sdf'] })
   assert.deepEqual(navCrumbs(currentNav(t)).map(c => c.label), ['Volumes', 'Create volume'])
+})
+
+test('the ZFS tab has pools, datasets and import; a pool opens in it', () => {
+  assert.deepEqual(TAB_SECTIONS.zfs, ['pools', 'datasets', 'zfs-import'])
+  assert.equal(tabOf({ kind: 'pool', name: 'tank' }), 'zfs')
+  assert.deepEqual(navCrumbs(currentNav(tabbedOpen(createTabbedNav('disks'), { kind: 'pool', name: 'tank' }))).map(c => c.label), ['Pools', 'tank'])
+})
+
+test('the ZFS tab shows only when the host has ZFS', () => {
+  assert.deepEqual(visibleTabs({ zfs: false }), ['disks', 'lvm', 'maintenance'])
+  assert.deepEqual(visibleTabs({ zfs: true }), ['disks', 'lvm', 'zfs', 'maintenance'])
+})
+
+test('Storage opens on ZFS when it holds most volumes', () => {
+  assert.equal(defaultTab({ volumes: 1, zfsVolumes: 3 }), 'zfs')
+  assert.equal(defaultTab({ volumes: 3, zfsVolumes: 1 }), 'lvm')
+  assert.equal(defaultTab({ volumes: 0, zfsVolumes: 0 }), 'disks')
 })
