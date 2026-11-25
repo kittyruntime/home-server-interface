@@ -1284,7 +1284,9 @@ case "$scenario" in
     result=$(api storage.execute "{\"op\":\"zfs.import\",\"input\":{\"guid\":\"$eguid\",\"name\":\"evil\"},\"fingerprint\":\"$fp\"}")
     python3 -c 'import json,sys; r=json.loads(sys.argv[1]); assert not r["ok"] and "outside" in (r.get("error") or ""), r' "$result" \
       || fail "the evil pool was not refused: $result"
-    vm_ssh '! zpool list evil >/dev/null 2>&1 && ! test -e /opt/evil' || fail "the evil pool stayed imported or mounted"
+    # (zpool create made /opt/evil when it created the pool: only a mount there counts.)
+    vm_ssh '! zpool list evil >/dev/null 2>&1 && ! findmnt -n /opt/evil >/dev/null' \
+      || { vm_ssh 'zpool list; findmnt -n /opt/evil; ls -la /opt/evil' || true; fail "the evil pool stayed imported or mounted"; }
     log "A pool mounting outside the data folders is refused"
     ;;
   *) fail "unknown scenario $scenario" ;;
