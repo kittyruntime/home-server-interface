@@ -32,7 +32,7 @@ const usedBy = (d: ZfsDataset) => {
   return [...v.usedBy.places.map(p => p.name), ...v.usedBy.apps].join(', ')
 }
 const rows = computed(() => [...(zfs.value?.datasets ?? [])].sort((a, b) => a.name.localeCompare(b.name)))
-const isVolume = (d: ZfsDataset) => d.mountPoint.startsWith('/')
+const isVolume = (d: ZfsDataset) => d.mountPoint.startsWith('/') && (d.canMount ?? 'on') === 'on'
 </script>
 
 <template>
@@ -63,6 +63,7 @@ const isVolume = (d: ZfsDataset) => d.mountPoint.startsWith('/')
             </td>
             <td class="font-mono text-xs">
               <span v-if="isVolume(d)" :class="d.mounted ? '' : 'text-warning'">{{ d.mountPoint }}<template v-if="!d.mounted"> · {{ t('ui.storage.Zfs.notMounted') }}</template></span>
+              <span v-else-if="d.mountPoint.startsWith('/')" class="text-base-content/70">{{ d.mountPoint }} · {{ t('ui.storage.Zfs.container', { cm: d.canMount }) }}</span>
               <span v-else class="text-base-content/70">{{ t('ui.storage.Zfs.notVolume', { mp: d.mountPoint }) }}</span>
             </td>
             <td class="text-right tabular-nums">{{ fmtBytes(d.used) }}</td>

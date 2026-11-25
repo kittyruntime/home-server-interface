@@ -40,10 +40,11 @@ onMounted(async () => {
 async function importPool(p: Scan['pools'][number]) {
   busy.value = p.guid
   try {
-    await applyPlanned('zfs.import', { guid: p.guid, name: p.name }, {
+    await applyPlanned('zfs.import', { guid: p.guid, name: p.name, force: p.otherHost }, {
       title: t('ui.storage.Zfs.importTitle', { name: p.name }),
-      actionLabel: t('ui.storage.Zfs.importBtn'),
-      notice: lowMemory.value ? t('ui.storage.Zfs.lowMemory') : t('ui.storage.Zfs.importNotice'),
+      actionLabel: t(p.otherHost ? 'ui.storage.Zfs.importForce' : 'ui.storage.Zfs.importBtn'),
+      danger: p.otherHost,
+      notice: [p.otherHost ? t('ui.storage.Zfs.otherHostWarning') : '', lowMemory.value ? t('ui.storage.Zfs.lowMemory') : t('ui.storage.Zfs.importNotice')].filter(Boolean).join(' '),
     })
     toast.success(t('ui.storage.Zfs.imported', { name: p.name }))
     await Promise.all([load(), loadZfs()])
@@ -76,7 +77,9 @@ async function importPool(p: Scan['pools'][number]) {
             {{ busy === p.guid ? t('ui.storage.Zfs.importing') : t('ui.storage.Zfs.importBtn') }}
           </Button>
         </div>
-        <p v-if="p.status" class="mt-2 text-xs text-warning">{{ t('ui.storage.Zfs.cannotImport', { status: p.status }) }}</p>
+        <p v-if="p.otherHost" class="mt-2 text-xs text-warning">{{ t('ui.storage.Zfs.otherHost') }}</p>
+        <p v-else-if="p.status && p.state !== 'ONLINE' && p.state !== 'DEGRADED'" class="mt-2 text-xs text-warning">{{ t('ui.storage.Zfs.cannotImport', { status: p.status }) }}</p>
+        <p v-else-if="p.status" class="mt-2 text-xs text-base-content/70">{{ p.status }}</p>
         <div class="mt-3"><PoolTopology :pool="{ name: p.name, state: p.state, vdevs: p.vdevs }" /></div>
       </Card>
     </div>

@@ -144,7 +144,7 @@ const PLAN_INPUTS = {
   }),
   'import.activate': z.object({ name: z.string().regex(/^[a-zA-Z0-9+_.][a-zA-Z0-9+_.-]{0,126}$/) }),
   // ZFS (lot 1): the worker checks the same rules.
-  'zfs.import': z.object({ guid: z.string().regex(/^[0-9]{1,20}$/), name: z.string().regex(/^[A-Za-z][A-Za-z0-9_.:-]{0,63}$/) }),
+  'zfs.import': z.object({ guid: z.string().regex(/^[0-9]{1,20}$/), name: z.string().regex(/^[A-Za-z][A-Za-z0-9_.:-]{0,63}$/), force: z.boolean().optional() }),
   'zfs.watch': z.object({ name: z.string().regex(/^[A-Za-z][A-Za-z0-9_.:-]{0,63}$/) }),
   'zfs.unwatch': z.object({ name: z.string().regex(/^[A-Za-z][A-Za-z0-9_.:-]{0,63}$/) }),
   // Expand a volume (#7): the filesystem UUID, the way, and the disk to add.
@@ -544,7 +544,7 @@ export const storageRouter = router({
   // whether its memory is low for ZFS's cache.
   zfs: router({
     list: storageProcedure.query(() => loadZfs()),
-    importScan: storageProcedure.query(async () => requestSync<{ pools: Array<{ name: string; guid: string; state: string; status?: string; vdevs: ZfsVdev[] }> }>('root.zfs.import.scan', {}, 60_000)),
+    importScan: storageProcedure.query(async () => requestSync<{ pools: Array<{ name: string; guid: string; state: string; status?: string; otherHost: boolean; vdevs: ZfsVdev[] }> }>('root.zfs.import.scan', {}, 60_000)),
     memory: storageProcedure.query(() => ({ totalBytes: totalmem(), low: totalmem() < 2 * 1024 ** 3 })),
   }),
 

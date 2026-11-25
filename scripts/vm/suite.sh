@@ -1253,7 +1253,10 @@ case "$scenario" in
     api_query storage.volumes.overview | python3 -c 'import json,sys; v=[x for x in json.load(sys.stdin)["volumes"] if x["id"]==sys.argv[1]]; assert v and v[0]["engine"]=="zfs" and v[0]["redundancy"]=="raid1" and v[0]["mountPoint"]=="/srv/tank/media", v' "zfs:$guid:tank/media" \
       || fail "tank/media is not a ZFS mirror volume"
     log "tank/media is a volume"
-    # Not watched yet: exporting holds nothing.
+    # Not watched yet: exporting and importing it by hand holds nothing.
+    vm_ssh 'zpool export tank && zpool import -d /dev/disk/by-id tank' || fail "could not export and import tank by hand"
+    sleep 15
+    expect_hold_at /srv/tank/media unlisted
     apply_plan zfs.watch '{"name":"tank"}' >/dev/null
     vm_ssh 'grep -q "\"name\": \"tank\"" /etc/hsi/zfs-pools.json' || fail "tank is not in the watched pools"
     expect_hold_at /srv/tank/media none
@@ -1262,8 +1265,8 @@ case "$scenario" in
     api_query storage.zfs.importScan | python3 -c 'import json,sys; p=[x for x in json.load(sys.stdin)["pools"] if x["name"]=="tank"]; assert p and p[0]["state"]=="ONLINE", p' \
       || fail "tank is not offered for import"
     apply_plan zfs.import "{\"guid\":\"$guid\",\"name\":\"tank\"}" >/dev/null
-    [[ $(vm_ssh 'cat /srv/tank/media/hello.txt; zfs get -H -o value setuid tank/media; zfs get -H -o value devices tank/media') == $'hello\noff\noff' ]] \
-      || fail "tank/media is not back with its file, setuid and devices off"
+    [[ $(vm_ssh 'cat /srv/tank/media/hello.txt; zfs get -H -o value setuid,devices,sharenfs,sharesmb tank/media | paste -sd,') == $'hello\noff,off,off,off' ]] \
+      || fail "tank/media is not back with its file, setuid, devices and sharing off"
     expect_hold_at /srv/tank/media back
     api storage.volumes.resume '{"mountPoint":"/srv/tank/media"}' >/dev/null
     api storage.volumes.resume '{"mountPoint":"/srv/tank"}' >/dev/null

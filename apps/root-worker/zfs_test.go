@@ -121,20 +121,31 @@ func TestParseZfsList(t *testing.T) {
 	if ds[3].Quota != 0 {
 		t.Errorf("a '-' quota reads 0")
 	}
+	if ds[0].CanMount != "off" || ds[1].CanMount != "on" || ds[3].CanMount != "noauto" {
+		t.Errorf("canmount = %q %q %q", ds[0].CanMount, ds[1].CanMount, ds[3].CanMount)
+	}
 }
 
 func TestZfsDatasetIsVolume(t *testing.T) {
 	for mp, want := range map[string]bool{"/tank/media": true, "none": false, "legacy": false, "-": false, "": false} {
-		if got := zfsDatasetIsVolume(zfsDataset{MountPoint: mp}); got != want {
+		if got := zfsDatasetIsVolume(zfsDataset{MountPoint: mp, CanMount: "on"}); got != want {
 			t.Errorf("%q: %v, want %v", mp, got, want)
+		}
+	}
+	for _, cm := range []string{"off", "noauto"} {
+		if zfsDatasetIsVolume(zfsDataset{MountPoint: "/tank", CanMount: cm}) {
+			t.Errorf("canmount=%s is not a volume (a container dataset)", cm)
 		}
 	}
 }
 
 func TestParseZpoolImport(t *testing.T) {
 	ps := parseZpoolImport(zfsFixture(t, "import-scan.txt"))
-	if len(ps) != 2 {
+	if len(ps) != 3 {
 		t.Fatalf("importable = %d", len(ps))
+	}
+	if ps[0].OtherHost || !ps[2].OtherHost {
+		t.Errorf("a pool last used by another system is flagged: %+v", ps[2])
 	}
 	b := ps[0]
 	if b.Name != "backup" || b.GUID != "987654321" || b.State != "ONLINE" || len(b.Vdevs) != 1 || len(b.Vdevs[0].Children) != 2 {
@@ -190,8 +201,11 @@ func TestZfsSnapshotUnavailable(t *testing.T) {
 }
 
 func TestZfsSnapshotFillsDisks(t *testing.T) {
-	prevA, prevO, prevR, prevP := zfsAvailable, hostOutput, zfsResolve, zfsParentOf
-	t.Cleanup(func() { zfsAvailable, hostOutput, zfsResolve, zfsParentOf = prevA, prevO, prevR, prevP })
+	prevA, prevO, prevR, prevP, prevU := zfsAvailable, hostOutput, zfsResolve, zfsParentOf, zfsUnitStates
+	t.Cleanup(func() {
+		zfsAvailable, hostOutput, zfsResolve, zfsParentOf, zfsUnitStates = prevA, prevO, prevR, prevP, prevU
+	})
+	zfsUnitStates = func() string { return "enabled\ndisabled\n" }
 	zfsAvailable = func() bool { return true }
 	out := map[string]string{
 		"zfs version":  "version-2.2.txt",
@@ -213,6 +227,9 @@ func TestZfsSnapshotFillsDisks(t *testing.T) {
 	ls := leaves(info.Pools[0].Vdevs[0])
 	if ls[0].Disk != "sdb" || ls[1].Disk != "sdc" {
 		t.Errorf("disks = %q %q", ls[0].Disk, ls[1].Disk)
+	}
+	if !info.BootUnits.ImportCache || info.BootUnits.Mount {
+		t.Errorf("boot units = %+v", info.BootUnits)
 	}
 	if info.Pools[0].Scan.Kind != "scrub" {
 		t.Errorf("status not attached: %+v", info.Pools[0].Scan)
@@ -288,9 +305,10 @@ func TestPlanZfsImportSteps(t *testing.T) {
 
 func TestPlanZfsWatchDiff(t *testing.T) {
 	withPoolsFile(t, "")
-	prevO, prevA := hostOutput, zfsAvailable
-	t.Cleanup(func() { hostOutput, zfsAvailable = prevO, prevA })
+	prevO, prevA, prevU := hostOutput, zfsAvailable, zfsUnitStates
+	t.Cleanup(func() { hostOutput, zfsAvailable, zfsUnitStates = prevO, prevA, prevU })
 	zfsAvailable = func() bool { return true }
+	zfsUnitStates = func() string { return "" }
 	hostOutput = func(name string, args ...string) ([]byte, error) {
 		switch name + " " + args[0] {
 		case "zpool list":
@@ -305,13 +323,13 @@ func TestPlanZfsWatchDiff(t *testing.T) {
 		t.Fatal(fe.Message)
 	}
 	d := p.Steps[0].Diff
-	if !strings.Contains(d, `"name": "tank"`) || !strings.Contains(d, `"guid": "1234567890"`) || !strings.Contains(d, `"mountPoint": "/tank/media"`) || strings.Contains(d, "tank/vm") {
+	if !strings.Contains(d, `"name": "tank"`) || !strings.Contains(d, `"guid": "1234567890"`) || !strings.Contains(d, `"mountPoint": "/tank/media"`) || strings.Contains(d, "tank/vm") || strings.Contains(d, `"mountPoint": "/tank"`+"\n") {
 		t.Errorf("diff = %s", d)
 	}
 	if _, err := p.Steps[0].run(); err != nil {
 		t.Fatal(err)
 	}
-	if w := loadWatchedPools(); len(w) != 1 || w[0].GUID != "1234567890" || len(w[0].Datasets) != 2 {
+	if w := loadWatchedPools(); len(w) != 1 || w[0].GUID != "1234567890" || len(w[0].Datasets) != 1 {
 		t.Errorf("watched = %+v", w)
 	}
 	u, fe := planZfsUnwatch([]byte(`{"name":"tank"}`))
@@ -338,7 +356,7 @@ func TestPlanZfsImportRejectsBadInput(t *testing.T) {
 }
 
 func TestMountPointAllowed(t *testing.T) {
-	mounts := []string{"/", "/boot", "/srv/data", "/opt/hsi/data"}
+	mounts := map[string]string{"/": "/dev/vda1", "/boot": "/dev/vda2", "/srv/data": "/dev/mapper/data-lv", "/opt/hsi/data": "/dev/vdb1", "/srv/tank": "tank"}
 	resolve := func(p string) (string, error) {
 		if p == "/srv/link" {
 			return "/etc", nil
@@ -346,18 +364,22 @@ func TestMountPointAllowed(t *testing.T) {
 		return p, nil
 	}
 	for mp, ok := range map[string]bool{
-		"/srv/tank": true, "/srv/tank/media": true, "/mnt/backup": true, "/media/usb": true, "/tank": true, "/tank/media": true,
-		"/srv/data/inner": true, // inside a volume: hides nothing
+		"/srv/pool2": true, "/srv/tank/media": true, "/mnt/backup": true, "/media/usb": true, "/tank": true, "/tank/media": true,
+		"/srv/data/inner": false, // inside another volume (I1)
 		"/":               false, "/etc": false, "/usr/local": false, "/opt": false, "/opt/containers": false, "/var/lib/docker": false,
-		"/srv":        false, // the root of the allowed folders itself
-		"/srv/data":   false, // on top of a mounted volume
-		"/mnt":        false,
-		"/srv/link":   false, // a link to /etc
-		"/other":      false, // a top-level folder that is not the pool's name
-		"/srv/../etc": false,
+		"/srv":                  false, // the root of the allowed folders itself
+		"/srv/data":             false, // on top of a mounted volume
+		"/mnt":                  false,
+		"/srv/link":             false, // a link to /etc
+		"/other":                false, // a top-level folder that is not the pool's name
+		"/srv/../etc":           false,
+		"/srv/tank/l/../cron.d": false, // not clean: the kernel would follow l (C1)
+		"/srv//x":               false,
+		"/srv/x/":               false,
+		"/srv/a\tb":             false, // a control character
 	} {
 		if got := mountPointAllowed(mp, "tank", mounts, resolve); got != ok {
-			t.Errorf("%s: allowed %v, want %v", mp, got, ok)
+			t.Errorf("%q: allowed %v, want %v", mp, got, ok)
 		}
 	}
 	// A pool named after a system folder gets no folder of its own.
@@ -367,6 +389,115 @@ func TestMountPointAllowed(t *testing.T) {
 		if mountPointAllowed("/"+pool, pool, mounts, resolve) || inner {
 			t.Errorf("pool %q may mount on /%s", pool, pool)
 		}
+	}
+}
+
+// importHost fakes what checkAndMountImported sees and runs: zfs list output,
+// the mount table, and the commands, where zfs mount adds a mount.
+func importHost(t *testing.T, list string, mountErr bool) *[]string {
+	t.Helper()
+	prevO, prevR, prevM, prevS := hostOutput, runArgv, zfsMountTable, zfsPathSafe
+	t.Cleanup(func() { hostOutput, runArgv, zfsMountTable, zfsPathSafe = prevO, prevR, prevM, prevS })
+	table := map[string]string{"/": "/dev/vda1"}
+	mps := map[string]string{}
+	for _, line := range strings.Split(strings.TrimSpace(list), "\n") {
+		if f := strings.Split(line, "\t"); len(f) == 3 {
+			mps[f[0]] = f[1]
+		}
+	}
+	var ran []string
+	runArgv = func(argv []string) ([]byte, error) {
+		ran = append(ran, strings.Join(argv, " "))
+		if len(argv) == 3 && argv[0] == "zfs" && argv[1] == "mount" && !mountErr {
+			table[mps[argv[2]]] = argv[2]
+		}
+		return nil, nil
+	}
+	hostOutput = func(name string, args ...string) ([]byte, error) {
+		if list == "FAIL" {
+			return nil, os.ErrNotExist
+		}
+		return []byte(list), nil
+	}
+	zfsMountTable = func() map[string]string {
+		out := map[string]string{}
+		for k, v := range table {
+			out[k] = v
+		}
+		return out
+	}
+	zfsPathSafe = func(string) bool { return true }
+	return &ran
+}
+
+const setOff = "zfs set setuid=off devices=off sharenfs=off sharesmb=off "
+
+func TestZfsImportRefusesSystemMountPoints(t *testing.T) {
+	ran := importHost(t, "backup\t/backup\ton\nbackup/evil\t/etc\ton\nbackup/off\t/usr\toff\nbackup/vm\tnone\ton\n", false)
+	err := checkAndMountImported("backup")
+	if err == nil || !strings.Contains(err.Error(), "backup/evil") || strings.Contains(err.Error(), "backup/off") {
+		t.Fatalf("err = %v", err)
+	}
+	if strings.Join(*ran, ";") != "zpool export backup" {
+		t.Errorf("an unsafe pool is exported again and nothing is mounted: %v", *ran)
+	}
+}
+
+func TestZfsImportChecksNoautoDatasets(t *testing.T) {
+	ran := importHost(t, "backup\t/backup\ton\nbackup/later\t/etc/cron.d\tnoauto\n", false)
+	if err := checkAndMountImported("backup"); err == nil || !strings.Contains(err.Error(), "backup/later") {
+		t.Fatalf("a dataset mounted later by hand is checked too: %v", err)
+	}
+	if strings.Join(*ran, ";") != "zpool export backup" {
+		t.Errorf("ran %v", *ran)
+	}
+}
+
+func TestZfsImportFailsClosedOnOddLines(t *testing.T) {
+	for _, list := range []string{
+		"backup\t/backup\ton\nbackup/a\t/srv/a\t/../../etc\ton\n", // a tab inside a mount point
+		"backup\t/backup\ton\nbackup/a\t/srv/a\tmaybe\n",
+		"FAIL",
+	} {
+		ran := importHost(t, list, false)
+		if err := checkAndMountImported("backup"); err == nil {
+			t.Errorf("%q: imported", list)
+		}
+		if len(*ran) == 0 || (*ran)[len(*ran)-1] != "zpool export backup" {
+			t.Errorf("%q: not exported again: %v", list, *ran)
+		}
+	}
+}
+
+func TestZfsImportMountsSafely(t *testing.T) {
+	ran := importHost(t, "backup\t/backup\ton\nbackup/media\t/backup/media\ton\nbackup/vm\tnone\ton\nbackup/later\t/srv/later\tnoauto\n", false)
+	if err := checkAndMountImported("backup"); err != nil {
+		t.Fatal(err)
+	}
+	want := setOff + "backup;" + setOff + "backup;zfs mount backup;" + setOff + "backup/media;zfs mount backup/media;zpool set cachefile= backup"
+	if strings.Join(*ran, ";") != want {
+		t.Errorf("ran:\n%s\nwant:\n%s", strings.Join(*ran, ";"), want)
+	}
+}
+
+func TestZfsImportUndoesAMountThatLandedElsewhere(t *testing.T) {
+	ran := importHost(t, "backup\t/backup\ton\n", true)
+	if err := checkAndMountImported("backup"); err == nil {
+		t.Fatal("a mount missing from the mount table is an error")
+	}
+	if (*ran)[len(*ran)-1] != "zpool export backup" {
+		t.Errorf("ran %v", *ran)
+	}
+}
+
+func TestZfsImportStopsInTheLoop(t *testing.T) {
+	ran := importHost(t, "backup\t/backup\ton\nbackup/media\t/backup/media\ton\n", false)
+	zfsPathSafe = func(p string) bool { return p != "/backup/media" }
+	if err := checkAndMountImported("backup"); err == nil || !strings.Contains(err.Error(), "backup/media") {
+		t.Fatalf("err = %v", err)
+	}
+	if (*ran)[len(*ran)-1] != "zpool export backup" {
+		t.Errorf("a failure in the loop exports the pool again: %v", *ran)
 	}
 }
 
@@ -406,44 +537,57 @@ func TestPathSafe(t *testing.T) {
 	}
 }
 
-func TestZfsImportRefusesSystemMountPoints(t *testing.T) {
-	prevO, prevR := hostOutput, runArgv
-	t.Cleanup(func() { hostOutput, runArgv = prevO, prevR })
-	var ran []string
-	runArgv = func(argv []string) ([]byte, error) { ran = append(ran, strings.Join(argv, " ")); return nil, nil }
-	hostOutput = func(name string, args ...string) ([]byte, error) {
-		return []byte("backup\t/backup\ton\nbackup/evil\t/etc\ton\nbackup/off\t/usr\toff\nbackup/vm\tnone\ton\n"), nil
+func TestZfsGuardSettles(t *testing.T) {
+	g := newZfsGuard()
+	st := func(state string) []volumeStatus {
+		return []volumeStatus{{MountPoint: "/srv/tank/media", UUID: "zfs:1:tank/media", State: state}}
 	}
-	prevM := zfsCurrentMounts
-	t.Cleanup(func() { zfsCurrentMounts = prevM })
-	zfsCurrentMounts = func() []string { return []string{"/"} }
-	err := checkAndMountImported("backup")
-	if err == nil || !strings.Contains(err.Error(), "backup/evil") || strings.Contains(err.Error(), "backup/off") {
-		t.Fatalf("err = %v", err)
+	if got := g.settle(st("missing")); got[0].State != "ok" {
+		t.Errorf("a first missing reading waits for the next check: %s", got[0].State)
 	}
-	if strings.Join(ran, ";") != "zpool export backup" {
-		t.Errorf("an unsafe pool is exported again and nothing is mounted: %v", ran)
+	if got := g.settle(st("missing")); got[0].State != "missing" {
+		t.Errorf("a second one holds: %s", got[0].State)
 	}
-	ran = nil
-	hostOutput = func(name string, args ...string) ([]byte, error) {
-		return []byte("backup\t/backup\ton\nbackup/media\t/srv/media\ton\nbackup/vm\tnone\ton\nbackup/later\t/srv/later\tnoauto\n"), nil
+	if got := g.settle(st("ok")); got[0].State != "ok" {
+		t.Errorf("back: %s", got[0].State)
 	}
-	prevS := zfsPathSafe
-	t.Cleanup(func() { zfsPathSafe = prevS })
-	zfsPathSafe = func(string) bool { return true }
-	if err := checkAndMountImported("backup"); err != nil {
-		t.Fatal(err)
+	if got := g.settle(st("missing")); got[0].State != "ok" {
+		t.Errorf("the count starts again after an ok reading: %s", got[0].State)
 	}
-	if strings.Join(ran, ";") != "zfs set setuid=off devices=off backup;zfs set setuid=off devices=off backup;zfs mount backup;zfs set setuid=off devices=off backup/media;zfs mount backup/media;zpool set cachefile= backup" {
-		t.Errorf("mounted: %v", ran)
+	if got := g.settle(st("wrong")); got[0].State != "wrong" {
+		t.Errorf("wrong is not delayed: %s", got[0].State)
 	}
-	// A mount point found unsafe in the loop: everything is undone.
-	ran = nil
-	zfsPathSafe = func(p string) bool { return p != "/srv/media" }
-	if err := checkAndMountImported("backup"); err == nil || !strings.Contains(err.Error(), "backup/media") {
-		t.Fatalf("err = %v", err)
+}
+
+func TestZfsGuardKeepsStatesWhenZpoolFails(t *testing.T) {
+	g := newZfsGuard()
+	watched := tankWatched
+	g.settle([]volumeStatus{{MountPoint: "/tank/media", UUID: "zfs:123:tank/media", State: "readonly"}})
+	got := g.unknown(watched)
+	if len(got) != 2 || got[0].State != "readonly" || got[1].State != "ok" {
+		t.Errorf("a failed zpool keeps the last states (ok when never seen): %+v", got)
 	}
-	if last := ran[len(ran)-1]; last != "zpool export backup" {
-		t.Errorf("a failure in the loop exports the pool again: %v", ran)
+}
+
+func TestPlanZfsImportForce(t *testing.T) {
+	withPoolsFile(t, "")
+	p, fe := planZfsImport([]byte(`{"guid":"222","name":"away","force":true}`))
+	if fe != nil {
+		t.Fatal(fe.Message)
+	}
+	if strings.Join(p.Steps[0].Command, " ") != "zpool import -N -o cachefile=none -f -d /dev/disk/by-id 222 away" {
+		t.Errorf("forced import: %v", p.Steps[0].Command)
+	}
+}
+
+func TestParseBootUnits(t *testing.T) {
+	if c, m := parseBootUnits("enabled\nenabled\n"); !c || !m {
+		t.Errorf("both enabled: %v %v", c, m)
+	}
+	if c, m := parseBootUnits("disabled\nenabled\n"); c || !m {
+		t.Errorf("import-cache disabled: %v %v", c, m)
+	}
+	if c, m := parseBootUnits(""); c || m {
+		t.Errorf("no answer reads disabled: %v %v", c, m)
 	}
 }

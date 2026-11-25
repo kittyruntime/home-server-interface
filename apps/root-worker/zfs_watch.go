@@ -5,7 +5,10 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"sort"
+	"strconv"
 	"strings"
+	"sync"
 	"syscall"
 )
 
@@ -78,6 +81,75 @@ func zfsMountOf(mp string) (string, bool, bool) {
 	return src, strings.Split(opts, ",")[0] == "ro", ok
 }
 
+// zfsImportedGUIDs lists the guids of the imported pools: one short command,
+// killed after probeTimeout, so a pool stuck on a failed disk cannot hang the
+// guard (tests swap it).
+var zfsImportedGUIDs = func() (map[string]bool, error) {
+	out, err := probe("zpool", "list", "-Hp", "-o", "guid").Output()
+	if err != nil {
+		return nil, err
+	}
+	guids := map[string]bool{}
+	for _, l := range strings.Fields(string(out)) {
+		guids[l] = true
+	}
+	return guids, nil
+}
+
+// zfsGuard smooths the readings of the watched datasets: missing only on the
+// second check in a row (as for an LVM volume, a pool can be slow to import at
+// boot), and the last states kept when zpool itself fails.
+type zfsGuard struct {
+	mu   sync.Mutex
+	last map[string]string // uuid -> state reported
+	seen map[string]bool   // uuid -> read missing on the previous check
+}
+
+func newZfsGuard() *zfsGuard {
+	return &zfsGuard{last: map[string]string{}, seen: map[string]bool{}}
+}
+
+func (g *zfsGuard) settle(raw []volumeStatus) []volumeStatus {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	out := make([]volumeStatus, len(raw))
+	for i, st := range raw {
+		if st.State == "missing" && !g.seen[st.UUID] {
+			g.seen[st.UUID] = true
+			if prev, ok := g.last[st.UUID]; ok && prev != "missing" {
+				st.State = prev
+			} else if !ok {
+				st.State = "ok"
+			}
+		} else if st.State != "missing" {
+			delete(g.seen, st.UUID)
+		}
+		g.last[st.UUID] = st.State
+		out[i] = st
+	}
+	return out
+}
+
+// unknown: zpool did not answer; every watched dataset keeps its last state.
+func (g *zfsGuard) unknown(watched []watchedPool) []volumeStatus {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	out := []volumeStatus{}
+	for _, w := range watched {
+		for _, d := range w.Datasets {
+			uuid := "zfs:" + w.GUID + ":" + d.Name
+			state := g.last[uuid]
+			if state == "" {
+				state = "ok"
+			}
+			out = append(out, volumeStatus{MountPoint: d.MountPoint, UUID: uuid, State: state})
+		}
+	}
+	return out
+}
+
+var zfsGuardState = newZfsGuard()
+
 // zfsVolumeStatuses: the guard of the watched datasets. A watched pool on a
 // host where ZFS did not load is missing as a whole.
 func zfsVolumeStatuses() []volumeStatus {
@@ -85,8 +157,18 @@ func zfsVolumeStatuses() []volumeStatus {
 	if len(watched) == 0 {
 		return nil
 	}
-	info := zfsSnapshot()
-	return zfsGuardStates(watched, info.Pools, info.Datasets, zfsMountOf)
+	var pools []zfsPool
+	if zfsAvailable() {
+		guids, err := zfsImportedGUIDs()
+		if err != nil {
+			logger.Warn("volume guard: zpool list failed, keeping the last ZFS states", "error", err)
+			return zfsGuardState.unknown(watched)
+		}
+		for g := range guids {
+			pools = append(pools, zfsPool{GUID: g})
+		}
+	}
+	return zfsGuardState.settle(zfsGuardStates(watched, pools, nil, zfsMountOf))
 }
 
 // ── Plans ────────────────────────────────────────────────────────────────────
@@ -161,16 +243,24 @@ func watchedStep(summary string, next []watchedPool) planStep {
 
 func planZfsImport(raw json.RawMessage) (*opPlan, *fsError) {
 	var req struct {
-		GUID string `json:"guid"`
-		Name string `json:"name"`
+		GUID  string `json:"guid"`
+		Name  string `json:"name"`
+		Force bool   `json:"force"`
 	}
 	if err := json.Unmarshal(raw, &req); err != nil || !reZpoolGUID.MatchString(req.GUID) || !reZpoolName.MatchString(req.Name) {
 		return nil, &fsError{Code: "ERR", Message: "invalid pool"}
 	}
 	// Imported without mounting: a pool brought from elsewhere decides where
 	// its datasets mount, and must never mount over a system folder.
-	imp := cmdStep(req.Name, "Import the ZFS pool "+req.Name+" found on the disks, without mounting anything or changing its data",
-		[]string{"zpool", "import", "-N", "-o", "cachefile=none", "-d", "/dev/disk/by-id", req.GUID, req.Name})
+	argv := []string{"zpool", "import", "-N", "-o", "cachefile=none"}
+	summary := "Import the ZFS pool " + req.Name + " found on the disks, without mounting anything or changing its data"
+	if req.Force {
+		// Last used by another system: make sure that system no longer uses
+		// these disks, or both would write to the pool.
+		argv = append(argv, "-f")
+		summary += ", although another system used it last"
+	}
+	imp := cmdStep(req.Name, summary, append(argv, "-d", "/dev/disk/by-id", req.GUID, req.Name))
 	mount := planStep{Kind: "run", Target: req.Name, Deferred: true,
 		Summary: "Mount its datasets without setuid programs or device files, unless one would mount outside /srv, /mnt, /media or /" + req.Name + " (a system folder): then export the pool again and stop",
 		run:     func() (string, error) { return "", checkAndMountImported(req.Name) }}
@@ -218,16 +308,25 @@ func planZfsUnwatch(raw json.RawMessage) (*opPlan, *fsError) {
 	return &opPlan{Op: "zfs.unwatch", Steps: []planStep{step}, Observed: map[string]string{}}, nil
 }
 
-// zfsCurrentMounts lists the mount points of the host (tests swap it).
-var zfsCurrentMounts = func() []string {
+// zfsMountTable maps each mount point of the host to its source, from
+// /proc/self/mountinfo (tests swap it).
+var zfsMountTable = func() map[string]string {
+	out := map[string]string{}
 	b, err := os.ReadFile("/proc/self/mountinfo")
 	if err != nil {
-		return nil
+		return out
 	}
-	var out []string
 	for _, line := range strings.Split(string(b), "\n") {
-		if f := strings.Fields(line); len(f) > 4 {
-			out = append(out, unescapeMountinfo(f[4]))
+		f := strings.Fields(line)
+		if len(f) < 10 {
+			continue
+		}
+		// After the optional fields, "-" then the fs type and the source.
+		for i := 6; i < len(f)-2; i++ {
+			if f[i] == "-" {
+				out[unescapeMountinfo(f[4])] = unescapeMountinfo(f[i+2])
+				break
+			}
 		}
 	}
 	return out
@@ -270,82 +369,129 @@ func underAllowedRoot(p, pool string) bool {
 	return false
 }
 
-// mountPointAllowed: a dataset of an imported pool may mount on mp only in
-// the folders data goes in (before and after resolving links), and never on
-// or above a folder something is already mounted on, which it would hide.
-func mountPointAllowed(mp, pool string, mounts []string, resolve func(string) (string, error)) bool {
-	if !strings.HasPrefix(mp, "/") {
+func hasControl(s string) bool {
+	for _, r := range s {
+		if r < 0x20 || r == 0x7f {
+			return true
+		}
+	}
+	return false
+}
+
+// ofPool: a mount source that is the pool or one of its datasets.
+func ofPool(source, pool string) bool {
+	return source == pool || strings.HasPrefix(source, pool+"/")
+}
+
+// mountPointAllowed: a dataset of an imported pool may mount on mp only when
+// mp is written plainly (absolute, clean: the kernel follows the raw path, so
+// a ".." after a link would land elsewhere), in the folders data goes in
+// (before and after resolving links), never on or above a folder something
+// is mounted on, and never inside another volume: the mount holding mp is
+// the system's root or a dataset of the same pool.
+func mountPointAllowed(mp, pool string, mounts map[string]string, resolve func(string) (string, error)) bool {
+	if !strings.HasPrefix(mp, "/") || mp != filepath.Clean(mp) || hasControl(mp) {
 		return false
 	}
-	clean := filepath.Clean(mp)
-	real := resolvePrefix(clean, resolve)
-	for _, p := range []string{clean, real} {
+	real := resolvePrefix(mp, resolve)
+	for _, p := range []string{mp, real} {
 		if !underAllowedRoot(p, pool) {
 			return false
 		}
-		for _, m := range mounts {
-			if m != "/" && (p == m || strings.HasPrefix(m, p+"/")) {
+		holder := "/"
+		for m := range mounts {
+			if m == "/" {
+				continue
+			}
+			if p == m || strings.HasPrefix(m, p+"/") {
 				return false
 			}
+			if strings.HasPrefix(p, m+"/") && len(m) > len(holder) {
+				holder = m
+			}
+		}
+		if holder != "/" && !ofPool(mounts[holder], pool) {
+			return false
 		}
 	}
 	return true
 }
 
-// checkAndMountImported mounts the datasets of a pool just imported with -N.
-// If one would mount itself outside the data folders, or over something
-// already mounted (canmount=on), nothing is mounted and the pool is exported
-// again, so that it does not mount there at the next boot either. Mounted
-// datasets run no setuid program and expose no device file.
+// checkAndMountImported mounts the datasets of a pool just imported with -N
+// and -o cachefile=none. It fails closed: a line it cannot read, a dataset
+// that would mount (now or later, canmount on or noauto) outside the data
+// folders, a mount that does not land where it was checked: the pool is
+// exported again, so nothing stays mounted and it does not come back at boot.
+// Mounted datasets run no setuid program, expose no device file, and share
+// nothing over NFS or SMB on their own.
 func checkAndMountImported(name string) error {
-	out, err := hostOutput("zfs", "list", "-H", "-o", "name,mountpoint,canmount", "-r", "-t", "filesystem", name)
-	if err != nil {
-		return cmdError{"could not list the datasets of " + name + ": " + err.Error()}
-	}
-	mounts := zfsCurrentMounts()
-	var unsafe, mount []string
-	mountPoints := map[string]string{}
-	for _, line := range strings.Split(strings.TrimSpace(string(out)), "\n") {
-		f := strings.Split(line, "\t")
-		if len(f) < 3 || f[2] != "on" || !strings.HasPrefix(f[1], "/") {
-			continue
-		}
-		if !mountPointAllowed(f[1], name, mounts, filepath.EvalSymlinks) {
-			unsafe = append(unsafe, f[0]+" ("+f[1]+")")
-		} else {
-			mount = append(mount, f[0])
-			mountPoints[f[0]] = f[1]
-		}
-	}
-	if len(unsafe) > 0 {
-		if out, err := runArgv([]string{"zpool", "export", name}); err != nil {
-			return cmdError{"datasets of " + name + " would mount outside the data folders (" + strings.Join(unsafe, ", ") + ") and the pool could not be exported again: " + cmdErrMessage(out, err)}
-		}
-		return cmdError{"Not imported: datasets of " + name + " would mount outside /srv, /mnt, /media and /" + name + ", or over a mounted folder: " + strings.Join(unsafe, ", ") + ". Import it by hand with zpool import -N, change their mount points (zfs set mountpoint=...), export it, then import it here."}
-	}
-	// Every failure from here on exports the pool again: nothing stays
-	// mounted, and it is not in the import cache until every check passed.
 	undo := func(msg string) error {
 		if out, err := runArgv([]string{"zpool", "export", name}); err != nil {
 			msg += "; the pool could not be exported again: " + cmdErrMessage(out, err)
 		}
 		return cmdError{msg}
 	}
-	if out, err := runArgv([]string{"zfs", "set", "setuid=off", "devices=off", name}); err != nil {
-		return undo("could not turn off setuid and device files on " + name + ": " + cmdErrMessage(out, err))
+	out, err := hostOutput("zfs", "list", "-H", "-o", "name,mountpoint,canmount", "-r", "-t", "filesystem", name)
+	if err != nil {
+		return undo("could not list the datasets of " + name + ": " + err.Error())
 	}
-	// One by one, parents first: each mount point is checked again once the
+	mounts := zfsMountTable()
+	var unsafe, mount []string
+	mountPoints := map[string]string{}
+	for _, line := range strings.Split(strings.TrimSpace(string(out)), "\n") {
+		f := strings.Split(line, "\t")
+		if len(f) != 3 || (f[0] != name && !strings.HasPrefix(f[0], name+"/")) {
+			return undo("Not imported: a dataset line of " + name + " could not be read safely: " + strconv.Quote(line))
+		}
+		switch f[2] {
+		case "off":
+			continue
+		case "on", "noauto":
+		default:
+			return undo("Not imported: unexpected canmount " + strconv.Quote(f[2]) + " on " + f[0])
+		}
+		if f[1] == "none" || f[1] == "legacy" || f[1] == "-" {
+			continue
+		}
+		if !mountPointAllowed(f[1], name, mounts, filepath.EvalSymlinks) {
+			unsafe = append(unsafe, f[0]+" ("+strconv.Quote(f[1])+")")
+			continue
+		}
+		if f[2] == "on" {
+			mount = append(mount, f[0])
+			mountPoints[f[0]] = f[1]
+		}
+	}
+	if len(unsafe) > 0 {
+		return undo("Not imported: datasets of " + name + " would mount outside /srv, /mnt, /media and /" + name + ", over or inside a mounted folder: " + strings.Join(unsafe, ", ") + ". Import it by hand with zpool import -N, change their mount points (zfs set mountpoint=...), export it, then import it here.")
+	}
+	off := func(ds string) error {
+		if out, err := runArgv([]string{"zfs", "set", "setuid=off", "devices=off", "sharenfs=off", "sharesmb=off", ds}); err != nil {
+			return undo("could not turn off setuid, device files and sharing on " + ds + ": " + cmdErrMessage(out, err))
+		}
+		return nil
+	}
+	if err := off(name); err != nil {
+		return err
+	}
+	// Parents first (shallower mount points), each checked again once the
 	// datasets above it are mounted, since their content comes from the pool.
+	sort.SliceStable(mount, func(i, j int) bool {
+		return strings.Count(mountPoints[mount[i]], "/") < strings.Count(mountPoints[mount[j]], "/")
+	})
 	for _, ds := range mount {
 		mp := mountPoints[ds]
-		if !zfsPathSafe(mp) || !mountPointAllowed(mp, name, zfsCurrentMounts(), filepath.EvalSymlinks) {
-			return undo("stopped before mounting " + ds + ": its mount point " + mp + " goes through a link, a folder that is not root's, or over a mounted folder")
+		if !zfsPathSafe(mp) || !mountPointAllowed(mp, name, zfsMountTable(), filepath.EvalSymlinks) {
+			return undo("stopped before mounting " + ds + ": its mount point " + mp + " goes through a link, a folder that is not root's, or over or inside a mounted folder")
 		}
-		if out, err := runArgv([]string{"zfs", "set", "setuid=off", "devices=off", ds}); err != nil {
-			return undo("could not turn off setuid and device files on " + ds + ": " + cmdErrMessage(out, err))
+		if err := off(ds); err != nil {
+			return err
 		}
 		if out, err := runArgv([]string{"zfs", "mount", ds}); err != nil {
 			return undo("could not mount " + ds + ": " + cmdErrMessage(out, err))
+		}
+		if zfsMountTable()[mp] != ds {
+			return undo(ds + " did not mount on " + mp)
 		}
 	}
 	// Checked and mounted: the pool joins the import cache, to come back at boot.

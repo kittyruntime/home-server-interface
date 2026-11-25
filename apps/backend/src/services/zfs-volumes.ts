@@ -22,11 +22,15 @@ export type ZfsPool = {
 }
 export type ZfsDataset = {
   name: string; pool: string; mountPoint: string; compression: string
+  /** on, off or noauto; absent from workers before it was read. */
+  canMount?: string
   used: number; avail: number; quota: number; mounted: boolean; ratio: number
 }
 export type ZfsInfo = {
   available: boolean
   version: string
+  /** The distribution's units importing and mounting pools at boot. */
+  bootUnits?: { importCache: boolean; mount: boolean }
   pools: ZfsPool[]
   datasets: ZfsDataset[]
   watched: Array<{ name: string; guid: string; datasets: Array<{ name: string; mountPoint: string }> }>
@@ -61,8 +65,9 @@ export function poolRedundancy(p: ZfsPool): { level: Redundancy; tolerates: numb
   return weakest
 }
 
+/** A dataset ZFS mounts on a folder of its own by itself (canmount=on). */
 export function isVolumeDataset(d: ZfsDataset): boolean {
-  return d.mountPoint.startsWith('/')
+  return d.mountPoint.startsWith('/') && (d.canMount ?? 'on') === 'on'
 }
 
 export const zfsVolumeId = (guid: string, dataset: string) => `zfs:${guid}:${dataset}`

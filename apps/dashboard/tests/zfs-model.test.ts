@@ -47,3 +47,10 @@ test('a pool layout in one line', async () => {
   assert.deepEqual(scanLine({ kind: 'resilver', state: 'running', errors: 0, percent: 42.5 }), { kind: 'running', what: 'resilver', percent: 42.5 })
   assert.deepEqual(scanLine({ kind: 'scrub', state: 'finished', end: 'Sun Nov 22', errors: 3 }), { kind: 'done', what: 'scrub', end: 'Sun Nov 22', errors: 3 })
 })
+
+test('watched pools that are not imported', async () => {
+  const { missingWatched } = await import('../src/components/storage/pool-summary.ts')
+  const watched = [{ name: 'tank', guid: '1', datasets: [{ name: 'tank/a', mountPoint: '/tank/a' }] }, { name: 'old', guid: '2', datasets: [] }]
+  assert.deepEqual(missingWatched(watched, [{ guid: '1' }]).map(w => w.name), ['old'])
+  assert.deepEqual(missingWatched([], []), [])
+})

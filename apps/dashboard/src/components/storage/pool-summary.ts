@@ -26,3 +26,9 @@ export function scanLine(s: { kind: string; state: string; end?: string; errors:
   if (s.state === 'canceled') return { kind: 'canceled', what, end: s.end ?? '' }
   return { kind: 'done', what, end: s.end ?? '', errors: s.errors }
 }
+
+/** Watched pools that are not imported now: shown so they can be unwatched. */
+export function missingWatched<W extends { guid: string }>(watched: W[], pools: Array<{ guid: string }>): W[] {
+  const imported = new Set(pools.map(p => p.guid))
+  return watched.filter(w => !imported.has(w.guid))
+}

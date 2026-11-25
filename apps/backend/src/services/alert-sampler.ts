@@ -62,7 +62,9 @@ export function zfsAlerts(pools: ZfsPool[]): CheckOutcome {
     if (p.scan.errors > 0)
       found.push({ target: `scrub:${p.name}`, message: `The last ${p.scan.kind} of ${p.name} found ${p.scan.errors} errors`, severity: 'warning' })
   }
-  return { found, checked }
+  // Every imported pool is checked: an alert on a pool exported or repaired
+  // since then closes.
+  return { found, checked, authoritative: true }
 }
 
 async function checkZfs(): Promise<CheckOutcome> {

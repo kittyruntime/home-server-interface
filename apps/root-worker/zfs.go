@@ -57,6 +57,7 @@ type zfsDataset struct {
 	Pool        string  `json:"pool"`
 	MountPoint  string  `json:"mountPoint"`
 	Compression string  `json:"compression"`
+	CanMount    string  `json:"canMount"` // on, off, noauto
 	Used        int64   `json:"used"`
 	Avail       int64   `json:"avail"`
 	Quota       int64   `json:"quota"`
@@ -66,11 +67,13 @@ type zfsDataset struct {
 
 // zfsImportable is a pool found on the disks by zpool import, not imported.
 type zfsImportable struct {
-	Name   string    `json:"name"`
-	GUID   string    `json:"guid"`
-	State  string    `json:"state"`
-	Status string    `json:"status,omitempty"`
-	Vdevs  []zfsVdev `json:"vdevs"`
+	Name   string `json:"name"`
+	GUID   string `json:"guid"`
+	State  string `json:"state"`
+	Status string `json:"status,omitempty"`
+	// OtherHost: last used by another system; zpool import needs -f.
+	OtherHost bool      `json:"otherHost"`
+	Vdevs     []zfsVdev `json:"vdevs"`
 }
 
 type zfsPoolStatus struct {
@@ -359,13 +362,14 @@ func parseZpoolImport(out string) []zfsImportable {
 		res = append(res, zfsImportable{
 			Name: blockField(b.fields, "pool"), GUID: blockField(b.fields, "id"), State: blockField(b.fields, "state"),
 			Status: strings.Join(b.fields["status"], " "), Vdevs: vdevs,
+			OtherHost: strings.Contains(strings.Join(b.fields["status"], " "), "another system"),
 		})
 	}
 	return res
 }
 
 // parseZfsList reads `zfs list -Hp -t filesystem -o
-// name,used,available,quota,mountpoint,mounted,compression,compressratio`.
+// name,used,available,quota,mountpoint,mounted,compression,compressratio,canmount`.
 func parseZfsList(out string) []zfsDataset {
 	var ds []zfsDataset
 	for _, line := range strings.Split(out, "\n") {
@@ -380,16 +384,20 @@ func parseZfsList(out string) []zfsDataset {
 		ratio, _ := strconv.ParseFloat(strings.TrimSuffix(strings.TrimSpace(f[7]), "x"), 64)
 		ds = append(ds, zfsDataset{
 			Name: f[0], Pool: strings.SplitN(f[0], "/", 2)[0], Used: atoi64(f[1]), Avail: atoi64(f[2]), Quota: quota,
-			MountPoint: f[4], Mounted: f[5] == "yes", Compression: f[6], Ratio: ratio,
+			MountPoint: f[4], Mounted: f[5] == "yes", Compression: f[6], Ratio: ratio, CanMount: "on",
 		})
+		if len(f) > 8 {
+			ds[len(ds)-1].CanMount = strings.TrimSpace(f[8])
+		}
 	}
 	return ds
 }
 
-// zfsDatasetIsVolume: a dataset ZFS mounts on a folder of its own. none and
-// legacy mount points (and a missing value) never make a volume.
+// zfsDatasetIsVolume: a dataset ZFS mounts on a folder of its own by itself
+// (canmount=on). none and legacy mount points, and container datasets
+// (canmount off or noauto), never make a volume.
 func zfsDatasetIsVolume(d zfsDataset) bool {
-	return strings.HasPrefix(d.MountPoint, "/")
+	return strings.HasPrefix(d.MountPoint, "/") && d.CanMount == "on"
 }
 
 // parseZfsVersion reads `zfs version`: zfs-2.2.2-0ubuntu9.1 gives 2.2.2.
@@ -444,7 +452,9 @@ var (
 )
 
 type zfsInfo struct {
-	Available bool          `json:"available"`
+	Available bool `json:"available"`
+	// BootUnits: the distribution's units that import and mount pools at boot.
+	BootUnits zfsBootUnits  `json:"bootUnits"`
 	Version   string        `json:"version"`
 	Pools     []zfsPool     `json:"pools"`
 	Datasets  []zfsDataset  `json:"datasets"`
@@ -464,6 +474,25 @@ func fillDisks(vs []zfsVdev) {
 	}
 }
 
+type zfsBootUnits struct {
+	ImportCache bool `json:"importCache"`
+	Mount       bool `json:"mount"`
+}
+
+// zfsUnitStates asks systemd whether the boot units are enabled (tests swap it).
+var zfsUnitStates = func() string {
+	out, _ := probe("systemctl", "is-enabled", "zfs-import-cache.service", "zfs-mount.service").Output()
+	return string(out)
+}
+
+// parseBootUnits reads `systemctl is-enabled zfs-import-cache.service
+// zfs-mount.service`: one state per line, in that order.
+func parseBootUnits(out string) (importCache, mount bool) {
+	lines := strings.Split(strings.TrimSpace(out), "\n")
+	at := func(i int) bool { return i < len(lines) && strings.TrimSpace(lines[i]) == "enabled" }
+	return at(0), at(1)
+}
+
 // zfsSnapshot reads every pool and filesystem dataset. Without ZFS it runs
 // nothing and says so.
 func zfsSnapshot() zfsInfo {
@@ -472,6 +501,8 @@ func zfsSnapshot() zfsInfo {
 		return info
 	}
 	info.Available = true
+	// is-enabled exits non-zero when a unit is disabled: the output still says which.
+	info.BootUnits.ImportCache, info.BootUnits.Mount = parseBootUnits(zfsUnitStates())
 	if out, err := hostOutput("zfs", "version"); err == nil {
 		info.Version = parseZfsVersion(string(out))
 	}
@@ -489,7 +520,7 @@ func zfsSnapshot() zfsInfo {
 			}
 		}
 	}
-	if out, err := hostOutput("zfs", "list", "-Hp", "-t", "filesystem", "-o", "name,used,available,quota,mountpoint,mounted,compression,compressratio"); err == nil {
+	if out, err := hostOutput("zfs", "list", "-Hp", "-t", "filesystem", "-o", "name,used,available,quota,mountpoint,mounted,compression,compressratio,canmount"); err == nil {
 		info.Datasets = parseZfsList(string(out))
 	}
 	if info.Datasets == nil {

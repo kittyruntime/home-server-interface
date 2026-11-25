@@ -4865,6 +4865,9 @@ async function testZfsVolumes() {
   assert.deepEqual(media.space, { total: 6e12, used: 2e12, free: 4e12 })
   assert.deepEqual(media.usedBy.places, [{ id: 'p', name: 'Media' }], 'the most specific dataset holds the Place')
   assert.ok(!volumes.some(v => v.id === 'zfs:123:tank/vm'), 'mountpoint=none is not a volume')
+  const container = buildVolumes({ ...emptyVolumeInput, zfs: { ...zfsInfo(mirror), datasets: zfsInfo(mirror).datasets.map(d => d.name === 'tank' ? { ...d, canMount: 'off' } : d) } as any })
+  assert.ok(!container.volumes.some(v => v.id === 'zfs:123:tank'), 'a container dataset (canmount=off) is not a volume')
+  assert.ok(container.volumes.some(v => v.id === 'zfs:123:tank/media'))
   const degraded = buildVolumes({ ...emptyVolumeInput, zfs: zfsInfo({ ...mirror, state: 'DEGRADED' }) as any,
     guard: [{ uuid: 'zfs:123:tank/media', state: 'wrong', mountPoint: '/tank/media' }] })
   const d = degraded.volumes.find(v => v.id === 'zfs:123:tank/media')!
@@ -4894,6 +4897,7 @@ async function testZfsAlerts() {
   const { zfsAlerts } = await import('../services/alert-sampler')
   const clean = zPool([zGroup('mirror-0', 'mirror', [zLeaf('sda'), zLeaf('sdb')])]) as any
   assert.deepEqual(zfsAlerts([clean]).found, [])
+  assert.equal(zfsAlerts([clean]).authoritative, true, 'it covers every imported pool: an alert on a pool exported or repaired since closes')
   assert.deepEqual(zfsAlerts([clean]).checked, ['pool:tank', 'errors:tank:sda', 'errors:tank:sdb', 'scrub:tank'], 'every target it can raise is checked, so a cleared one closes')
   const degraded = zfsAlerts([{ ...clean, state: 'DEGRADED' }]).found
   assert.deepEqual(degraded.map(f => [f.target, f.severity]), [['pool:tank', 'warning']])

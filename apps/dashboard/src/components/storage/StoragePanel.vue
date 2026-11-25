@@ -42,7 +42,7 @@ const active = computed<SectionId>({
 })
 // The tabs shown: one without sections (ZFS until it is detected) is hidden.
 const TAB_ICONS: Record<StorageTab, Component> = { disks: HardDriveIcon, lvm: Rows3Icon, zfs: DatabaseIcon, maintenance: CalendarIcon }
-const tabs = computed(() => visibleTabs({ zfs: !!zfs.value?.available }).map(id => ({ id, label: TAB_LABELS[id], icon: TAB_ICONS[id] })))
+const tabs = computed(() => visibleTabs({ zfs: !!zfs.value && (zfs.value.available || zfs.value.watched.length > 0) }).map(id => ({ id, label: TAB_LABELS[id], icon: TAB_ICONS[id] })))
 const tab = computed<StorageTab>({
   get: () => tabbed.value.tab,
   set: next => { void go(switchTab(tabbed.value, next)) },

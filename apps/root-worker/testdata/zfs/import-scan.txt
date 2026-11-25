@@ -20,3 +20,15 @@
 
 	old         UNAVAIL  insufficient replicas
 	  sdz       UNAVAIL
+
+   pool: away
+     id: 222
+  state: ONLINE
+ status: The pool was last accessed by another system.
+ action: The pool can be imported using its name or numeric identifier and
+	the '-f' flag.
+   see: https://openzfs.github.io/openzfs-docs/msg/ZFS-8000-EY
+ config:
+
+	away        ONLINE
+	  sdy       ONLINE
