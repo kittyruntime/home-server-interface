@@ -171,7 +171,7 @@ func planZfsImport(raw json.RawMessage) (*opPlan, *fsError) {
 	imp := cmdStep(req.Name, "Import the ZFS pool "+req.Name+" found on the disks, without mounting anything or changing its data",
 		[]string{"zpool", "import", "-N", "-d", "/dev/disk/by-id", req.GUID, req.Name})
 	mount := planStep{Kind: "run", Target: req.Name, Deferred: true,
-		Summary: "Mount its datasets, unless one would mount on a system folder: then export the pool again and stop",
+		Summary: "Mount its datasets without setuid programs or device files, unless one would mount outside /srv, /mnt, /media or /" + req.Name + " (a system folder): then export the pool again and stop",
 		run:     func() (string, error) { return "", checkAndMountImported(req.Name) }}
 	// What to watch is known once the pool is imported and its datasets mounted.
 	watch := planStep{Kind: "update", Target: zfsPoolsPath, Deferred: true,
@@ -217,39 +217,89 @@ func planZfsUnwatch(raw json.RawMessage) (*opPlan, *fsError) {
 	return &opPlan{Op: "zfs.unwatch", Steps: []planStep{step}, Observed: map[string]string{}}, nil
 }
 
-// System folders a dataset must never mount on (or under).
-var systemMountPrefixes = []string{"/bin", "/boot", "/dev", "/etc", "/home", "/lib", "/lib32", "/lib64", "/libx32",
-	"/opt/hsi", "/proc", "/root", "/run", "/sbin", "/sys", "/tmp", "/usr", "/var"}
+// zfsCurrentMounts lists the mount points of the host (tests swap it).
+var zfsCurrentMounts = func() []string {
+	b, err := os.ReadFile("/proc/self/mountinfo")
+	if err != nil {
+		return nil
+	}
+	var out []string
+	for _, line := range strings.Split(string(b), "\n") {
+		if f := strings.Fields(line); len(f) > 4 {
+			out = append(out, unescapeMountinfo(f[4]))
+		}
+	}
+	return out
+}
 
-func unsafeMountPoint(mp string) bool {
-	mp = filepath.Clean(mp)
-	if mp == "/" {
+// resolvePrefix resolves the links of the longest existing part of p.
+func resolvePrefix(p string, resolve func(string) (string, error)) string {
+	rest := ""
+	for cur := p; ; cur = filepath.Dir(cur) {
+		if real, err := resolve(cur); err == nil {
+			return filepath.Join(real, rest)
+		}
+		if cur == "/" {
+			return p
+		}
+		rest = filepath.Join(filepath.Base(cur), rest)
+	}
+}
+
+// underAllowedRoot: inside /srv, /mnt or /media (never those folders
+// themselves), or in /<pool>, the place ZFS gives a pool by default.
+func underAllowedRoot(p, pool string) bool {
+	if p == "/"+pool || strings.HasPrefix(p, "/"+pool+"/") {
 		return true
 	}
-	for _, p := range systemMountPrefixes {
-		if mp == p || strings.HasPrefix(mp, p+"/") {
+	for _, r := range []string{"/srv", "/mnt", "/media"} {
+		if strings.HasPrefix(p, r+"/") {
 			return true
 		}
 	}
 	return false
 }
 
+// mountPointAllowed: a dataset of an imported pool may mount on mp only in
+// the folders data goes in (before and after resolving links), and never on
+// or above a folder something is already mounted on, which it would hide.
+func mountPointAllowed(mp, pool string, mounts []string, resolve func(string) (string, error)) bool {
+	if !strings.HasPrefix(mp, "/") {
+		return false
+	}
+	clean := filepath.Clean(mp)
+	real := resolvePrefix(clean, resolve)
+	for _, p := range []string{clean, real} {
+		if !underAllowedRoot(p, pool) {
+			return false
+		}
+		for _, m := range mounts {
+			if m != "/" && (p == m || strings.HasPrefix(m, p+"/")) {
+				return false
+			}
+		}
+	}
+	return true
+}
+
 // checkAndMountImported mounts the datasets of a pool just imported with -N.
-// If one would mount itself on a system folder (canmount=on), nothing is
-// mounted and the pool is exported again, so that it does not mount there at
-// the next boot either.
+// If one would mount itself outside the data folders, or over something
+// already mounted (canmount=on), nothing is mounted and the pool is exported
+// again, so that it does not mount there at the next boot either. Mounted
+// datasets run no setuid program and expose no device file.
 func checkAndMountImported(name string) error {
 	out, err := hostOutput("zfs", "list", "-H", "-o", "name,mountpoint,canmount", "-r", "-t", "filesystem", name)
 	if err != nil {
 		return cmdError{"could not list the datasets of " + name + ": " + err.Error()}
 	}
+	mounts := zfsCurrentMounts()
 	var unsafe, mount []string
 	for _, line := range strings.Split(strings.TrimSpace(string(out)), "\n") {
 		f := strings.Split(line, "\t")
 		if len(f) < 3 || f[2] != "on" || !strings.HasPrefix(f[1], "/") {
 			continue
 		}
-		if unsafeMountPoint(f[1]) {
+		if !mountPointAllowed(f[1], name, mounts, filepath.EvalSymlinks) {
 			unsafe = append(unsafe, f[0]+" ("+f[1]+")")
 		} else {
 			mount = append(mount, f[0])
@@ -257,9 +307,12 @@ func checkAndMountImported(name string) error {
 	}
 	if len(unsafe) > 0 {
 		if out, err := runArgv([]string{"zpool", "export", name}); err != nil {
-			return cmdError{"datasets of " + name + " mount on system folders (" + strings.Join(unsafe, ", ") + ") and the pool could not be exported again: " + cmdErrMessage(out, err)}
+			return cmdError{"datasets of " + name + " would mount outside the data folders (" + strings.Join(unsafe, ", ") + ") and the pool could not be exported again: " + cmdErrMessage(out, err)}
 		}
-		return cmdError{"Not imported: datasets of " + name + " would mount on system folders: " + strings.Join(unsafe, ", ") + ". Import it by hand with zpool import -N, change their mount points (zfs set mountpoint=...), export it, then import it here."}
+		return cmdError{"Not imported: datasets of " + name + " would mount outside /srv, /mnt, /media and /" + name + ", or over a mounted folder: " + strings.Join(unsafe, ", ") + ". Import it by hand with zpool import -N, change their mount points (zfs set mountpoint=...), export it, then import it here."}
+	}
+	if out, err := runArgv([]string{"zfs", "set", "setuid=off", "devices=off", name}); err != nil {
+		return cmdError{"could not turn off setuid and device files on " + name + ": " + cmdErrMessage(out, err)}
 	}
 	for _, ds := range mount {
 		if out, err := runArgv([]string{"zfs", "mount", ds}); err != nil {

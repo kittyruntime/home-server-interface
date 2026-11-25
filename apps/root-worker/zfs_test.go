@@ -337,14 +337,27 @@ func TestPlanZfsImportRejectsBadInput(t *testing.T) {
 	}
 }
 
-func TestUnsafeMountPoint(t *testing.T) {
-	for mp, unsafe := range map[string]bool{
-		"/": true, "/etc": true, "/etc/ssh": true, "/usr": true, "/usr/local/bin": true, "/bin": true, "/boot": true,
-		"/root": true, "/var": true, "/var/lib/docker": true, "/home": true, "/opt/hsi": true, "/opt/hsi/data": true, "/lib64": true,
-		"/srv/tank": false, "/tank": false, "/mnt/backup": false, "/media/usb": false, "/opt/data": false, "/data": false, "/var2": false,
+func TestMountPointAllowed(t *testing.T) {
+	mounts := []string{"/", "/boot", "/srv/data", "/opt/hsi/data"}
+	resolve := func(p string) (string, error) {
+		if p == "/srv/link" {
+			return "/etc", nil
+		}
+		return p, nil
+	}
+	for mp, ok := range map[string]bool{
+		"/srv/tank": true, "/srv/tank/media": true, "/mnt/backup": true, "/media/usb": true, "/tank": true, "/tank/media": true,
+		"/srv/data/inner": true, // inside a volume: hides nothing
+		"/": false, "/etc": false, "/usr/local": false, "/opt": false, "/opt/containers": false, "/var/lib/docker": false,
+		"/srv": false,      // the root of the allowed folders itself
+		"/srv/data": false, // on top of a mounted volume
+		"/mnt": false,
+		"/srv/link": false, // a link to /etc
+		"/other": false,    // a top-level folder that is not the pool's name
+		"/srv/../etc": false,
 	} {
-		if got := unsafeMountPoint(mp); got != unsafe {
-			t.Errorf("%s: unsafe %v, want %v", mp, got, unsafe)
+		if got := mountPointAllowed(mp, "tank", mounts, resolve); got != ok {
+			t.Errorf("%s: allowed %v, want %v", mp, got, ok)
 		}
 	}
 }
@@ -357,6 +370,9 @@ func TestZfsImportRefusesSystemMountPoints(t *testing.T) {
 	hostOutput = func(name string, args ...string) ([]byte, error) {
 		return []byte("backup\t/backup\ton\nbackup/evil\t/etc\ton\nbackup/off\t/usr\toff\nbackup/vm\tnone\ton\n"), nil
 	}
+	prevM := zfsCurrentMounts
+	t.Cleanup(func() { zfsCurrentMounts = prevM })
+	zfsCurrentMounts = func() []string { return []string{"/"} }
 	err := checkAndMountImported("backup")
 	if err == nil || !strings.Contains(err.Error(), "backup/evil") || strings.Contains(err.Error(), "backup/off") {
 		t.Fatalf("err = %v", err)
@@ -371,7 +387,7 @@ func TestZfsImportRefusesSystemMountPoints(t *testing.T) {
 	if err := checkAndMountImported("backup"); err != nil {
 		t.Fatal(err)
 	}
-	if strings.Join(ran, ";") != "zfs mount backup;zfs mount backup/media" {
+	if strings.Join(ran, ";") != "zfs set setuid=off devices=off backup;zfs mount backup;zfs mount backup/media" {
 		t.Errorf("mounted: %v", ran)
 	}
 }
