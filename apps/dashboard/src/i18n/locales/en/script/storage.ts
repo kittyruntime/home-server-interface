@@ -80,7 +80,6 @@ export default {
     serialWwn: 'Serial / WWN',
     size: 'Size',
     type: 'Type',
-    role: 'Role',
     health: 'Health',
     temp: 'Temp',
     newPartitionTableOnDev: 'New partition table on /dev/{p0}',

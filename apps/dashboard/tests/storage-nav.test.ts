@@ -66,7 +66,8 @@ test('leavesWizard: any move away from Create volume, by crumb or link', () => {
 test('each section belongs to exactly one tab', () => {
   const all = Object.values(TAB_SECTIONS).flat()
   assert.equal(new Set(all).size, all.length)
-  assert.deepEqual([...all].sort(), ['datasets', 'disks', 'lvm', 'maintenance', 'mounts', 'pools', 'raid', 'volumes', 'zfs-import'])
+  assert.deepEqual([...all].sort(), ['datasets', 'disks', 'lvm', 'maintenance', 'mounts', 'partitions', 'pools', 'raid', 'volumes', 'zfs-import'])
+  assert.deepEqual(TAB_SECTIONS.lvm, ['volumes', 'raid', 'lvm', 'partitions', 'mounts'], 'partitioning and formatting live with LVM, not with the disks')
 })
 
 test('objects open in their tab', () => {
