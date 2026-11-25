@@ -23,6 +23,10 @@
 #           the volume comes back with its files, owners, Place and share
 #   faults  the mirror read-only, then another filesystem in its place: HSI
 #           holds it and writes nothing; then it fills up during an upload
+#   zfs     ZFS from Debian's zfs-dkms: a mirror pool made by hand is shown
+#           as volumes, watched, exported (held), imported back through
+#           HSI and kept across a reboot; a pool whose dataset would mount
+#           outside the data folders is refused and exported again
 #   interrupted with /tmp on its own noexec filesystem: the power is cut
 #           during an update (rolled back) and during a configuration restore
 #           on a new system disk (which still goes through)
@@ -357,6 +361,18 @@ expect_hold() {
     sleep 10
   done
   fail "the hold on the mirror is $got, expected $1${2:+:$2}"
+}
+
+# expect_hold_at <mount point> <status>: the volume guard's hold on a mount
+# point (none, blocked or back), within five minutes.
+expect_hold_at() {
+  local got="" deadline=$((SECONDS + 300))
+  while (( SECONDS < deadline )); do
+    got=$(api_query storage.volumes.list | python3 -c 'import json,sys; v=[x for x in json.load(sys.stdin) if x["mountPoint"]==sys.argv[1]]; print(((v[0]["hold"] or {}).get("status") or "none") if v else "unlisted")' "$1")
+    [[ $got == "$2" ]] && { log "Hold on $1: $got"; return; }
+    sleep 5
+  done
+  fail "the hold on $1 is $got, expected $2"
 }
 
 # expect_held_off: the file manager is refused on the held mirror and its
@@ -1219,6 +1235,54 @@ case "$scenario" in
     expect_mirror; expect_mirror_data; expect_account_data
     vm_reboot
     expect_running "$version"; expect_mirror; expect_mirror_data
+    ;;
+  zfs)
+    log "Installing ZFS (zfs-dkms builds the module for this kernel)"
+    vm_ssh 'sed -i "s/^Components: main\$/Components: main contrib/" /etc/apt/sources.list.d/debian.sources && apt-get update -qq >/dev/null' \
+      || fail "could not enable contrib"
+    vm_apt_install "linux-headers-\$(uname -r)" zfs-dkms zfsutils-linux || fail "could not install ZFS"
+    vm_ssh 'modprobe zfs' || fail "the zfs module did not load"
+    vm_ssh 'zpool create -f -o ashift=12 -m /srv/tank tank mirror /dev/disk/by-id/virtio-HSI-DATA-1 /dev/disk/by-id/virtio-HSI-DATA-2 && zfs create tank/media && echo hello > /srv/tank/media/hello.txt' \
+      || fail "could not create the pool"
+    guid=$(vm_ssh 'zpool get -Hp -o value guid tank')
+    install_build
+    vm_ssh 'mkdir -p /etc/systemd/system/hsi-server.service.d && printf "[Service]\nEnvironment=HSI_VOLUME_GUARD_INTERVAL_MS=5000\n" > /etc/systemd/system/hsi-server.service.d/vm-tests.conf && systemctl daemon-reload && systemctl restart hsi-server' \
+      || fail "could not shorten the volume guard's interval"
+    expect_running "$version"
+    api_setup
+    api_query storage.volumes.overview | python3 -c 'import json,sys; v=[x for x in json.load(sys.stdin)["volumes"] if x["id"]==sys.argv[1]]; assert v and v[0]["engine"]=="zfs" and v[0]["redundancy"]=="raid1" and v[0]["mountPoint"]=="/srv/tank/media", v' "zfs:$guid:tank/media" \
+      || fail "tank/media is not a ZFS mirror volume"
+    log "tank/media is a volume"
+    # Not watched yet: exporting holds nothing.
+    apply_plan zfs.watch '{"name":"tank"}' >/dev/null
+    vm_ssh 'grep -q "\"name\": \"tank\"" /etc/hsi/zfs-pools.json' || fail "tank is not in the watched pools"
+    expect_hold_at /srv/tank/media none
+    vm_ssh 'zpool export tank' || fail "could not export tank"
+    expect_hold_at /srv/tank/media blocked
+    api_query storage.zfs.importScan | python3 -c 'import json,sys; p=[x for x in json.load(sys.stdin)["pools"] if x["name"]=="tank"]; assert p and p[0]["state"]=="ONLINE", p' \
+      || fail "tank is not offered for import"
+    apply_plan zfs.import "{\"guid\":\"$guid\",\"name\":\"tank\"}" >/dev/null
+    [[ $(vm_ssh 'cat /srv/tank/media/hello.txt; zfs get -H -o value setuid tank/media; zfs get -H -o value devices tank/media') == $'hello\noff\noff' ]] \
+      || fail "tank/media is not back with its file, setuid and devices off"
+    expect_hold_at /srv/tank/media back
+    api storage.volumes.resume '{"mountPoint":"/srv/tank/media"}' >/dev/null
+    api storage.volumes.resume '{"mountPoint":"/srv/tank"}' >/dev/null
+    expect_hold_at /srv/tank/media none
+    vm_reboot
+    expect_running "$version"
+    vm_ssh 'findmnt -n /srv/tank/media >/dev/null && test -f /srv/tank/media/hello.txt' || fail "tank/media is not mounted after a reboot"
+    expect_hold_at /srv/tank/media none
+    # A pool whose dataset would mount outside the data folders: refused, and
+    # exported again so that it does not mount there at the next boot.
+    vm_ssh 'zpool create -f -m /opt/evil evil /dev/disk/by-id/virtio-HSI-DATA-3 && zpool export evil' || fail "could not create the evil pool"
+    eguid=$(api_query storage.zfs.importScan | python3 -c 'import json,sys; print([x["guid"] for x in json.load(sys.stdin)["pools"] if x["name"]=="evil"][0])')
+    plan=$(api storage.plan "{\"op\":\"zfs.import\",\"input\":{\"guid\":\"$eguid\",\"name\":\"evil\"}}")
+    fp=$(python3 -c 'import json,sys; print(json.loads(sys.argv[1])["fingerprint"])' "$plan")
+    result=$(api storage.execute "{\"op\":\"zfs.import\",\"input\":{\"guid\":\"$eguid\",\"name\":\"evil\"},\"fingerprint\":\"$fp\"}")
+    python3 -c 'import json,sys; r=json.loads(sys.argv[1]); assert not r["ok"] and "outside" in (r.get("error") or ""), r' "$result" \
+      || fail "the evil pool was not refused: $result"
+    vm_ssh '! zpool list evil >/dev/null 2>&1 && ! test -e /opt/evil' || fail "the evil pool stayed imported or mounted"
+    log "A pool mounting outside the data folders is refused"
     ;;
   *) fail "unknown scenario $scenario" ;;
 esac
