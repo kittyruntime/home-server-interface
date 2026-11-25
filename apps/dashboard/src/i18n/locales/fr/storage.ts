@@ -141,7 +141,7 @@ export default {
     disks: {
       title: 'Comment les disques sont présentés',
       disk: 'Disque', diskCaption: 'Chaque baie est un disque du serveur, avec son nom et sa taille.',
-      owner: 'Couleur', ownerCaption: 'Bleu : utilisé par un volume LVM. Pointillés : libre, prêt pour un nouveau volume.',
+      owner: 'Couleur', ownerCaption: 'Bordure pleine : utilisé par un volume LVM. Pointillés : libre, prêt pour un nouveau volume.',
       health: 'Santé', healthCaption: 'La pastille donne sa santé SMART : vert, orange ou rouge, avec sa température.',
     },
     lvm: {

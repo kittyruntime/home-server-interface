@@ -142,7 +142,7 @@ export default {
     disks: {
       title: 'How disks are shown',
       disk: 'Disk', diskCaption: 'Each bay is a disk of the server, with its name and size.',
-      owner: 'Color', ownerCaption: 'Blue: used by an LVM volume. Dashed: free, ready for a new volume.',
+      owner: 'Color', ownerCaption: 'Solid border: used by an LVM volume. Dashed: free, ready for a new volume.',
       health: 'Health', healthCaption: 'The dot is its SMART health: green, orange or red, with its temperature.',
     },
     lvm: {

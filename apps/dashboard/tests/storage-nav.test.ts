@@ -95,3 +95,21 @@ test('switching tabs keeps where each tab was', () => {
   t = switchTab(t, 'lvm')
   assert.deepEqual(currentNav(t).current, { kind: 'array', name: 'md0' })
 })
+
+test('a link into another tab starts that tab from its section, not from where it was left', () => {
+  let t = tabbedOpen(createTabbedNav('lvm'), { kind: 'volume', id: 'A' })
+  t = tabbedOpen(t, { kind: 'disk', name: 'sda' })
+  t = tabbedOpen(t, { kind: 'volume', id: 'B' })
+  assert.deepEqual(navCrumbs(currentNav(t)).map(c => c.label), ['Volumes', 'B'])
+  let d = tabbedOpen(createTabbedNav('disks'), { kind: 'disk', name: 'sdb' })
+  d = tabbedOpen(d, { kind: 'volume', id: 'A' })
+  d = tabbedOpen(d, { kind: 'disk', name: 'sdc' })
+  assert.deepEqual(navCrumbs(currentNav(d)).map(c => c.label), ['Disks', 'sdc'])
+})
+
+test('a free bay opens the wizard on top of Volumes, whatever the LVM tab showed', () => {
+  let t = tabbedOpen(createTabbedNav('lvm'), { kind: 'volume', id: 'A' })
+  t = switchTab(t, 'disks')
+  t = tabbedOpen(t, { kind: 'create-volume', disks: ['sdf'] })
+  assert.deepEqual(navCrumbs(currentNav(t)).map(c => c.label), ['Volumes', 'Create volume'])
+})

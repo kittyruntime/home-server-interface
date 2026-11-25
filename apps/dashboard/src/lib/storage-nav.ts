@@ -112,10 +112,13 @@ export function currentNav(t: TabbedNav): StorageNav {
   return t.navs[t.tab] ?? firstOf(t.tab)
 }
 
-/** Opens `loc` in its own tab, which becomes the current one. */
+/** Opens `loc` in its own tab, which becomes the current one. Within the
+ *  current tab it goes on top of the stack; a link into another tab starts that
+ *  tab from its section, as the breadcrumb leads there from the link. */
 export function tabbedOpen(t: TabbedNav, loc: StorageLocation): TabbedNav {
   const tab = tabOf(loc)
-  const nav = navOpen(t.navs[tab] ?? firstOf(tab), loc)
+  const base = tab === t.tab ? (t.navs[tab] ?? firstOf(tab)) : createNav({ kind: 'section', section: sectionOf(loc) })
+  const nav = navOpen(base, loc)
   return { tab, navs: { ...t.navs, [tab]: nav } }
 }
 
