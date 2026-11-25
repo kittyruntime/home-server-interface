@@ -123,6 +123,11 @@ export default {
     free: 'free',
     pickAFreeDisk: 'Select a free disk to create a volume on it.',
   },
+  StackChain: {
+    howItIsBuilt: 'How this volume is built',
+    kind: { disks: 'Disks', array: 'RAID array', vg: 'Volume group', filesystem: 'Filesystem', mount: 'Folder' },
+    singleDisk: 'single disk',
+  },
   IntroCard: {
     dismiss: 'Dismiss',
     dismissThisExplanation: 'Dismiss this explanation',

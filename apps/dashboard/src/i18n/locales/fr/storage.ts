@@ -122,6 +122,11 @@ export default {
     free: 'libre',
     pickAFreeDisk: 'Sélectionnez un disque libre pour y créer un volume.',
   },
+  StackChain: {
+    howItIsBuilt: 'Comment ce volume est construit',
+    kind: { disks: 'Disques', array: 'Grappe RAID', vg: 'Groupe de volumes', filesystem: 'Système de fichiers', mount: 'Dossier' },
+    singleDisk: 'disque seul',
+  },
   IntroCard: {
     dismiss: 'Masquer',
     dismissThisExplanation: 'Masquer cette explication',
