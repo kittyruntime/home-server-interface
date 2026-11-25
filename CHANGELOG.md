@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- A new Place can be written to at once: creating it now adds the administrators
+  (and anyone given write access) to the share group. On a fresh install, nobody
+  could write in the first Place until a permission was changed.
+
 ## [1.95.1] - 2026-11-25
 
 ### Fixed
