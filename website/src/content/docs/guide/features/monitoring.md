@@ -12,11 +12,15 @@ The Monitor app has five sections: Performance, Processes, History, Alerts and
 Audit log.
 
 - **Performance**: one panel with four readings, refreshed every 2 seconds:
-  CPU, memory, disks and network. Pick one to see its detail under them: the
+  CPU, memory, disks and network, plus **Temperatures** on a machine that exposes
+  sensors (the hottest one, and how close it is to its critical point). Pick one to see its detail under them: the
   last two minutes of CPU use with every core side by side, speed, load,
   processes and threads; memory composition and swap; every disk on its own
   line with its active time, read and write speeds and model; every network
-  port with its receive and send rates, link speed and addresses. Below,
+  port with its receive and send rates, link speed and addresses; every
+  temperature sensor (processor, NVMe, disks with the `drivetemp` module, board)
+  with its last two minutes, its max and critical points, and the fan speeds.
+  Below,
   **Who is using the server** ranks what runs on the machine by CPU, memory or
   disk activity: each app (its Docker containers), each account, HSI itself and
   the system. Picking one opens it in Processes.

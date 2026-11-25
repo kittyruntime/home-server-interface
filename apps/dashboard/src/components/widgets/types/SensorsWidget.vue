@@ -9,6 +9,7 @@ import { reportSources } from '../card-status'
 import { useSource } from '../../../lib/widget-data'
 import { trpc } from '../../../lib/trpc'
 import type { BoardWidget, WidgetSize } from '../../../lib/dashboard-boards'
+import { chipKind, hottest as hottestOf, tempTone } from '../../../lib/perf-temps'
 
 const props = defineProps<{ widget: BoardWidget; size: WidgetSize }>()
 const { t } = useI18n()
@@ -16,19 +17,13 @@ const src = useSource('sensors', () => trpc.dashboard.sensors.query(), 10_000)
 reportSources(src)
 
 type Sensor = NonNullable<typeof src.data.value>[number]
-const CHIP: Record<string, string> = { coretemp: 'cpu', k10temp: 'cpu', zenpower: 'cpu', cpu_thermal: 'cpu', nvme: 'nvme', drivetemp: 'disk', acpitz: 'board', amdgpu: 'gpu', nouveau: 'gpu', radeon: 'gpu' }
-const chipName = (chip: string) => CHIP[chip] ? t(`widgets.sensors.chip.${CHIP[chip]}`) : chip
+const chipName = (chip: string) => { const k = chipKind(chip); return k ? t(`widgets.sensors.chip.${k}`) : chip }
 
-function tone(s: Sensor): Tone {
-  if (s.kind !== 'temp') return 'neutral'
-  if (s.crit != null && s.value >= s.crit - 5) return 'bad'
-  if ((s.max != null && s.value >= s.max) || s.value >= 80) return 'warn'
-  return 'ok'
-}
+const tone = (s: Sensor): Tone => s.kind === 'temp' ? tempTone(s) : 'neutral'
 
 const temps = computed(() => (src.data.value ?? []).filter(s => s.kind === 'temp'))
 const fans = computed(() => (src.data.value ?? []).filter(s => s.kind === 'fan'))
-const hottest = computed(() => temps.value.reduce<Sensor | null>((a, s) => !a || s.value > a.value ? s : a, null))
+const hottest = computed(() => hottestOf(temps.value))
 const rows = computed(() => [...temps.value].sort((a, b) => b.value - a.value).slice(0, ROWS[props.size]))
 const label = (s: Sensor) => s.label.startsWith(s.chip) ? chipName(s.chip) : `${chipName(s.chip)} · ${s.label}`
 </script>
