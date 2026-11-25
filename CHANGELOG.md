@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- New installs give the `hsi` service account its home in `/opt/hsi/home` instead of
+  `/home/hsi`. Existing installs keep their home: a rollback still finds Node.js
+  where the previous release put it.
+
 ## [1.95.1] - 2026-11-25
 
 ### Fixed
