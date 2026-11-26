@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- ZFS health and repair: scrub a pool now or on a schedule (a ZFS scrub task in
+  Maintenance, with each pool's result and its runs in the calendar), replace a
+  disk of a pool with a free disk and follow the resilver, and clear error counts
+  once their cause is fixed.
+
 - ZFS pools and datasets can be created and deleted from Storage: a pool from free
   whole disks (stripe, mirror, RAID-Z1, Z2 or Z3, with the space it holds and the
   failures it survives shown as you choose), datasets with a quota and their
