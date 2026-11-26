@@ -369,7 +369,9 @@ func parseZpoolStatus(out string) map[string]zfsPoolStatus {
 		if ok {
 			vdevs = root.Children
 		}
-		res[name] = zfsPoolStatus{Vdevs: vdevs, Scan: parseScan(b.fields["scan"]), Expand: parseExpand(b.fields["expand"])}
+		exp := parseExpand(b.fields["expand"])
+		exp.Vdev = layoutVdevName(vdevs, exp.Vdev)
+		res[name] = zfsPoolStatus{Vdevs: vdevs, Scan: parseScan(b.fields["scan"]), Expand: exp}
 	}
 	return res
 }

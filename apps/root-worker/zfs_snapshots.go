@@ -485,9 +485,45 @@ func planZfsSnapshotRollback(raw json.RawMessage) (*opPlan, *fsError) {
 	if _, _, ok := splitSnapshot(req.Snapshot); !ok || target == nil {
 		return nil, &fsError{Code: "ENOENT", Message: req.Snapshot + " does not exist"}
 	}
+	// zfs rollback -r cannot delete a snapshot that has clones or holds: say
+	// so now rather than after the confirmation.
+	if len(newer) > 0 {
+		args := []string{"get", "-Hp", "-o", "name,property,value", "clones,userrefs"}
+		for _, n := range newer {
+			args = append(args, target.Dataset+"@"+n)
+		}
+		if out, err := hostOutput("zfs", args...); err == nil {
+			for _, line := range strings.Split(string(out), "\n") {
+				f := strings.Split(line, "\t")
+				if len(f) < 3 {
+					continue
+				}
+				v := strings.TrimSpace(f[2])
+				switch {
+				case f[1] == "clones" && v != "" && v != "-":
+					return nil, &fsError{Code: "EBUSY", Message: f[0] + " has clones (" + v + "): delete or promote them before rolling back"}
+				case f[1] == "userrefs" && v != "" && v != "0" && v != "-":
+					return nil, &fsError{Code: "EBUSY", Message: f[0] + " has a hold (zfs holds " + f[0] + "): release it before rolling back"}
+				}
+			}
+		}
+	}
+	// Bookmarks made after the snapshot go too.
+	marks := []string{}
+	if out, err := hostOutput("zfs", "list", "-Hp", "-t", "bookmark", "-o", "name,creation", "-d", "1", target.Dataset); err == nil {
+		for _, line := range strings.Split(string(out), "\n") {
+			f := strings.Split(strings.TrimSpace(line), "\t")
+			if len(f) == 2 && atoi64(f[1]) > target.Created {
+				marks = append(marks, f[0][strings.LastIndex(f[0], "#"):])
+			}
+		}
+	}
 	summary := "Roll " + target.Dataset + " back to " + target.Short + ": every change made since is lost"
 	if len(newer) > 0 {
 		summary += ", and the newer snapshots are deleted: " + strings.Join(newer, ", ")
+	}
+	if len(marks) > 0 {
+		summary += "; newer bookmarks are deleted too: " + strings.Join(marks, ", ")
 	}
 	step := cmdStep(target.Dataset, summary, []string{"zfs", "rollback", "-r", target.Name})
 	step.Destructive = true
