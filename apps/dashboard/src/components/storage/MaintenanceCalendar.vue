@@ -5,14 +5,15 @@ import { calendar, type Schedule } from './maintenance-calendar'
 
 // The next two weeks of scheduled checks, one cell per day, from the saved
 // schedules (not an unsaved draft).
-const props = defineProps<{ schedules: Record<string, Schedule> }>()
+const props = defineProps<{ schedules: Record<string, Schedule>; serverOffset?: number }>()
 const { t, locale } = useI18n()
 
 type Kind = 'smart' | 'raid'
 const kindOf = (task: string): Kind => (task === 'raidCheck' ? 'raid' : 'smart')
-const MARK: Record<Kind, string> = { smart: 'bg-success', raid: 'bg-secondary' }
+// Scheduled, not a result: no green, which reads as healthy elsewhere.
+const MARK: Record<Kind, string> = { smart: 'bg-info', raid: 'bg-secondary' }
 
-const days = computed(() => calendar(props.schedules, new Date(), 14).map((d, i) => ({
+const days = computed(() => calendar(props.schedules, new Date(), 14, props.serverOffset).map((d, i) => ({
   ...d,
   today: i === 0,
   kinds: [...new Set(d.tasks.map(kindOf))],

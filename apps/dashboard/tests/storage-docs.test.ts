@@ -28,4 +28,5 @@ test('an intro dismissed by an older release stays dismissed', () => {
   assert.equal(isDismissed('lvm', { getItem: k => (k === 'lvm-intro-dismissed' ? '1' : null) }), true)
   assert.equal(isDismissed('disks', { getItem: () => null }), false)
   assert.equal(isDismissed('lvm', { getItem: () => { throw new Error('blocked') } }), false)
+  assert.equal(isDismissed('lvm', () => { throw new Error('SecurityError: site data blocked') }), false, 'a storage that cannot even be reached counts as not dismissed')
 })

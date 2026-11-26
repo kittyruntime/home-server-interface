@@ -608,3 +608,14 @@ func TestZfsSnapshotIncompleteOnErrors(t *testing.T) {
 		t.Errorf("a failed zpool list is not a complete reading: %+v", info)
 	}
 }
+
+func TestParseConfigTreeWasPathAndDraid(t *testing.T) {
+	st := parseZpoolStatus("  pool: tank\n state: DEGRADED\n  scan: none requested\nconfig:\n\n\tNAME STATE READ WRITE CKSUM\n\ttank DEGRADED 0 0 0\n\t  draid2:4d:1c:6c-0 DEGRADED 0 0 0\n\t    /dev/sdb1 ONLINE 0 0 0\n\t    1234512345 UNAVAIL 0 0 0  was /dev/sdc1\n")
+	top := st["tank"].Vdevs[0]
+	if top.Type != "draid2" {
+		t.Errorf("a dRAID vdev carries its parity: %q", top.Type)
+	}
+	if l := top.Children[1]; l.Path != "/dev/sdc1" || l.State != "UNAVAIL" {
+		t.Errorf("a missing leaf printed as a guid keeps the path it was: %+v", l)
+	}
+}

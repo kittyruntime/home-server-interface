@@ -18,7 +18,7 @@ const props = defineProps<{
 }>()
 
 const { t } = useI18n()
-const dismissed = ref(isDismissed(props.id, globalThis.localStorage ?? { getItem: () => null }))
+const dismissed = ref(isDismissed(props.id, () => globalThis.localStorage))
 
 function dismiss() {
   dismissed.value = true

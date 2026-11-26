@@ -133,9 +133,14 @@ export function tabbedOpen(t: TabbedNav, loc: StorageLocation): TabbedNav {
   return { tab, navs: { ...t.navs, [tab]: nav } }
 }
 
-/** Shows `tab` where it was left; a tab never opened starts on its first section. */
+/** Shows `tab` where it was left; a tab never opened starts on its first
+ *  section. The Create volume wizard is a step, not a place: leaving its tab
+ *  drops it. */
 export function switchTab(t: TabbedNav, tab: StorageTab): TabbedNav {
-  return { tab, navs: { ...t.navs, [tab]: t.navs[tab] ?? firstOf(tab) } }
+  const navs = { ...t.navs }
+  const left = navs[t.tab]
+  if (left && left.current.kind === 'create-volume' && left.stack.length > 1) navs[t.tab] = navTo(left, left.stack.length - 2)
+  return { tab, navs: { ...navs, [tab]: navs[tab] ?? firstOf(tab) } }
 }
 
 /** Replaces the current tab's stack (breadcrumbs). */

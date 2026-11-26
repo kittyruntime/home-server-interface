@@ -114,7 +114,7 @@ const statusClass: Record<string, string> = {
 
     <StorageIntro tab="maintenance" />
 
-    <MaintenanceCalendar v-if="data" :schedules="savedSchedules" />
+    <MaintenanceCalendar v-if="data" :schedules="savedSchedules" :server-offset="data.serverOffset" />
 
     <LoadingState v-if="loading && !data" variant="block" />
     <Alert variant="destructive" v-else-if="error" class="mt-4"><AlertDescription>{{ error }}</AlertDescription></Alert>

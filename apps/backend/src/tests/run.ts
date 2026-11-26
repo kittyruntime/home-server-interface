@@ -4835,6 +4835,7 @@ async function testZfsPoolRedundancy() {
   assert.deepEqual(poolRedundancy(zPool([zGroup('raidz1-0', 'raidz1', []), zGroup('mirror-1', 'mirror', [zLeaf('a'), zLeaf('b'), zLeaf('c')])]) as any), { level: 'raidz1', tolerates: 1 })
   assert.deepEqual(poolRedundancy(zPool([zLeaf('sda'), zLeaf('sdb')]) as any), { level: 'raid0', tolerates: 0 })
   assert.deepEqual(poolRedundancy(zPool([zLeaf('sda')]) as any), { level: 'none', tolerates: 0 })
+  assert.deepEqual(poolRedundancy(zPool([zGroup('draid2:4d:1c:6c-0', 'draid2', [])]) as any), { level: 'raidz2', tolerates: 2 }, 'a dRAID vdev survives as many failed disks as its parity')
   assert.deepEqual(poolRedundancy(zPool([zGroup('mirror-0', 'mirror', [zLeaf('sda'), zLeaf('sdb')]), zGroup('mirror-1', 'log', [zLeaf('n1')]), zLeaf('n2', { type: 'cache' })]) as any), { level: 'raid1', tolerates: 1 }, 'logs and cache ignored')
 }
 await testZfsPoolRedundancy()

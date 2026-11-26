@@ -131,3 +131,10 @@ test('Storage opens on ZFS when it holds most volumes', () => {
   assert.equal(defaultTab({ volumes: 3, zfsVolumes: 1 }), 'lvm')
   assert.equal(defaultTab({ volumes: 0, zfsVolumes: 0 }), 'disks')
 })
+
+test('leaving the LVM tab drops the Create volume wizard from its stack', () => {
+  let t = tabbedOpen(createTabbedNav('lvm'), { kind: 'create-volume' })
+  t = switchTab(t, 'disks')
+  t = switchTab(t, 'lvm')
+  assert.deepEqual(currentNav(t).current, { kind: 'section', section: 'volumes' })
+})

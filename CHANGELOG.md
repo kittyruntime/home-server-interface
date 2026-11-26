@@ -31,6 +31,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   a link to it; partitioning, formatting and mounting move to a new LVM >
   Partitions & formatting section, which lists only the disks nothing uses.
 
+### Fixed
+
+- ZFS: a missing disk shown by its guid keeps the path it had; dRAID vdevs count
+  their parity in the redundancy; names ZFS reserves (mirror, raidz, spare...)
+  are refused before the plan; a dataset holding snapshots, or whose folder is
+  not empty, is refused at preview with a clear reason.
+- A watched pool's datasets made by hand can be guarded from the pool's page.
+- Storage: leaving the LVM tab closes an open Create volume wizard; arrow keys
+  on the tabs no longer ask to leave it; the page waits for its starting tab
+  instead of jumping; an intro card no longer fails when site data is blocked.
+- Maintenance: the calendar places each run on the server's clock, and
+  scheduled checks no longer share the green of a healthy result.
+
 ## [1.96.0] - 2026-11-25
 
 ### Added
