@@ -40,17 +40,21 @@ function dismiss() {
 
       <h3 class="pr-8 text-sm font-semibold">{{ title }}</h3>
 
-      <div class="mt-3 flex flex-col gap-2 @2xl:flex-row @2xl:items-center @2xl:gap-1">
-        <template v-for="(s, i) in stages" :key="s.title">
-          <div class="min-w-0 flex-1 rounded-xl border border-base-300 bg-base-200 p-3">
+      <!-- The stages read as one flow: a rail with dots when narrow, a row with
+           chevrons when wide. No boxes inside the card. -->
+      <ol class="mt-3 flex flex-col gap-2.5 @2xl:flex-row @2xl:gap-0">
+        <li v-for="(s, i) in stages" :key="s.title" class="relative flex min-w-0 flex-1 gap-3 @2xl:gap-2">
+          <span class="relative flex w-2 shrink-0 justify-center @2xl:hidden" aria-hidden="true">
+            <span class="mt-1.5 size-2 rounded-full bg-secondary" />
+            <span v-if="i < stages.length - 1" class="absolute top-4 -bottom-3.5 w-px bg-base-300" />
+          </span>
+          <div class="min-w-0 flex-1">
             <p class="text-xs font-semibold text-secondary">{{ s.title }}</p>
-            <p class="mt-1 text-xs leading-snug text-base-content/70">{{ s.caption }}</p>
+            <p class="mt-0.5 text-xs leading-snug text-base-content/70">{{ s.caption }}</p>
           </div>
-          <div v-if="i < stages.length - 1" class="flex shrink-0 items-center justify-center text-base-content/70">
-            <ChevronRightIcon class="size-4 rotate-90 @2xl:rotate-0" aria-hidden="true" />
-          </div>
-        </template>
-      </div>
+          <ChevronRightIcon v-if="i < stages.length - 1" class="mt-0.5 hidden size-4 shrink-0 text-base-content/50 @2xl:block @2xl:mr-2" aria-hidden="true" />
+        </li>
+      </ol>
 
       <p v-if="note" class="mt-3 text-xs leading-snug text-base-content/70">{{ note }}</p>
 

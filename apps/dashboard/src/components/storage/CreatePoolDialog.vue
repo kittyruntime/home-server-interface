@@ -62,10 +62,12 @@ async function create() {
 
 <template>
   <Modal :label="t('ui.storage.ZfsCreate.heading')" panel-class="w-full max-w-lg" @close="emit('close')">
-    <div class="px-5 py-4 border-b border-base-300">
-      <h3 class="font-semibold text-base-content">{{ t('ui.storage.ZfsCreate.heading') }}</h3>
-      <p class="mt-0.5 text-xs text-base-content/70">{{ t('ui.storage.ZfsCreate.subtitle') }}</p>
-    </div>
+    <template #header>
+      <div class="min-w-0">
+        <h3 class="text-sm font-semibold text-base-content">{{ t('ui.storage.ZfsCreate.heading') }}</h3>
+        <p class="mt-0.5 text-xs text-base-content/70">{{ t('ui.storage.ZfsCreate.subtitle') }}</p>
+      </div>
+    </template>
     <div class="p-5 space-y-5">
       <label class="block">
         <span class="text-sm font-medium">{{ t('ui.storage.ZfsCreate.name') }}</span>

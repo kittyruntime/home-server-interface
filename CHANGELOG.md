@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Storage, finishing touches: the "How it works" cards read as one flow without
+  boxes inside the card (a rail on a phone); dialogs of the ZFS tab put their
+  title in the dialog's header instead of under an empty bar; on a phone the
+  datasets list keeps name, folder, size and actions readable, snapshot names
+  are shown in full above their date and actions, and schedule rules no longer
+  break across lines; a pool's root dataset keeps Edit aligned with the others;
+  a dataset's snapshot list shows that it opens.
+
 ## [1.97.0] - 2026-11-26
 
 ### Added

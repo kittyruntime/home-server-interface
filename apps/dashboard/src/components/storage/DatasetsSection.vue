@@ -67,11 +67,11 @@ const isVolume = (d: ZfsDataset) => d.mountPoint.startsWith('/') && (d.canMount 
         <thead>
           <tr>
             <th>{{ t('ui.storage.Zfs.colName') }}</th>
-            <th>{{ t('ui.storage.Zfs.colMount') }}</th>
+            <th class="hidden @2xl/content:table-cell">{{ t('ui.storage.Zfs.colMount') }}</th>
             <th class="text-right">{{ t('ui.storage.Zfs.colUsed') }}</th>
-            <th class="text-right">{{ t('ui.storage.Zfs.colQuota') }}</th>
-            <th class="text-right">{{ t('ui.storage.Zfs.colRatio') }}</th>
-            <th>{{ t('ui.storage.Zfs.colUsedBy') }}</th>
+            <th class="hidden @2xl/content:table-cell text-right">{{ t('ui.storage.Zfs.colQuota') }}</th>
+            <th class="hidden @2xl/content:table-cell text-right">{{ t('ui.storage.Zfs.colRatio') }}</th>
+            <th class="hidden @2xl/content:table-cell">{{ t('ui.storage.Zfs.colUsedBy') }}</th>
             <th><span class="sr-only">{{ t('ui.storage.ZfsDataset.actions') }}</span></th>
           </tr>
         </thead>
@@ -80,19 +80,23 @@ const isVolume = (d: ZfsDataset) => d.mountPoint.startsWith('/') && (d.canMount 
             <td class="font-mono">
               <Button v-if="volumeOf(d)" variant="link" class="h-auto p-0 font-mono text-base-content" @click="emit('navigate', { kind: 'volume', id: volumeOf(d)!.id })">{{ d.name }}</Button>
               <span v-else>{{ d.name }}</span>
+              <!-- Narrow: the folder under the name, the other columns hidden. -->
+              <span class="mt-0.5 block text-2xs text-base-content/70 @2xl/content:hidden">{{ d.mountPoint }}</span>
             </td>
-            <td class="font-mono text-xs">
+            <td class="hidden @2xl/content:table-cell font-mono text-xs">
               <span v-if="isVolume(d)" :class="d.mounted ? '' : 'text-warning'">{{ d.mountPoint }}<template v-if="!d.mounted"> · {{ t('ui.storage.Zfs.notMounted') }}</template></span>
               <span v-else-if="d.mountPoint.startsWith('/')" class="text-base-content/70">{{ d.mountPoint }} · {{ t('ui.storage.Zfs.container', { cm: d.canMount }) }}</span>
               <span v-else class="text-base-content/70">{{ t('ui.storage.Zfs.notVolume', { mp: d.mountPoint }) }}</span>
             </td>
-            <td class="text-right tabular-nums">{{ fmtBytes(d.used) }}</td>
-            <td class="text-right tabular-nums">{{ d.quota ? fmtBytes(d.quota) : '-' }}</td>
-            <td class="text-right tabular-nums">{{ d.ratio.toFixed(2) }}×</td>
-            <td class="max-w-48 truncate text-xs text-base-content/80">{{ usedBy(d) || '-' }}</td>
+            <td class="whitespace-nowrap text-right tabular-nums">{{ fmtBytes(d.used) }}</td>
+            <td class="hidden @2xl/content:table-cell whitespace-nowrap text-right tabular-nums">{{ d.quota ? fmtBytes(d.quota) : '-' }}</td>
+            <td class="hidden @2xl/content:table-cell whitespace-nowrap text-right tabular-nums">{{ d.ratio.toFixed(2) }}×</td>
+            <td class="hidden @2xl/content:table-cell max-w-48 truncate text-xs text-base-content/80">{{ usedBy(d) || '-' }}</td>
             <td class="whitespace-nowrap text-right">
               <Button variant="ghost" size="xs" @click="editing = d">{{ t('ui.storage.ZfsDataset.edit') }}</Button>
               <Button v-if="d.name.includes('/')" variant="ghost" size="xs" class="text-error" @click="destroy(d)">{{ t('ui.storage.ZfsDataset.delete') }}</Button>
+              <!-- A pool's root dataset goes with the pool: the empty slot keeps Edit in line. -->
+              <span v-else class="invisible" aria-hidden="true"><Button variant="ghost" size="xs" tabindex="-1">{{ t('ui.storage.ZfsDataset.delete') }}</Button></span>
             </td>
           </tr>
         </tbody>

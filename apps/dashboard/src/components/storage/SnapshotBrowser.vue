@@ -57,17 +57,19 @@ const ICON = { dir: FolderIcon, file: FileIcon, link: LinkIcon, dataset: LayersI
 
 <template>
   <Modal :label="t('ui.storage.ZfsSnap.browseHeading')" panel-class="w-full max-w-2xl" @close="emit('close')">
-    <div class="px-5 py-4 border-b border-base-300">
-      <h3 class="font-semibold text-base-content">{{ t('ui.storage.ZfsSnap.browseHeading') }}</h3>
-      <p class="mt-0.5 break-all font-mono text-xs text-base-content/70">{{ snapshot }}</p>
-      <nav class="mt-2 flex flex-wrap items-center gap-1 text-sm" :aria-label="t('ui.storage.ZfsSnap.where')">
-        <button type="button" class="link link-hover" @click="open('')">{{ t('ui.storage.ZfsSnap.root') }}</button>
-        <template v-for="c in crumbs(path)" :key="c.path">
-          <span class="text-base-content/50">/</span>
-          <button type="button" class="link link-hover break-all" @click="open(c.path)">{{ c.name }}</button>
-        </template>
-      </nav>
-    </div>
+    <template #header>
+      <div class="min-w-0">
+        <h3 class="text-sm font-semibold text-base-content">{{ t('ui.storage.ZfsSnap.browseHeading') }}</h3>
+        <p class="mt-0.5 break-all font-mono text-xs text-base-content/70">{{ snapshot }}</p>
+        <nav class="mt-2 flex flex-wrap items-center gap-1 text-sm" :aria-label="t('ui.storage.ZfsSnap.where')">
+          <button type="button" class="link link-hover" @click="open('')">{{ t('ui.storage.ZfsSnap.root') }}</button>
+          <template v-for="c in crumbs(path)" :key="c.path">
+            <span class="text-base-content/50">/</span>
+            <button type="button" class="link link-hover break-all" @click="open(c.path)">{{ c.name }}</button>
+          </template>
+        </nav>
+      </div>
+    </template>
     <div class="max-h-[60vh] overflow-y-auto p-2">
       <LoadingState v-if="loading" variant="block" />
       <p v-else-if="error" class="p-3 text-sm text-error">{{ error }}</p>
