@@ -39,6 +39,8 @@ root=$(cd "$here/../.." && pwd)
 source "$here/lib.sh"
 
 scenario="${1:?scenario}"; archive="${2:?archive}"; version="v${3#v}"
+# The zfs scenario grows a pool with disks 5 and 6.
+[[ $scenario == zfs ]] && VM_DATA_DISKS=6
 REPO="kittyruntime/home-server-interface"
 DB=/opt/hsi/database/data/hsi.db
 trap 'vm_ssh "journalctl -u hsi-server -n 80 --no-pager; tail -n 200 /var/log/hsi/app.log /var/log/hsi/root-worker.log" > "$VM_DIR/hsi-server.log" 2>&1 || true; vm_stop' EXIT
