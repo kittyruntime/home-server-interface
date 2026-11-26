@@ -1162,7 +1162,7 @@ await testVolumeGuard()
 const sp = await import('../services/storage-plan')
 
 async function testStoragePlanAudit() {
-  assert.ok(sp.PLAN_OPS.includes('format') && sp.PLAN_OPS.includes('raid.stop') && sp.PLAN_OPS.includes('storage.reapply') && sp.PLAN_OPS.includes('storage.accept') && sp.PLAN_OPS.includes('system.identity') && sp.PLAN_OPS.includes('network.ipv4') && sp.PLAN_OPS.length === 44)
+  assert.ok(sp.PLAN_OPS.includes('format') && sp.PLAN_OPS.includes('raid.stop') && sp.PLAN_OPS.includes('storage.reapply') && sp.PLAN_OPS.includes('storage.accept') && sp.PLAN_OPS.includes('system.identity') && sp.PLAN_OPS.includes('network.ipv4') && sp.PLAN_OPS.length === 49 && sp.PLAN_OPS.includes('zfs.snapshot.restore'))
   const meta = sp.planAuditMeta('format',
     [{ kind: 'run', target: '/dev/sdb1', summary: 'Create ext4', command: ['mkfs.ext4', '-F', '/dev/sdb1'], destructive: true },
       { kind: 'update', target: '/etc/mdadm/mdadm.conf', summary: 'Add ARRAY', diff: '+ARRAY' }],

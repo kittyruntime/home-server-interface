@@ -9,6 +9,7 @@ export const PLAN_OPS = [
   'zfs.import', 'zfs.watch', 'zfs.unwatch',
   'zfs.pool.create', 'zfs.pool.destroy', 'zfs.dataset.create', 'zfs.dataset.set', 'zfs.dataset.destroy',
   'zfs.scrub', 'zfs.replace', 'zfs.clear',
+  'zfs.snapshot.create', 'zfs.snapshot.destroy', 'zfs.snapshot.rollback', 'zfs.snapshot.restore', 'zfs.snapshot.rules',
   'volume.expand', 'storage.reapply', 'storage.accept', 'system.identity', 'network.ipv4',
   'tls.enable', 'tls.useLocal', 'tls.import', 'tls.proxy', 'tls.standardPorts',
   'backup.plan.save', 'backup.plan.remove', 'backup.repository.save', 'backup.repository.remove', 'backup.restore',
