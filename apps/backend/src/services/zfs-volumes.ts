@@ -19,6 +19,7 @@ export type ZfsScan = { kind: string; state: string; end?: string; repaired: num
 export type ZfsPool = {
   name: string; guid: string; state: string; size: number; alloc: number; free: number; frag: number
   vdevs: ZfsVdev[]; scan: ZfsScan
+  expand?: { state: string; vdev?: string; pct?: number }; expandSize?: number
 }
 export type ZfsDataset = {
   name: string; pool: string; mountPoint: string; compression: string
