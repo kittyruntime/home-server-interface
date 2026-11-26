@@ -8,7 +8,7 @@ export const PLAN_OPS = [
   'raid.fail', 'raid.remove', 'raid.add', 'import.assemble', 'import.activate',
   'zfs.import', 'zfs.watch', 'zfs.unwatch',
   'zfs.pool.create', 'zfs.pool.destroy', 'zfs.dataset.create', 'zfs.dataset.set', 'zfs.dataset.destroy',
-  'zfs.scrub', 'zfs.replace', 'zfs.clear',
+  'zfs.scrub', 'zfs.replace', 'zfs.clear', 'zfs.pool.add', 'zfs.pool.expand', 'zfs.pool.attach',
   'zfs.snapshot.create', 'zfs.snapshot.destroy', 'zfs.snapshot.rollback', 'zfs.snapshot.restore', 'zfs.snapshot.rules',
   'volume.expand', 'storage.reapply', 'storage.accept', 'system.identity', 'network.ipv4',
   'tls.enable', 'tls.useLocal', 'tls.import', 'tls.proxy', 'tls.standardPorts',
