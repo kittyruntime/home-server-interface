@@ -51,6 +51,10 @@ type zfsPool struct {
 	Frag  int       `json:"frag"`
 	Vdevs []zfsVdev `json:"vdevs"`
 	Scan  zfsScan   `json:"scan"`
+	// Expand: a raidz expansion; ExpandSize: bytes the disks have beyond
+	// what the pool uses (bigger disks put in).
+	Expand     zfsExpand `json:"expand"`
+	ExpandSize int64     `json:"expandSize"`
 }
 
 type zfsDataset struct {
@@ -78,8 +82,17 @@ type zfsImportable struct {
 }
 
 type zfsPoolStatus struct {
-	Vdevs []zfsVdev
-	Scan  zfsScan
+	Vdevs  []zfsVdev
+	Scan   zfsScan
+	Expand zfsExpand
+}
+
+// zfsExpand: a raidz vdev widened by one disk (OpenZFS 2.3+), from the
+// "expand:" lines of zpool status.
+type zfsExpand struct {
+	State string  `json:"state"` // running, finished, none
+	Vdev  string  `json:"vdev,omitempty"`
+	Pct   float64 `json:"pct,omitempty"`
 }
 
 func atoi64(s string) int64 {
@@ -356,7 +369,7 @@ func parseZpoolStatus(out string) map[string]zfsPoolStatus {
 		if ok {
 			vdevs = root.Children
 		}
-		res[name] = zfsPoolStatus{Vdevs: vdevs, Scan: parseScan(b.fields["scan"])}
+		res[name] = zfsPoolStatus{Vdevs: vdevs, Scan: parseScan(b.fields["scan"]), Expand: parseExpand(b.fields["expand"])}
 	}
 	return res
 }
@@ -537,9 +550,17 @@ func zfsSnapshot() zfsInfo {
 			st := parseZpoolStatus(string(out))
 			for i := range info.Pools {
 				if s, ok := st[info.Pools[i].Name]; ok {
-					info.Pools[i].Vdevs, info.Pools[i].Scan = s.Vdevs, s.Scan
+					info.Pools[i].Vdevs, info.Pools[i].Scan, info.Pools[i].Expand = s.Vdevs, s.Scan, s.Expand
 				}
 				fillDisks(info.Pools[i].Vdevs)
+			}
+		}
+	}
+	if len(info.Pools) > 0 {
+		if out, err := hostOutput("zpool", "list", "-Hp", "-o", "name,expandsize"); err == nil {
+			sizes := parseExpandSizes(string(out))
+			for i := range info.Pools {
+				info.Pools[i].ExpandSize = sizes[info.Pools[i].Name]
 			}
 		}
 	}
