@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { loadZfs, zfs } from './zfs-data'
 import MaintenanceCalendar from './MaintenanceCalendar.vue'
 import TermHelp from './TermHelp.vue'
 import StorageIntro from './StorageIntro.vue'
@@ -21,20 +22,24 @@ const { t } = useI18n()
    alerts, which notification rules can forward. */
 
 type Data = Awaited<ReturnType<typeof trpc.storage.maintenance.query>>
-type TaskId = 'smartShort' | 'smartLong' | 'raidCheck'
+type TaskId = 'smartShort' | 'smartLong' | 'raidCheck' | 'zfsScrub'
 type Schedule = Data['tasks'][TaskId]['schedule']
 
-const TASKS: Array<{ id: TaskId; title: string; desc: string }> = [
-  { id: 'smartShort', title: t('uis.storage.MaintenanceSection.smartShortSelfTest'), desc: 'A quick electrical and mechanical test run by each disk (about 2 minutes). Disks in standby are not woken up.' },
-  { id: 'smartLong',  title: t('uis.storage.MaintenanceSection.smartExtendedSelfTest'), desc: 'A full surface scan run by each disk (hours on large disks). Disks keep working normally meanwhile.' },
-  { id: 'raidCheck',  title: t('uis.storage.MaintenanceSection.raidConsistencyCheck'), desc: 'Reads every array and compares the members to find silent corruption. Never started while an array is rebuilding.' },
+const ALL_TASKS: Array<{ id: TaskId; title: string; desc: string }> = [
+  { id: 'smartShort', title: t('uis.storage.MaintenanceSection.smartShortSelfTest'), desc: t('ui.storage.MaintenanceSection.descSmartShort') },
+  { id: 'smartLong',  title: t('uis.storage.MaintenanceSection.smartExtendedSelfTest'), desc: t('ui.storage.MaintenanceSection.descSmartLong') },
+  { id: 'raidCheck',  title: t('uis.storage.MaintenanceSection.raidConsistencyCheck'), desc: t('ui.storage.MaintenanceSection.descRaidCheck') },
+  { id: 'zfsScrub',   title: t('ui.storage.MaintenanceSection.zfsScrub'), desc: t('ui.storage.MaintenanceSection.descZfsScrub') },
 ]
+// The scrub only on a server with ZFS.
+const TASKS = computed(() => ALL_TASKS.filter(x => x.id !== 'zfsScrub' || !!zfs.value?.available))
+const TERM: Record<TaskId, 'smart' | 'raidCheck' | 'scrub'> = { smartShort: 'smart', smartLong: 'smart', raidCheck: 'raidCheck', zfsScrub: 'scrub' }
 const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
 
 const data = ref<Data | null>(null)
 const draft = ref<Record<TaskId, Schedule> | null>(null)
 // What is saved on the server: the calendar shows that, not the draft.
-const savedSchedules = computed(() => Object.fromEntries(TASKS.map(t => [t.id, data.value!.tasks[t.id].schedule])))
+const savedSchedules = computed(() => Object.fromEntries(TASKS.value.map(t => [t.id, data.value!.tasks[t.id].schedule])))
 const loading = ref(true)
 const error = ref('')
 const saving = ref(false)
@@ -50,6 +55,7 @@ async function load() {
       smartShort: { ...data.value.tasks.smartShort.schedule },
       smartLong:  { ...data.value.tasks.smartLong.schedule },
       raidCheck:  { ...data.value.tasks.raidCheck.schedule },
+      zfsScrub:   { ...data.value.tasks.zfsScrub.schedule },
     }
   } catch (e: any) {
     error.value = e?.message ?? t('uis.storage.MaintenanceSection.failedToLoadTheMaintenance')
@@ -57,10 +63,10 @@ async function load() {
     loading.value = false
   }
 }
-onMounted(load)
+onMounted(() => { void load(); void loadZfs() })
 
 const dirty = computed(() => !!data.value && !!draft.value &&
-  TASKS.some(t => JSON.stringify(draft.value![t.id]) !== JSON.stringify(data.value!.tasks[t.id].schedule)))
+  TASKS.value.some(t => JSON.stringify(draft.value![t.id]) !== JSON.stringify(data.value!.tasks[t.id].schedule)))
 
 async function save() {
   if (!draft.value) return
@@ -128,14 +134,17 @@ const statusClass: Record<string, string> = {
         <Card v-for="t in TASKS" :key="t.id" class="block gap-0 py-0 shadow-none p-4">
           <div class="flex flex-wrap items-start justify-between gap-3">
             <div class="min-w-0 flex-1">
-              <h3 class="text-sm font-semibold text-base-content flex items-center gap-1.5">{{ t.title }}<TermHelp :term="t.id === 'raidCheck' ? 'raidCheck' : 'smart'" /></h3>
+              <h3 class="text-sm font-semibold text-base-content flex items-center gap-1.5">{{ t.title }}<TermHelp :term="TERM[t.id]" /></h3>
               <p class="text-xs text-base-content/70 mt-0.5">{{ t.desc }}</p>
               <p v-if="t.id === 'raidCheck'" class="text-2xs text-base-content/70 mt-1">
                 {{ $t('ui.storage.MaintenanceSection.ubuntuSMdadmPackageAlready') }}<code class="font-mono">mdcheck_start.timer</code>{{ $t('ui.storage.MaintenanceSection.ifYouScheduleOneHere') }} <code class="font-mono">sudo systemctl disable --now mdcheck_start.timer</code>.
               </p>
+              <p v-if="t.id === 'zfsScrub'" class="text-2xs text-base-content/70 mt-1">
+                {{ $t('ui.storage.MaintenanceSection.zfsutilsAlready') }} <code class="font-mono">/etc/cron.d/zfsutils-linux</code>
+              </p>
             </div>
             <Button variant="outline" size="xs" type="button" class="shrink-0" :disabled="running !== null" @click="runNow(t.id)">
-              {{ running === t.id ? 'Starting…' : 'Run now' }}
+              {{ running === t.id ? $t('ui.storage.MaintenanceSection.starting') : $t('ui.storage.MaintenanceSection.runNow') }}
             </Button>
           </div>
 
@@ -177,12 +186,12 @@ const statusClass: Record<string, string> = {
           <div v-if="data.tasks[t.id].results?.length" class="mt-2 rounded-lg border border-base-300 divide-y divide-base-300">
             <div v-for="(r, i) in data.tasks[t.id].results!" :key="i" class="flex items-start gap-2 px-3 py-1.5 text-2xs">
               <span class="shrink-0 rounded-sm px-1.5 py-0.5 font-semibold uppercase" :class="statusClass[r.status]">{{ r.status }}</span>
-              <span :class="['shrink-0 text-base-content', r.device && 'font-mono']">{{ r.device ? '/dev/' + r.device : 'all' }}</span>
+              <span :class="['shrink-0 text-base-content', r.device && 'font-mono']">{{ r.device ? (t.id === 'zfsScrub' ? r.device : '/dev/' + r.device) : 'all' }}</span>
               <span v-if="r.serial" class="shrink-0 text-base-content/70">{{ r.serial }}</span>
               <span class="min-w-0 break-words text-base-content/70">{{ r.message }}</span>
             </div>
           </div>
-          <p v-if="t.id !== 'raidCheck' && data.tasks[t.id].results?.length" class="mt-1 text-2xs text-base-content/70">
+          <p v-if="(t.id === 'smartShort' || t.id === 'smartLong') && data.tasks[t.id].results?.length" class="mt-1 text-2xs text-base-content/70">
             {{ $t('ui.storage.MaintenanceSection.eachDiskRunsItsTest') }}
           </p>
         </Card>
@@ -190,7 +199,7 @@ const statusClass: Record<string, string> = {
 
       <div class="mt-4 flex justify-end">
         <Button size="sm" type="button" :disabled="!dirty || saving" @click="save">
-          {{ saving ? 'Saving…' : 'Save schedule' }}
+          {{ saving ? $t('ui.storage.MaintenanceSection.saving') : $t('ui.storage.MaintenanceSection.saveSchedule') }}
         </Button>
       </div>
     </template>

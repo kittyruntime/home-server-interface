@@ -3,10 +3,12 @@ import { useI18n } from 'vue-i18n'
 import { computed } from 'vue'
 import { DatabaseIcon, HardDriveIcon, PackageIcon } from '@lucide/vue'
 import { topology, type TopoVdev } from './zfs-topology'
+import { Button } from '@/components/ui/button'
 
 // A pool as a tree: the pool, its vdevs, their disks, each with its state and
 // its read, write and checksum errors.
-const props = defineProps<{ pool: { name: string; state: string; vdevs: TopoVdev[] } }>()
+const props = defineProps<{ pool: { name: string; state: string; vdevs: TopoVdev[] }; replaceable?: boolean }>()
+const emit = defineEmits<{ replace: [leaf: string] }>()
 const { t } = useI18n()
 const rows = computed(() => topology(props.pool))
 const ICON = { pool: DatabaseIcon, vdev: PackageIcon, disk: HardDriveIcon }
@@ -21,6 +23,7 @@ const bad = (state: string) => state !== 'ONLINE'
       <span v-if="r.kind === 'vdev' && r.type !== 'disk'" class="badge badge-ghost badge-xs">{{ r.type }}</span>
       <span v-if="bad(r.state)" class="text-xs text-warning">{{ t(`ui.storage.Zfs.state.${r.state}`, r.state) }}</span>
       <span v-if="r.errors" class="text-xs text-warning tabular-nums">{{ t('ui.storage.Zfs.errors', { n: r.errors }) }}</span>
+      <Button v-if="replaceable && r.kind === 'disk' && r.leaf && r.type === 'disk'" variant="ghost" size="xs" class="ml-auto" @click="emit('replace', r.leaf)">{{ t('ui.storage.ZfsRepair.replace') }}</Button>
     </li>
   </ul>
 </template>

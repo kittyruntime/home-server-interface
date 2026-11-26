@@ -1,8 +1,9 @@
 <script setup lang="ts">
+import ReplaceDiskDialog from './ReplaceDiskDialog.vue'
 import { unguardedDatasets } from './pool-summary'
 import DatasetDialog from './DatasetDialog.vue'
 import { useI18n } from 'vue-i18n'
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import LoadingState from '../ui/LoadingState.vue'
@@ -25,6 +26,30 @@ const datasets = computed(() => (zfs.value?.datasets ?? []).filter(d => d.pool =
 const watched = computed(() => !!(zfs.value && pool.value && isWatched(zfs.value, pool.value)))
 watch(() => props.name, () => { void loadZfs() })
 const datasetOpen = ref(false)
+const replacing = ref<string | null>(null)
+// A scrub or a resilver running: the page follows it every 5 s.
+const busy = computed(() => pool.value?.scan.state === 'running')
+const hasErrors = computed(() => {
+  const walk = (vs: Array<{ read: number; write: number; checksum: number; children: any[] }>): boolean =>
+    vs.some(v => v.read + v.write + v.checksum > 0 || walk(v.children))
+  return !!pool.value && (pool.value.scan.errors > 0 || walk(pool.value.vdevs))
+})
+let timer: ReturnType<typeof setInterval> | null = null
+watch(busy, b => {
+  if (b && !timer) timer = setInterval(() => { void loadZfs() }, 5000)
+  if (!b && timer) { clearInterval(timer); timer = null }
+}, { immediate: true })
+onUnmounted(() => { if (timer) clearInterval(timer) })
+
+async function repair(op: 'zfs.scrub' | 'zfs.clear', extra: Record<string, unknown>) {
+  const key = op === 'zfs.clear' ? 'clear' : extra.stop ? 'stopScrub' : 'scrubNow'
+  try {
+    await applyPlanned(op, { pool: props.name, ...extra }, { title: t(`ui.storage.ZfsRepair.${key}Title`, { name: props.name }), actionLabel: t(`ui.storage.ZfsRepair.${key}`) })
+    await loadZfs()
+  } catch (e: any) {
+    if (e?.message !== '') toast.error(e?.message ?? t('ui.storage.Zfs.failed'))
+  }
+}
 // Datasets made by hand since the pool was watched: Watch again guards them too.
 const unguarded = computed(() => (zfs.value ? unguardedDatasets(props.name, zfs.value.datasets, zfs.value.watched) : []))
 
@@ -66,7 +91,14 @@ async function run(op: 'zfs.watch' | 'zfs.unwatch') {
       <Button variant="link" class="ml-1 h-auto p-0 text-base-content underline" @click="emit('navigate', 'pools')">{{ t('ui.storage.Zfs.back') }}</Button>
     </Card>
     <template v-else>
-      <PoolCard :pool="pool" :watched="watched" compact @open="() => {}" @watch="run('zfs.watch')" />
+      <PoolCard :pool="pool" :watched="watched" compact replaceable @open="() => {}" @watch="run('zfs.watch')" @replace="leaf => replacing = leaf" />
+      <p class="mt-3 flex flex-wrap items-center gap-2 text-xs">
+        <Button v-if="!busy" variant="outline" size="xs" @click="repair('zfs.scrub', {})">{{ t('ui.storage.ZfsRepair.scrubNow') }}</Button>
+        <Button v-else-if="pool.scan.kind === 'scrub'" variant="outline" size="xs" @click="repair('zfs.scrub', { stop: true })">{{ t('ui.storage.ZfsRepair.stopScrub') }}</Button>
+        <Button v-if="hasErrors" variant="outline" size="xs" @click="repair('zfs.clear', {})">{{ t('ui.storage.ZfsRepair.clear') }}</Button>
+        <span v-if="busy" class="text-base-content/70">{{ t('ui.storage.ZfsRepair.refreshing') }}</span>
+      </p>
+      <ReplaceDiskDialog v-if="replacing" :pool="pool.name" :leaf="replacing" @close="replacing = null" @done="replacing = null; void loadZfs()" />
       <p class="mt-3 flex flex-wrap items-center gap-3 text-xs text-base-content/70">
         <span>{{ watched ? t('ui.storage.Zfs.watchedLine') : t('ui.storage.Zfs.notWatchedLine') }}</span>
         <Button v-if="watched" variant="outline" size="xs" @click="run('zfs.unwatch')">{{ t('ui.storage.Zfs.unwatch') }}</Button>
