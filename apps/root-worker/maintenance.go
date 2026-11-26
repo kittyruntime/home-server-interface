@@ -342,6 +342,14 @@ func runMaintenance(now time.Time, only string) error {
 func runMaintenanceCLI() int {
 	// The fallback for expansions when the worker daemon is down (#7).
 	finishExpansions(time.Now())
+	// Scheduled ZFS snapshots: due ones taken, the oldest beyond keep deleted.
+	for _, r := range runZfsSnapshotRules() {
+		level := logger.Info
+		if r.Status != "started" {
+			level = logger.Warn
+		}
+		level("zfs snapshots", "target", r.Device, "status", r.Status, "message", r.Message)
+	}
 	if err := runMaintenance(time.Now(), ""); err != nil {
 		logger.Warn("maintenance run skipped", "error", err.Error())
 		if errors.Is(err, errMaintenanceBusy) {

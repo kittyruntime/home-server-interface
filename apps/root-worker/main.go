@@ -1243,6 +1243,8 @@ func main() {
 		"root.sys.import.scan":           handleImportScan,
 		"root.zfs.list":                  handleZfsList,
 		"root.zfs.import.scan":           handleZfsImportScan,
+		"root.zfs.snapshots":             handleZfsSnapshots,
+		"root.zfs.snapshot.ls":           handleZfsSnapshotLs,
 		"root.docker.status":             handleDockerStatus,
 		"root.sys.port.check":            handleCheckPort,
 		"root.sys.reboot":                handleHostReboot,
