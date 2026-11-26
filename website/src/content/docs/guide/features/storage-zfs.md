@@ -106,6 +106,24 @@ review the plan (the new disk is erased), and ZFS rebuilds the data onto it
 every 5 seconds. Once the cause of read, write or checksum errors is fixed,
 **Clear errors** resets their counts.
 
+## Snapshots
+
+ZFS > Snapshots lists the snapshots of each dataset, with when it was taken and
+the space it alone holds (the data changed or deleted since).
+
+- **Take a snapshot** freezes a dataset now (`hsi-manual-<date>`).
+- **Scheduled snapshots**: a rule per dataset takes one every hour, day, week
+  or month and keeps the latest N (`hsi-<period>-<date>`). The hourly
+  maintenance timer runs them; only that rule's snapshots are ever deleted,
+  never one taken by hand or by another tool.
+- **Browse** opens a snapshot read-only. **Restore** copies a file or a folder
+  back next to the original, as `name (restored <date>).ext`: nothing in place
+  is overwritten. Browsing is for admins, as it shows every user's file names.
+- **Roll back** returns the whole dataset to a snapshot: every change since is
+  lost and newer snapshots are deleted (the review lists them, and you type the
+  dataset's name to confirm).
+- **Delete** removes a snapshot and frees what it alone held.
+
 ## Alerts
 
 Monitor raises an alert when a pool is degraded (warning) or faulted or
@@ -115,4 +133,4 @@ healthy again or no longer imported.
 
 ## Coming next
 
-Snapshots and growing a pool arrive in the next releases.
+Growing a pool arrives in the next release.

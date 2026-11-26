@@ -1304,6 +1304,27 @@ case "$scenario" in
     api storage.runMaintenanceNow '{"task":"zfsScrub"}' | python3 -c 'import json,sys; r=json.load(sys.stdin)["state"]["results"]; assert any(x["device"]=="tank" and x["status"] in ("started","skipped") for x in r), r' \
       || fail "the scheduled scrub task did not start on tank"
     log "Scrub, disk replacement and clear through HSI"
+    # Lot 4: a snapshot taken by hand; a deleted file found in it and restored
+    # next to where it was; a later change undone by a roll back; a schedule
+    # taken by the hourly maintenance, which never deletes the manual one.
+    apply_plan zfs.snapshot.create '{"dataset":"tank/media"}' >/dev/null
+    snap=$(vm_ssh 'zfs list -H -o name -t snapshot tank/media | grep "@hsi-manual-" | head -1')
+    [[ -n $snap ]] || fail "the manual snapshot of tank/media was not taken"
+    vm_ssh 'rm /srv/tank/media/hello.txt'
+    api_get storage.zfs.snapshotLs "{\"snapshot\":\"$snap\",\"path\":\"\"}" | grep -q '"hello.txt"' || fail "the snapshot does not list hello.txt"
+    apply_plan zfs.snapshot.restore "{\"snapshot\":\"$snap\",\"path\":\"hello.txt\"}" >/dev/null
+    vm_ssh 'cat /srv/tank/media/hello\ \(restored\ *\).txt' | grep -q hello || fail "hello.txt was not restored next to where it was"
+    vm_ssh 'ls -A /srv/tank/media' | grep -q '^\.hsi-restore-' && fail "the restore left its temporary folder"
+    vm_ssh 'touch /srv/tank/media/later.txt'
+    apply_plan zfs.snapshot.rollback "{\"snapshot\":\"$snap\"}" >/dev/null
+    vm_ssh '[ ! -e /srv/tank/media/later.txt ] && [ -e /srv/tank/media/hello.txt ]' || fail "the roll back did not bring tank/media back to the snapshot"
+    apply_plan zfs.snapshot.rules '{"rules":[{"dataset":"tank/media","every":"hourly","keep":1}]}' >/dev/null
+    vm_ssh 'systemctl start hsi-maintenance.service; zfs list -H -o name -t snapshot tank/media' > /tmp/hsi-snaps.txt || true
+    grep -q '@hsi-hourly-' /tmp/hsi-snaps.txt || fail "the hourly maintenance took no scheduled snapshot: $(cat /tmp/hsi-snaps.txt)"
+    grep -qF "$snap" /tmp/hsi-snaps.txt || fail "the scheduled pruning deleted the manual snapshot"
+    apply_plan zfs.snapshot.destroy "{\"snapshot\":\"$snap\"}" >/dev/null
+    vm_ssh "! zfs list -t snapshot '$snap' >/dev/null 2>&1" || fail "$snap was not deleted"
+    log "Snapshots taken, browsed, restored, rolled back and scheduled through HSI"
     # A pool whose dataset would mount outside the data folders: refused, and
     # exported again so that it does not mount there at the next boot.
     vm_ssh 'zpool create -f -m /opt/evil evil /dev/disk/by-id/virtio-HSI-DATA-3 && zpool export evil' || fail "could not create the evil pool"
