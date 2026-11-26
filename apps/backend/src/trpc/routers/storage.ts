@@ -178,6 +178,10 @@ const PLAN_INPUTS = {
   'zfs.snapshot.rollback': z.object({ snapshot: z.string().regex(/^[A-Za-z][A-Za-z0-9_.:-]{0,63}(\/[A-Za-z0-9_.:-]{1,64})*@[A-Za-z0-9_.:-]{1,128}$/) }),
   'zfs.snapshot.restore': z.object({ snapshot: z.string().regex(/^[A-Za-z][A-Za-z0-9_.:-]{0,63}(\/[A-Za-z0-9_.:-]{1,64})*@[A-Za-z0-9_.:-]{1,128}$/), path: zSnapPath.refine(p => p !== '', 'pick a file or a folder') }),
   'zfs.snapshot.rules': z.object({ rules: z.array(z.object({ dataset: z.string().regex(/^[A-Za-z][A-Za-z0-9_.:-]{0,63}(\/[A-Za-z0-9_.:-]{1,64})*$/), every: z.enum(['hourly', 'daily', 'weekly', 'monthly']), keep: z.number().int().min(1).max(1000) })).max(200) }),
+  // Growing a pool (lot 5).
+  'zfs.pool.add': z.object({ pool: z.string().regex(/^[A-Za-z][A-Za-z0-9_.:-]{0,63}$/), disks: z.array(z.string().regex(/^[a-z][a-z0-9]{1,31}$/)).min(1).max(24) }),
+  'zfs.pool.expand': z.object({ pool: z.string().regex(/^[A-Za-z][A-Za-z0-9_.:-]{0,63}$/) }),
+  'zfs.pool.attach': z.object({ pool: z.string().regex(/^[A-Za-z][A-Za-z0-9_.:-]{0,63}$/), vdev: z.string().regex(/^(mirror|raidz[1-3])-[0-9]{1,4}$/), disk: z.string().regex(/^[a-z][a-z0-9]{1,31}$/) }),
   'zfs.dataset.destroy': z.object({ name: z.string().regex(/^[A-Za-z][A-Za-z0-9_.:-]{0,63}(\/[A-Za-z0-9_.:-]{1,64})+$/) }),
   // Expand a volume (#7): the filesystem UUID, the way, and the disk to add.
   'volume.expand': z.object({

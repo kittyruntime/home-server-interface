@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { growOptions } from './grow-model'
+import GrowPoolDialog from './GrowPoolDialog.vue'
 import ReplaceDiskDialog from './ReplaceDiskDialog.vue'
 import { unguardedDatasets } from './pool-summary'
 import DatasetDialog from './DatasetDialog.vue'
@@ -28,7 +30,21 @@ watch(() => props.name, () => { void loadZfs() })
 const datasetOpen = ref(false)
 const replacing = ref<string | null>(null)
 // A scrub or a resilver running: the page follows it every 5 s.
-const busy = computed(() => pool.value?.scan.state === 'running')
+const busy = computed(() => pool.value?.scan.state === 'running' || pool.value?.expand?.state === 'running')
+// How the pool can grow (lot 5).
+const grow = computed(() => (pool.value ? growOptions(pool.value, zfs.value?.version ?? '') : null))
+// A raidz is widened one at a time.
+const attachable = computed(() => (grow.value?.attach ?? []).filter(x => x.kind === 'mirror' || pool.value?.expand?.state !== 'running'))
+const growing = ref<{ mode: 'add' | 'attach'; vdev?: string } | null>(null)
+
+async function expandPool() {
+  try {
+    await applyPlanned('zfs.pool.expand', { pool: props.name }, { title: t('ui.storage.ZfsGrow.expandTitle', { name: props.name }), actionLabel: t('ui.storage.ZfsGrow.expand') })
+    await loadZfs()
+  } catch (e: any) {
+    if (e?.message !== '') toast.error(e?.message ?? t('ui.storage.Zfs.failed'))
+  }
+}
 const hasErrors = computed(() => {
   const walk = (vs: Array<{ read: number; write: number; checksum: number; children: any[] }>): boolean =>
     vs.some(v => v.read + v.write + v.checksum > 0 || walk(v.children))
@@ -94,11 +110,22 @@ async function run(op: 'zfs.watch' | 'zfs.unwatch') {
     <template v-else>
       <PoolCard :pool="pool" :watched="watched" compact replaceable @open="() => {}" @watch="run('zfs.watch')" @replace="leaf => replacing = leaf" />
       <p class="mt-3 flex flex-wrap items-center gap-2 text-xs">
-        <Button v-if="!busy" variant="outline" size="xs" @click="repair('zfs.scrub', {})">{{ t('ui.storage.ZfsRepair.scrubNow') }}</Button>
+        <Button v-if="pool.scan.state !== 'running'" variant="outline" size="xs" @click="repair('zfs.scrub', {})">{{ t('ui.storage.ZfsRepair.scrubNow') }}</Button>
         <Button v-else-if="pool.scan.kind === 'scrub'" variant="outline" size="xs" @click="repair('zfs.scrub', { stop: true })">{{ t('ui.storage.ZfsRepair.stopScrub') }}</Button>
         <Button v-if="hasErrors" variant="outline" size="xs" @click="repair('zfs.clear', {})">{{ t('ui.storage.ZfsRepair.clear') }}</Button>
         <span v-if="busy" class="text-base-content/70">{{ t('ui.storage.ZfsRepair.refreshing') }}</span>
       </p>
+      <section v-if="grow" class="mt-4">
+        <h3 class="text-sm font-semibold text-base-content">{{ t('ui.storage.ZfsGrow.heading') }}</h3>
+        <p v-if="pool.expand?.state === 'running'" class="mt-1 text-xs text-base-content/80 tabular-nums">{{ t('ui.storage.ZfsGrow.expanding', { vdev: pool.expand.vdev, pct: Math.round(pool.expand.pct ?? 0) }) }}</p>
+        <p class="mt-2 flex flex-wrap items-center gap-2 text-xs">
+          <Button v-if="grow.layout" variant="outline" size="xs" @click="growing = { mode: 'add' }">{{ t('ui.storage.ZfsGrow.addButton', { n: grow.layout === 'stripe' ? 1 : grow.width }, grow.layout === 'stripe' ? 1 : grow.width) }}</Button>
+          <Button v-for="a in attachable" :key="a.vdev" variant="outline" size="xs" @click="growing = { mode: 'attach', vdev: a.vdev }">{{ t('ui.storage.ZfsGrow.attachButton', { vdev: a.vdev }) }}</Button>
+          <Button v-if="grow.expand" variant="outline" size="xs" @click="expandPool">{{ t('ui.storage.ZfsGrow.expandButton', { size: fmtBytes(pool.expandSize ?? 0) }) }}</Button>
+          <span v-if="!grow.layout" class="text-base-content/70">{{ t('ui.storage.ZfsGrow.mixed') }}</span>
+        </p>
+      </section>
+      <GrowPoolDialog v-if="growing" :pool="pool.name" :mode="growing.mode" :vdev="growing.vdev" :layout="grow?.layout ?? undefined" :width="grow?.width" @close="growing = null" @done="growing = null; void loadZfs()" />
       <ReplaceDiskDialog v-if="replacing" :pool="pool.name" :leaf="replacing" @close="replacing = null" @done="replacing = null; void loadZfs()" />
       <p class="mt-3 flex flex-wrap items-center gap-3 text-xs text-base-content/70">
         <span>{{ watched ? t('ui.storage.Zfs.watchedLine') : t('ui.storage.Zfs.notWatchedLine') }}</span>
