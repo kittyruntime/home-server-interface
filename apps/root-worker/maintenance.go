@@ -377,12 +377,22 @@ func handleMaintenanceGet(nc *nats.Conn, msg *nats.Msg) {
 	replyOk(nc, msg.Reply, map[string]any{"tasks": tasks, "timerInstalled": timerErr == nil})
 }
 
+// withKeptSchedules keeps the saved schedule of a task the request leaves out
+// (a client from before that task existed).
+func withKeptSchedules(next, prev maintenanceConfig) maintenanceConfig {
+	if next.ZfsScrub.Every == "" {
+		next.ZfsScrub = prev.ZfsScrub
+	}
+	return next
+}
+
 func handleMaintenanceSet(nc *nats.Conn, msg *nats.Msg) {
 	var cfg maintenanceConfig
 	if err := json.Unmarshal(msg.Data, &cfg); err != nil {
 		replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: "bad request: " + err.Error()})
 		return
 	}
+	cfg = withKeptSchedules(cfg, loadMaintenanceConfig())
 	for _, t := range maintenanceTasks {
 		if !cfg.schedule(t).valid() {
 			replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: "invalid schedule for " + t})

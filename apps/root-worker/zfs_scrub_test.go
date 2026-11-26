@@ -144,3 +144,12 @@ func TestPlanZfsReplace(t *testing.T) {
 		t.Errorf("the system disk was accepted")
 	}
 }
+
+func TestMaintenanceSetKeepsAMissingZfsScrub(t *testing.T) {
+	prev := defaultMaintenanceConfig()
+	prev.ZfsScrub = taskSchedule{Every: "monthly", Day: 8, Hour: 2}
+	next := maintenanceConfig{SmartShort: prev.SmartShort, SmartLong: prev.SmartLong, RaidCheck: prev.RaidCheck}
+	if got := withKeptSchedules(next, prev); got.ZfsScrub != prev.ZfsScrub {
+		t.Errorf("a client that does not send zfsScrub keeps the saved one: %+v", got.ZfsScrub)
+	}
+}
