@@ -356,3 +356,18 @@ func TestRestoreGoesOnInTheBackground(t *testing.T) {
 		t.Errorf("the folder was not restored: %v", ents)
 	}
 }
+
+func TestEmptyDirFd(t *testing.T) {
+	d := t.TempDir()
+	fd, err := openNoLinks(d, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !emptyDirFd(fd) {
+		t.Error("an empty folder reads as not empty")
+	}
+	_ = os.WriteFile(filepath.Join(d, "x"), nil, 0o644)
+	if emptyDirFd(fd) {
+		t.Error("a folder with a file reads as empty")
+	}
+}

@@ -335,7 +335,9 @@ func restoreFromSnapshot(mount, parentRel, src, name string) (string, error) {
 	var tst unix.Stat_t
 	if err == nil {
 		err = unix.Fstat(tfd, &tst)
-		if err == nil && int(tst.Uid) != restoreOwnerUID() {
+		// The folder just made: ours, 0700 and empty. A folder swapped in
+		// meanwhile (even another root-owned one) is refused.
+		if err == nil && (int(tst.Uid) != restoreOwnerUID() || tst.Mode&0o7777 != 0o700 || !emptyDirFd(tfd)) {
 			err = errors.New("the temporary folder was replaced")
 		}
 	}
@@ -371,6 +373,31 @@ func restoreFromSnapshot(mount, parentRel, src, name string) (string, error) {
 	case <-time.After(restoreWait):
 		return "still copying: " + name + " appears next to the original once done", nil
 	}
+}
+
+// emptyDirFd: the folder open on fd holds nothing (only . and ..).
+func emptyDirFd(fd int) bool {
+	if _, err := unix.Seek(fd, 0, 0); err != nil {
+		return false
+	}
+	buf := make([]byte, 4096)
+	n, err := unix.Getdents(fd, buf)
+	if err != nil {
+		return false
+	}
+	names := 0
+	for off := 0; off < n; {
+		reclen := int(buf[off+16]) | int(buf[off+17])<<8
+		name := buf[off+19 : off+reclen]
+		if i := strings.IndexByte(string(name), 0); i >= 0 {
+			name = name[:i]
+		}
+		if string(name) != "." && string(name) != ".." {
+			names++
+		}
+		off += reclen
+	}
+	return names == 0
 }
 
 // finishRestore removes what is left of the temporary folder (only if it is
