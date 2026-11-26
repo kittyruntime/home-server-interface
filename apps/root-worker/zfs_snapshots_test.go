@@ -371,3 +371,35 @@ func TestEmptyDirFd(t *testing.T) {
 		t.Error("a folder with a file reads as empty")
 	}
 }
+
+func TestRollbackNamesBookmarksAndRefusesClones(t *testing.T) {
+	stubSnapList(t, snapList)
+	inner := hostOutput
+	props := "tank/media@hsi-daily-20261122-0300\tclones\t\ntank/media@hsi-daily-20261122-0300\tuserrefs\t0\ntank/media@hsi-daily-20261123-0300\tclones\t\ntank/media@hsi-daily-20261123-0300\tuserrefs\t0\n"
+	hostOutput = func(name string, args ...string) ([]byte, error) {
+		j := strings.Join(args, " ")
+		switch {
+		case name == "zfs" && strings.Contains(j, "-t bookmark"):
+			return []byte("tank/media#old\t1763600000\ntank/media#new\t1763800000\n"), nil
+		case name == "zfs" && args[0] == "get":
+			return []byte(props), nil
+		}
+		return inner(name, args...)
+	}
+	p, fe := planZfsSnapshotRollback([]byte(`{"snapshot":"tank/media@mine"}`))
+	if fe != nil {
+		t.Fatal(fe.Message)
+	}
+	if s := p.Steps[0].Summary; !strings.Contains(s, "#new") || strings.Contains(s, "#old") {
+		t.Errorf("the newer bookmark is named, not the older: %s", s)
+	}
+	props = strings.Replace(props, "20261123-0300\tclones\t\n", "20261123-0300\tclones\ttank/copy\n", 1)
+	if _, fe := planZfsSnapshotRollback([]byte(`{"snapshot":"tank/media@mine"}`)); fe == nil || !strings.Contains(fe.Message, "tank/copy") {
+		t.Errorf("a newer snapshot with a clone was accepted: %v", fe)
+	}
+	props = strings.Replace(props, "tank/copy", "", 1)
+	props = strings.Replace(props, "20261122-0300\tuserrefs\t0", "20261122-0300\tuserrefs\t1", 1)
+	if _, fe := planZfsSnapshotRollback([]byte(`{"snapshot":"tank/media@mine"}`)); fe == nil || !strings.Contains(fe.Message, "hold") {
+		t.Errorf("a newer snapshot with a hold was accepted: %v", fe)
+	}
+}

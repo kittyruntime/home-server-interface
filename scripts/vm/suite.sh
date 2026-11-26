@@ -39,8 +39,8 @@ root=$(cd "$here/../.." && pwd)
 source "$here/lib.sh"
 
 scenario="${1:?scenario}"; archive="${2:?archive}"; version="v${3#v}"
-# The zfs scenario grows a pool with disks 5 and 6.
-[[ $scenario == zfs ]] && VM_DATA_DISKS=6
+# The zfs scenario grows a pool with disks 5 and 6, and widens a raidz with 7.
+[[ $scenario == zfs ]] && VM_DATA_DISKS=7
 REPO="kittyruntime/home-server-interface"
 DB=/opt/hsi/database/data/hsi.db
 trap 'vm_ssh "journalctl -u hsi-server -n 80 --no-pager; tail -n 200 /var/log/hsi/app.log /var/log/hsi/root-worker.log" > "$VM_DIR/hsi-server.log" 2>&1 || true; vm_stop' EXIT
@@ -1339,6 +1339,33 @@ case "$scenario" in
     vm_ssh 'cat /srv/tank/media/hello.txt' | grep -q hello || fail "tank/media lost its file while growing"
     vm_ssh 'zpool detach tank $(zpool status -P tank | awk "/virtio-HSI-DATA-3/ {print \$1}")' || fail "could not detach disk 3 again"
     log "A pool grown through HSI"
+    # A raidz1 on three loop devices: the files behind them grow and HSI uses
+    # the new space; then disk 7 widens the group (OpenZFS 2.3+), its progress
+    # read back from zpool status through the API.
+    zver=$(vm_ssh 'zfs version | head -1'); log "ZFS on the VM: $zver"
+    loops=$(vm_ssh 'for i in 1 2 3; do truncate -s 1G /var/tmp/hsi-l$i.img; losetup -f --show /var/tmp/hsi-l$i.img; done | tr "\n" " "')
+    vm_ssh "zpool create -f -o ashift=12 -m /srv/grow grow raidz1 $loops && echo widen > /srv/grow/w.txt" || fail "could not create the loop raidz pool"
+    vm_ssh "for i in 1 2 3; do truncate -s 2G /var/tmp/hsi-l\$i.img; done; for l in $loops; do losetup -c \$l; done; zpool reopen grow; sleep 2"
+    api_query storage.zfs.list | python3 -c 'import json,sys; p=[x for x in json.load(sys.stdin)["pools"] if x["name"]=="grow"][0]; assert p["expandSize"]>0, p' \
+      || fail "the grown loop devices show no space to gain"
+    before=$(vm_ssh 'zpool list -Hp -o size grow')
+    apply_plan zfs.pool.expand '{"pool":"grow"}' >/dev/null
+    vm_ssh "for i in \$(seq 1 30); do [ \$(zpool list -Hp -o size grow) -gt $before ] && exit 0; sleep 1; done; exit 1" || fail "Use the full size did not grow the pool"
+    if python3 -c 'import sys; v=sys.argv[1].split("-")[1].split("."); sys.exit(0 if (int(v[0]),int(v[1]))>=(2,3) else 1)' "$zver"; then
+      d7=$(data_disk 7)
+      apply_plan zfs.pool.attach "{\"pool\":\"grow\",\"vdev\":\"raidz1-0\",\"disk\":\"$d7\"}" >/dev/null
+      vm_ssh 'for i in $(seq 1 120); do zpool status grow | grep -q "^ *expand:.*expanded" && exit 0; sleep 2; done; zpool status grow; exit 1' \
+        || fail "the raidz of grow was not widened"
+      vm_ssh 'zpool status grow | sed -n "/expand:/,/config:/p"'
+      api_query storage.zfs.list | python3 -c 'import json,sys; p=[x for x in json.load(sys.stdin)["pools"] if x["name"]=="grow"][0]; e=p["expand"]; assert e["state"]=="finished" and e.get("vdev")=="raidz1-0", e' \
+        || fail "the finished widening is not read back as raidz1-0: $(api_query storage.zfs.list)"
+      vm_ssh 'cat /srv/grow/w.txt' | grep -q widen || fail "grow lost its file while widened"
+      log "A raidz widened through HSI, its progress read back"
+    else
+      log "OpenZFS before 2.3: raidz widening not checked"
+    fi
+    vm_ssh "zpool destroy grow; for l in $loops; do losetup -d \$l; done; rm -f /var/tmp/hsi-l*.img"
+    log "Use the full size of bigger disks through HSI"
     # A pool whose dataset would mount outside the data folders: refused, and
     # exported again so that it does not mount there at the next boot.
     vm_ssh 'zpool create -f -m /opt/evil evil /dev/disk/by-id/virtio-HSI-DATA-3 && zpool export evil' || fail "could not create the evil pool"

@@ -192,3 +192,10 @@ func TestAttachRefusedWhileExpanding(t *testing.T) {
 		t.Error("a second widening was accepted while one runs")
 	}
 }
+
+func TestExpandVdevNameMatchesTheLayout(t *testing.T) {
+	st := parseZpoolStatus("  pool: tank\n state: ONLINE\nexpand: expanded raidz1-0-0 copied 3.00G in 00:01:00, on Wed Nov 25 10:01:00 2026\nconfig:\n\n\tNAME STATE READ WRITE CKSUM\n\ttank ONLINE 0 0 0\n" + raidzBody + "\nerrors: No known data errors\n")
+	if e := st["tank"].Expand; e.Vdev != "raidz1-0" {
+		t.Errorf("the vdev is named as in the layout: %+v", e)
+	}
+}

@@ -268,3 +268,23 @@ func planZfsPoolAttach(raw json.RawMessage) (*opPlan, *fsError) {
 	s := destructiveAll(cmdStep(req.Pool, summary, argv), []string{dev})
 	return &opPlan{Op: "zfs.pool.attach", Steps: []planStep{s}, Observed: obs}, nil
 }
+
+// layoutVdevName: the vdev an "expand:" line names, as the layout names it
+// (some versions print raidz1-0-0 for raidz1-0).
+func layoutVdevName(vs []zfsVdev, name string) string {
+	has := func(n string) bool {
+		for _, v := range vs {
+			if v.Name == n {
+				return true
+			}
+		}
+		return false
+	}
+	if name == "" || has(name) {
+		return name
+	}
+	if i := strings.LastIndex(name, "-"); i > 0 && has(name[:i]) {
+		return name[:i]
+	}
+	return name
+}

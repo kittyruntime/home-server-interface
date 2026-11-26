@@ -120,8 +120,10 @@ the space it alone holds (the data changed or deleted since).
   back next to the original, as `name (restored <date>).ext`: nothing in place
   is overwritten. Browsing is for admins, as it shows every user's file names.
 - **Roll back** returns the whole dataset to a snapshot: every change since is
-  lost and newer snapshots are deleted (the review lists them, and you type the
-  dataset's name to confirm).
+  lost and newer snapshots and bookmarks are deleted (the review lists them,
+  and you type the dataset's name to confirm). A newer snapshot with clones or a
+  hold is refused at the review: delete or promote the clones, or release the
+  hold, first.
 - **Delete** removes a snapshot and frees what it alone held.
 
 ## Growing a pool
