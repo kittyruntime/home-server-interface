@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"strings"
 	"testing"
 )
@@ -87,5 +88,59 @@ func TestMaintenanceConfigHasZfsScrub(t *testing.T) {
 	}
 	if !containsString(maintenanceTasks, "zfsScrub") {
 		t.Errorf("zfsScrub is a maintenance task")
+	}
+}
+
+func TestPlanZfsScrubAndClear(t *testing.T) {
+	stubTankPool(t)
+	p, fe := planZfsScrub([]byte(`{"pool":"tank"}`))
+	if fe != nil || strings.Join(p.Steps[0].Command, " ") != "zpool scrub tank" {
+		t.Fatalf("scrub: %v %+v", fe, p)
+	}
+	p, fe = planZfsScrub([]byte(`{"pool":"tank","stop":true}`))
+	if fe != nil || strings.Join(p.Steps[0].Command, " ") != "zpool scrub -s tank" {
+		t.Fatalf("stop: %v %+v", fe, p)
+	}
+	p, fe = planZfsClear([]byte(`{"pool":"tank"}`))
+	if fe != nil || strings.Join(p.Steps[0].Command, " ") != "zpool clear tank" {
+		t.Fatalf("clear: %v %+v", fe, p)
+	}
+	for _, f := range []func(json.RawMessage) (*opPlan, *fsError){planZfsScrub, planZfsClear} {
+		if _, fe := f([]byte(`{"pool":"nope"}`)); fe == nil {
+			t.Errorf("a pool that is not imported was accepted")
+		}
+	}
+}
+
+func TestPlanZfsReplace(t *testing.T) {
+	stubTankPool(t)
+	p, fe := planZfsReplace([]byte(`{"pool":"tank","leaf":"/dev/disk/by-id/ata-WDC_2-part1","disk":"sdh"}`))
+	if fe != nil {
+		t.Fatal(fe.Message)
+	}
+	if cmd := strings.Join(p.Steps[0].Command, " "); cmd != "zpool replace tank /dev/disk/by-id/ata-WDC_2-part1 /dev/disk/by-id/ata-WDC_H" {
+		t.Errorf("command: %s", cmd)
+	}
+	if !p.Steps[0].Destructive || len(p.Steps[0].Devices) != 1 {
+		t.Errorf("the new disk is listed as erased: %+v", p.Steps[0])
+	}
+	for in, why := range map[string]string{
+		`{"pool":"tank","leaf":"/dev/sdz1","disk":"sdh"}`:                          "a leaf not in the pool",
+		`{"pool":"nope","leaf":"/dev/disk/by-id/ata-WDC_2-part1","disk":"sdh"}`:    "a pool not imported",
+		`{"pool":"tank","leaf":"/dev/disk/by-id/ata-WDC_2-part1","disk":"../sda"}`: "an invalid device",
+		`{"pool":"tank","leaf":"mirror-0","disk":"sdh"}`:                           "a vdev, not a leaf",
+	} {
+		if _, fe := planZfsReplace([]byte(in)); fe == nil {
+			t.Errorf("accepted %s (%s)", in, why)
+		}
+	}
+	hostClaimable = func(string) *fsError { return &fsError{Code: "EBUSY", Message: "sdh holds data"} }
+	if _, fe := planZfsReplace([]byte(`{"pool":"tank","leaf":"/dev/disk/by-id/ata-WDC_2-part1","disk":"sdh"}`)); fe == nil {
+		t.Errorf("a disk holding data was accepted")
+	}
+	hostClaimable = func(string) *fsError { return nil }
+	hostSystemDevs = func() map[string]bool { return map[string]bool{"sdh": true} }
+	if _, fe := planZfsReplace([]byte(`{"pool":"tank","leaf":"/dev/disk/by-id/ata-WDC_2-part1","disk":"sdh"}`)); fe == nil {
+		t.Errorf("the system disk was accepted")
 	}
 }
