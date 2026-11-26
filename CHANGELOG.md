@@ -17,6 +17,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   break across lines; a pool's root dataset keeps Edit aligned with the others;
   a dataset's snapshot list shows that it opens.
 
+### Fixed
+
+- ZFS: rolling a dataset back lists the newer bookmarks it deletes, and a newer
+  snapshot with clones or a hold is refused at the review instead of failing
+  after the confirmation; the progress of a raidz being widened names its group
+  as the layout does.
+
 ## [1.97.0] - 2026-11-26
 
 ### Added
