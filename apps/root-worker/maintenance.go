@@ -28,7 +28,7 @@ func envOr(key, def string) string {
 	return def
 }
 
-var maintenanceTasks = []string{"smartShort", "smartLong", "raidCheck"}
+var maintenanceTasks = []string{"smartShort", "smartLong", "raidCheck", "zfsScrub"}
 
 type taskResult struct {
 	Device  string `json:"device"`
@@ -38,6 +38,10 @@ type taskResult struct {
 	// LogCount: entries in the disk's self-test log when HSI started the test,
 	// so its outcome is the entry that comes after.
 	LogCount *int `json:"logCount,omitempty"`
+	// PoolGUID and StartedAt (ZFS scrubs): the pool by its guid, which a name
+	// reused by another pool does not change, and when the run started it.
+	PoolGUID  string `json:"poolGuid,omitempty"`
+	StartedAt string `json:"startedAt,omitempty"`
 }
 
 // smartSelfTestJSON is the part of `smartctl -j -c -l selftest` HSI reads.
@@ -134,6 +138,8 @@ func (c maintenanceConfig) schedule(task string) taskSchedule {
 		return c.SmartShort
 	case "smartLong":
 		return c.SmartLong
+	case "zfsScrub":
+		return c.ZfsScrub
 	default:
 		return c.RaidCheck
 	}
@@ -265,6 +271,8 @@ var runMaintenanceTask = func(task string) []taskResult {
 		return runSmartTests("short")
 	case "smartLong":
 		return runSmartTests("long")
+	case "zfsScrub":
+		return runZfsScrubs()
 	default:
 		return runRaidChecks()
 	}
@@ -346,22 +354,50 @@ func runMaintenanceCLI() int {
 
 // ── NATS requests from the dashboard ─────────────────────────────────────────
 
+// refreshResults reads back what a run started: SMART self-tests from the
+// disks, scrubs from zpool status.
+func refreshResults(task string, results []taskResult) []taskResult {
+	if task == "zfsScrub" {
+		return refreshScrubResults(results)
+	}
+	return refreshSelfTests(results)
+}
+
 func handleMaintenanceGet(nc *nats.Conn, msg *nats.Msg) {
 	cfg := loadMaintenanceConfig()
 	state := loadMaintenanceState()
 	now := time.Now()
 	tasks := map[string]any{}
 	for _, t := range maintenanceTasks {
+		results := refreshResults(t, state[t].Results)
+		// A scrub's outcome is kept once known: a later scrub must not show as this one.
+		if t == "zfsScrub" && settledChanged(state[t].Results, results) {
+			st := state[t]
+			st.Results = results
+			state[t] = st
+			if err := saveJSON(maintenanceStatePath, state); err != nil {
+				logger.Warn("maintenance: could not save the scrub results", "error", err.Error())
+			}
+		}
 		tasks[t] = map[string]any{
 			"schedule":  cfg.schedule(t),
 			"lastRun":   state[t].LastRun,
 			"postponed": state[t].Postponed,
-			"results":   refreshSelfTests(state[t].Results),
+			"results":   results,
 			"nextRun":   cfg.schedule(t).nextRun(now),
 		}
 	}
 	_, timerErr := os.Stat(maintenanceTimerPath)
 	replyOk(nc, msg.Reply, map[string]any{"tasks": tasks, "timerInstalled": timerErr == nil})
+}
+
+// withKeptSchedules keeps the saved schedule of a task the request leaves out
+// (a client from before that task existed).
+func withKeptSchedules(next, prev maintenanceConfig) maintenanceConfig {
+	if next.ZfsScrub.Every == "" {
+		next.ZfsScrub = prev.ZfsScrub
+	}
+	return next
 }
 
 func handleMaintenanceSet(nc *nats.Conn, msg *nats.Msg) {
@@ -370,6 +406,7 @@ func handleMaintenanceSet(nc *nats.Conn, msg *nats.Msg) {
 		replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: "bad request: " + err.Error()})
 		return
 	}
+	cfg = withKeptSchedules(cfg, loadMaintenanceConfig())
 	for _, t := range maintenanceTasks {
 		if !cfg.schedule(t).valid() {
 			replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: "invalid schedule for " + t})

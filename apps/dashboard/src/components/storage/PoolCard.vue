@@ -12,8 +12,8 @@ import { layoutOf, scanLine } from './pool-summary'
 import { poolUsedPct, type ZfsPool } from './zfs-data'
 
 // One pool: its state, capacity, layout drawn as a tree, and last scrub.
-const props = defineProps<{ pool: ZfsPool; watched: boolean; compact?: boolean }>()
-const emit = defineEmits<{ open: []; watch: [] }>()
+const props = defineProps<{ pool: ZfsPool; watched: boolean; compact?: boolean; replaceable?: boolean }>()
+const emit = defineEmits<{ open: []; watch: []; replace: [leaf: string] }>()
 const { t } = useI18n()
 
 const layout = computed(() => layoutOf(props.pool.vdevs))
@@ -34,7 +34,7 @@ const healthy = computed(() => props.pool.state === 'ONLINE')
     </div>
     <Progress class="mt-3 h-1.5 rounded-full bg-base-200" :model-value="pct" :indicator-class="['rounded-full', pct > 90 ? 'bg-warning' : 'bg-engine-zfs']" />
     <div class="mt-4 grid gap-4" :class="compact ? '' : '@2xl/content:grid-cols-2'">
-      <PoolTopology :pool="pool" />
+      <PoolTopology :pool="pool" :replaceable="replaceable" @replace="leaf => emit('replace', leaf)" />
       <div class="space-y-1.5 text-xs text-base-content/80">
         <p class="flex items-center gap-1.5">
           <span v-if="scan.kind === 'never'">{{ t('ui.storage.Zfs.noScrub') }}</span>

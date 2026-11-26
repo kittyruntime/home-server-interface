@@ -35,6 +35,7 @@ type zfsScan struct {
 	Kind     string   `json:"kind"`  // scrub, resilver, none
 	State    string   `json:"state"` // finished, running, canceled, none
 	End      string   `json:"end,omitempty"`
+	Start    string   `json:"start,omitempty"` // a running scan: since when
 	Repaired int64    `json:"repaired"`
 	Errors   int64    `json:"errors"`
 	Percent  *float64 `json:"percent,omitempty"`
@@ -253,7 +254,7 @@ func parseScan(lines []string) zfsScan {
 		s.Errors = atoi64(m[3])
 	case reScanRunning.MatchString(first):
 		m := reScanRunning.FindStringSubmatch(first)
-		s.Kind, s.State = m[1], "running"
+		s.Kind, s.State, s.Start = m[1], "running", m[2]
 		for _, l := range lines[1:] {
 			if p := rePercentDone.FindStringSubmatch(l); p != nil {
 				v, err := strconv.ParseFloat(p[1], 64)

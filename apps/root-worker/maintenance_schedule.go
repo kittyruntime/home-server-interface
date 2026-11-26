@@ -19,6 +19,8 @@ type maintenanceConfig struct {
 	SmartShort taskSchedule `json:"smartShort"`
 	SmartLong  taskSchedule `json:"smartLong"`
 	RaidCheck  taskSchedule `json:"raidCheck"`
+	// ZfsScrub (ZFS lot 3): absent from older files, which keep the default.
+	ZfsScrub taskSchedule `json:"zfsScrub"`
 }
 
 // Defaults: a short SMART test every week and a long one every month, at
@@ -29,6 +31,8 @@ func defaultMaintenanceConfig() maintenanceConfig {
 		SmartShort: taskSchedule{Every: "weekly", Weekday: 0, Day: 1, Hour: 2},
 		SmartLong:  taskSchedule{Every: "monthly", Day: 1, Hour: 3},
 		RaidCheck:  taskSchedule{Every: "off", Day: 1, Hour: 1},
+		// Off: zfsutils already scrubs every pool monthly from cron.
+		ZfsScrub: taskSchedule{Every: "off", Day: 8, Hour: 2},
 	}
 }
 

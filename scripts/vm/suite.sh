@@ -1292,6 +1292,18 @@ case "$scenario" in
     vm_ssh "! zpool list made >/dev/null 2>&1 && [ -z \"\$(lsblk -nro FSTYPE /dev/$d3 /dev/$d4 | tr -d '[:space:]')\" ] && [ \$(lsblk -nr /dev/$d3 /dev/$d4 | wc -l) -eq 2 ] && ! grep -q '\"name\": \"made\"' /etc/hsi/zfs-pools.json" \
       || fail "the disks of the deleted pool are not free"
     log "A pool and a dataset made and deleted through HSI"
+    # Lot 3: a scrub started by hand finishes; tank's second disk is replaced
+    # by disk 4 and resilvered; errors are cleared; the scheduled task starts.
+    apply_plan zfs.scrub '{"pool":"tank"}' >/dev/null
+    vm_ssh 'for i in $(seq 1 60); do zpool status tank | grep -q "scrub repaired" && exit 0; sleep 2; done; exit 1' || fail "the scrub of tank did not finish"
+    apply_plan zfs.replace "{\"pool\":\"tank\",\"leaf\":\"/dev/disk/by-id/virtio-HSI-DATA-2-part1\",\"disk\":\"$d4\"}" >/dev/null
+    vm_ssh 'for i in $(seq 1 90); do s=$(zpool status -P tank); echo "$s" | grep -q "in progress" || { echo "$s" | grep -q "virtio-HSI-DATA-4" && exit 0; }; sleep 2; done; zpool status -P tank; exit 1' \
+      || fail "tank did not resilver onto disk 4"
+    vm_ssh 'cat /srv/tank/media/hello.txt' | grep -q hello || fail "tank/media lost its file in the replacement"
+    apply_plan zfs.clear '{"pool":"tank"}' >/dev/null
+    api storage.runMaintenanceNow '{"task":"zfsScrub"}' | python3 -c 'import json,sys; r=json.load(sys.stdin)["state"]["results"]; assert any(x["device"]=="tank" and x["status"] in ("started","skipped") for x in r), r' \
+      || fail "the scheduled scrub task did not start on tank"
+    log "Scrub, disk replacement and clear through HSI"
     # A pool whose dataset would mount outside the data folders: refused, and
     # exported again so that it does not mount there at the next boot.
     vm_ssh 'zpool create -f -m /opt/evil evil /dev/disk/by-id/virtio-HSI-DATA-3 && zpool export evil' || fail "could not create the evil pool"

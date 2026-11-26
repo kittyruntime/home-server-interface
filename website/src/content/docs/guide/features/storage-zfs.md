@@ -92,6 +92,20 @@ On a server with less than 2 GB of memory, the import warns that ZFS keeps a
 cache in memory ([ARC](/home-server-interface/guide/features/storage-glossary/#arc))
 that competes with HSI and the apps.
 
+## Scrub, replace a disk, clear errors
+
+A pool's page has **Scrub now** (and **Stop the scrub** while one runs): ZFS reads
+every block and checks it against its checksum, repairing what the redundancy
+allows. Storage > Maintenance can also schedule a **ZFS scrub** every week or
+month (off by default: the zfsutils package of Debian and Ubuntu already scrubs
+monthly from `/etc/cron.d/zfsutils-linux`); each pool's last result shows there.
+
+Each disk of the layout has **Replace**: pick a free whole disk at least as large,
+review the plan (the new disk is erased), and ZFS rebuilds the data onto it
+(resilver) while the pool stays usable. The page follows a scrub or a resilver
+every 5 seconds. Once the cause of read, write or checksum errors is fixed,
+**Clear errors** resets their counts.
+
 ## Alerts
 
 Monitor raises an alert when a pool is degraded (warning) or faulted or
@@ -101,5 +115,4 @@ healthy again or no longer imported.
 
 ## Coming next
 
-Scheduled scrubs, replacing a disk, snapshots and growing a pool arrive in the
-next releases.
+Snapshots and growing a pool arrive in the next releases.

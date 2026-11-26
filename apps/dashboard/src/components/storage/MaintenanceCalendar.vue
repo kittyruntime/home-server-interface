@@ -8,10 +8,10 @@ import { calendar, type Schedule } from './maintenance-calendar'
 const props = defineProps<{ schedules: Record<string, Schedule>; serverOffset?: number }>()
 const { t, locale } = useI18n()
 
-type Kind = 'smart' | 'raid'
-const kindOf = (task: string): Kind => (task === 'raidCheck' ? 'raid' : 'smart')
+type Kind = 'smart' | 'raid' | 'scrub'
+const kindOf = (task: string): Kind => (task === 'raidCheck' ? 'raid' : task === 'zfsScrub' ? 'scrub' : 'smart')
 // Scheduled, not a result: no green, which reads as healthy elsewhere.
-const MARK: Record<Kind, string> = { smart: 'bg-info', raid: 'bg-secondary' }
+const MARK: Record<Kind, string> = { smart: 'bg-info', raid: 'bg-secondary', scrub: 'bg-engine-zfs' }
 
 const days = computed(() => calendar(props.schedules, new Date(), 14, props.serverOffset).map((d, i) => ({
   ...d,
@@ -20,7 +20,7 @@ const days = computed(() => calendar(props.schedules, new Date(), 14, props.serv
   weekday: d.date.toLocaleDateString(locale.value, { weekday: 'narrow' }),
   label: d.date.toLocaleDateString(locale.value, { weekday: 'long', day: 'numeric', month: 'long' }),
 })))
-const present = computed(() => (['smart', 'raid'] as Kind[]).filter(k => days.value.some(d => d.kinds.includes(k))))
+const present = computed(() => (['smart', 'raid', 'scrub'] as Kind[]).filter(k => days.value.some(d => d.kinds.includes(k))))
 </script>
 
 <template>
