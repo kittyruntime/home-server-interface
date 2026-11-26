@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- ZFS snapshots: take one by hand or on a schedule per dataset (hourly, daily,
+  weekly or monthly, keeping the latest N), browse one and restore a file or a
+  folder next to the original, roll a dataset back, delete a snapshot.
+
 - ZFS health and repair: scrub a pool now or on a schedule (a ZFS scrub task in
   Maintenance, with each pool's result and its runs in the calendar), replace a
   disk of a pool with a free disk and follow the resilver, and clear error counts

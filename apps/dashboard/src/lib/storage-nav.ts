@@ -2,7 +2,7 @@ import { reactive } from 'vue'
 // Where the Storage app is (#40): a section, or an object shown in its
 // section. Each Storage panel keeps its own stack of locations.
 
-export type StorageSection = 'volumes' | 'disks' | 'raid' | 'lvm' | 'partitions' | 'mounts' | 'maintenance' | 'pools' | 'datasets' | 'zfs-import'
+export type StorageSection = 'volumes' | 'disks' | 'raid' | 'lvm' | 'partitions' | 'mounts' | 'maintenance' | 'pools' | 'datasets' | 'snapshots' | 'zfs-import'
 export type StorageLocation =
   | { kind: 'section'; section: StorageSection }
   | { kind: 'volume'; id: string }
@@ -15,7 +15,7 @@ export type StorageLocation =
 // English names; i18n/labels.ts puts them in the interface language.
 export const SECTION_LABELS = reactive<Record<StorageSection, string>>({
   'volumes': 'Volumes', 'disks': 'Disks', 'raid': 'Arrays', 'lvm': 'Volume groups', 'partitions': 'Partitions & formatting', 'mounts': 'Mounts', 'maintenance': 'Maintenance',
-  'pools': 'Pools', 'datasets': 'Datasets', 'zfs-import': 'Import',
+  'pools': 'Pools', 'datasets': 'Datasets', 'snapshots': 'Snapshots', 'zfs-import': 'Import',
 })
 export const NAV_TEXT = reactive({ createVolume: 'Create volume' })
 
@@ -84,7 +84,7 @@ export type StorageTab = 'disks' | 'lvm' | 'zfs' | 'maintenance'
 export const TAB_SECTIONS: Record<StorageTab, StorageSection[]> = {
   disks: ['disks'],
   lvm: ['volumes', 'raid', 'lvm', 'partitions', 'mounts'],
-  zfs: ['pools', 'datasets', 'zfs-import'],
+  zfs: ['pools', 'datasets', 'snapshots', 'zfs-import'],
   maintenance: ['maintenance'],
 }
 

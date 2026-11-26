@@ -3,6 +3,7 @@ import LoadingState from '../ui/LoadingState.vue'
 import PartitionsSection from './PartitionsSection.vue'
 import { loadZfs, zfs } from './zfs-data'
 import ZfsImportSection from './ZfsImportSection.vue'
+import SnapshotsSection from './SnapshotsSection.vue'
 import DatasetsSection from './DatasetsSection.vue'
 import PoolsSection from './PoolsSection.vue'
 import PoolPage from './PoolPage.vue'
@@ -11,7 +12,7 @@ import { Alert } from '@/components/ui/alert'
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from '@/components/ui/breadcrumb'
 import SectionNav from '@/components/ui/SectionNav.vue'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { CalendarIcon, DatabaseIcon, DownloadIcon, ScissorsIcon, HardDriveIcon, LayersIcon, PackageIcon, Rows3Icon, ServerIcon } from '@lucide/vue'
+import { CalendarIcon, DatabaseIcon, CameraIcon, DownloadIcon, ScissorsIcon, HardDriveIcon, LayersIcon, PackageIcon, Rows3Icon, ServerIcon } from '@lucide/vue'
 import { ref, computed, onMounted, watch } from 'vue'
 import type { Component } from 'vue'
 import PhysicalDisksSection from './PhysicalDisksSection.vue'
@@ -107,7 +108,7 @@ const installCommand = computed(() =>
 const ICONS: Record<SectionId, Component> = {
   'volumes': ServerIcon, 'disks': HardDriveIcon, 'raid': PackageIcon, 'lvm': Rows3Icon,
   'mounts': DatabaseIcon, 'maintenance': CalendarIcon, 'partitions': ScissorsIcon,
-  'pools': DatabaseIcon, 'datasets': LayersIcon, 'zfs-import': DownloadIcon,
+  'pools': DatabaseIcon, 'datasets': LayersIcon, 'snapshots': CameraIcon, 'zfs-import': DownloadIcon,
 }
 const navItems = computed(() => TAB_SECTIONS[tab.value].map(id => ({ id, label: SECTION_LABELS[id], icon: ICONS[id] })))
 </script>
@@ -172,6 +173,7 @@ const navItems = computed(() => TAB_SECTIONS[tab.value].map(id => ({ id, label: 
             <MaintenanceSection v-else-if="active === 'maintenance'" />
             <PoolsSection v-else-if="active === 'pools'" @navigate="focusOn" />
             <DatasetsSection v-else-if="active === 'datasets'" @navigate="focusOn" />
+            <SnapshotsSection v-else-if="active === 'snapshots'" />
             <ZfsImportSection v-else-if="active === 'zfs-import'" @navigate="focusOn" />
           </template>
         </div>

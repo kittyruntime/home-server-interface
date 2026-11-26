@@ -66,7 +66,7 @@ test('leavesWizard: any move away from Create volume, by crumb or link', () => {
 test('each section belongs to exactly one tab', () => {
   const all = Object.values(TAB_SECTIONS).flat()
   assert.equal(new Set(all).size, all.length)
-  assert.deepEqual([...all].sort(), ['datasets', 'disks', 'lvm', 'maintenance', 'mounts', 'partitions', 'pools', 'raid', 'volumes', 'zfs-import'])
+  assert.deepEqual([...all].sort(), ['datasets', 'disks', 'lvm', 'maintenance', 'mounts', 'partitions', 'pools', 'raid', 'snapshots', 'volumes', 'zfs-import'])
   assert.deepEqual(TAB_SECTIONS.lvm, ['volumes', 'raid', 'lvm', 'partitions', 'mounts'], 'partitioning and formatting live with LVM, not with the disks')
 })
 
@@ -116,7 +116,7 @@ test('a free bay opens the wizard on top of Volumes, whatever the LVM tab showed
 })
 
 test('the ZFS tab has pools, datasets and import; a pool opens in it', () => {
-  assert.deepEqual(TAB_SECTIONS.zfs, ['pools', 'datasets', 'zfs-import'])
+  assert.deepEqual(TAB_SECTIONS.zfs, ['pools', 'datasets', 'snapshots', 'zfs-import'])
   assert.equal(tabOf({ kind: 'pool', name: 'tank' }), 'zfs')
   assert.deepEqual(navCrumbs(currentNav(tabbedOpen(createTabbedNav('disks'), { kind: 'pool', name: 'tank' }))).map(c => c.label), ['Pools', 'tank'])
 })
