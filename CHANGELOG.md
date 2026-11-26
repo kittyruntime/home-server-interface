@@ -9,25 +9,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Growing a ZFS pool from its page: add a group of disks of the pool's layout,
-  add a disk to a mirror or (OpenZFS 2.3+) widen a raidz group with its
-  progress, and use the full size of bigger disks.
-
-- ZFS snapshots: take one by hand or on a schedule per dataset (hourly, daily,
-  weekly or monthly, keeping the latest N), browse one and restore a file or a
-  folder next to the original, roll a dataset back, delete a snapshot.
-
-- ZFS health and repair: scrub a pool now or on a schedule (a ZFS scrub task in
-  Maintenance, with each pool's result and its runs in the calendar), replace a
-  disk of a pool with a free disk and follow the resilver, and clear error counts
-  once their cause is fixed.
-
-- ZFS pools and datasets can be created and deleted from Storage: a pool from free
-  whole disks (stripe, mirror, RAID-Z1, Z2 or Z3, with the space it holds and the
-  failures it survives shown as you choose), datasets with a quota and their
-  compression, and their quota and compression changed later. Deleting a pool
-  erases its disks so they are free again; nothing used by a Place, a share or an
-  app can be deleted.
 - ZFS in Storage, on a server that has ZFS (HSI never installs it): a ZFS tab
   with the pools (state, capacity, layout drawn as a tree with each disk's errors,
   last scrub or resilver), the datasets, and the pools found on the disks to
@@ -36,6 +17,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   page) are guarded like any volume when they go missing. Importing mounts
   datasets only in the data folders, with setuid programs and device files off.
   Monitor alerts on degraded or failed pools, disk errors and scrub errors.
+- ZFS pools and datasets can be created and deleted from Storage: a pool from free
+  whole disks (stripe, mirror, RAID-Z1, Z2 or Z3, with the space it holds and the
+  failures it survives shown as you choose), datasets with a quota and their
+  compression, and their quota and compression changed later. Deleting a pool
+  erases its disks so they are free again; nothing used by a Place, a share or an
+  app can be deleted.
+- ZFS health and repair: scrub a pool now or on a schedule (a ZFS scrub task in
+  Maintenance, with each pool's result and its runs in the calendar), replace a
+  disk of a pool with a free disk and follow the resilver, and clear error counts
+  once their cause is fixed.
+- ZFS snapshots: take one by hand or on a schedule per dataset (hourly, daily,
+  weekly or monthly, keeping the latest N), browse one and restore a file or a
+  folder next to the original, roll a dataset back, delete a snapshot.
+- Growing a ZFS pool from its page: add a group of disks of the pool's layout,
+  add a disk to a mirror or (OpenZFS 2.3+) widen a raidz group with its
+  progress, and use the full size of bigger disks.
 
 ### Changed
 
@@ -43,11 +40,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   disks (identity, SMART health, temperature, label) and what uses each one, with
   a link to it; partitioning, formatting and mounting move to a new LVM >
   Partitions & formatting section, which lists only the disks nothing uses.
+- Rolling back to 1.96: saving the maintenance schedule from the previous release
+  drops the ZFS scrub schedule, which is off again after the next update.
 
 ### Fixed
-
-- Note for a rollback: saving the maintenance schedule from the previous release
-  drops the ZFS scrub schedule, which is off again after the next update.
 
 - ZFS: a missing disk shown by its guid keeps the path it had; dRAID vdevs count
   their parity in the redundancy; names ZFS reserves (mirror, raidz, spare...)
