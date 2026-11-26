@@ -124,6 +124,21 @@ the space it alone holds (the data changed or deleted since).
   dataset's name to confirm).
 - **Delete** removes a snapshot and frees what it alone held.
 
+## Growing a pool
+
+A pool's page has a **Grow the pool** section:
+
+- **Add disks** adds a group of the same layout and width as the pool's
+  (a mirror of 2 takes 2 more disks, a raidz1 of 3 takes 3). A group added to a
+  pool can never be removed from it: the review asks you to confirm that. A pool
+  mixing layouts, or on dRAID, is grown from the command line.
+- **Add a disk to mirror-N** makes one more copy of that group (more safety, no
+  more space). **Add a disk to raidzN-M** widens the group (OpenZFS 2.3 or
+  later): the data is spread over the new disk in the background, with its
+  progress on the page, and the pool stays usable.
+- **Use the full size** appears once every disk of a group was replaced by a
+  bigger one: it turns `autoexpand` on and lets ZFS use the new space.
+
 ## Alerts
 
 Monitor raises an alert when a pool is degraded (warning) or faulted or
@@ -133,4 +148,3 @@ healthy again or no longer imported.
 
 ## Coming next
 
-Growing a pool arrives in the next release.

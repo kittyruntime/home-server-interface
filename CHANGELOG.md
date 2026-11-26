@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Growing a ZFS pool from its page: add a group of disks of the pool's layout,
+  add a disk to a mirror or (OpenZFS 2.3+) widen a raidz group with its
+  progress, and use the full size of bigger disks.
+
 - ZFS snapshots: take one by hand or on a schedule per dataset (hourly, daily,
   weekly or monthly, keeping the latest N), browse one and restore a file or a
   folder next to the original, roll a dataset back, delete a snapshot.

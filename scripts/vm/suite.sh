@@ -1325,6 +1325,18 @@ case "$scenario" in
     apply_plan zfs.snapshot.destroy "{\"snapshot\":\"$snap\"}" >/dev/null
     vm_ssh "! zfs list -t snapshot '$snap' >/dev/null 2>&1" || fail "$snap was not deleted"
     log "Snapshots taken, browsed, restored, rolled back and scheduled through HSI"
+    # Lot 5: tank (a mirror) gets a second mirror group of disks 5 and 6, then
+    # disk 3 as one more copy in that group; its file survives both. Disk 3 is
+    # detached again for the next check.
+    d5=$(data_disk 5); d6=$(data_disk 6)
+    apply_plan zfs.pool.add "{\"pool\":\"tank\",\"disks\":[\"$d5\",\"$d6\"]}" >/dev/null
+    vm_ssh 'zpool status -P tank | grep -q "mirror-1" && zpool status -P tank | grep -q virtio-HSI-DATA-6' || fail "tank did not get a second mirror group"
+    apply_plan zfs.pool.attach "{\"pool\":\"tank\",\"vdev\":\"mirror-1\",\"disk\":\"$d3\"}" >/dev/null
+    vm_ssh 'for i in $(seq 1 90); do s=$(zpool status -P tank); echo "$s" | grep -q "in progress" || { echo "$s" | grep -q "virtio-HSI-DATA-3" && exit 0; }; sleep 2; done; zpool status -P tank; exit 1' \
+      || fail "disk 3 was not added to mirror-1"
+    vm_ssh 'cat /srv/tank/media/hello.txt' | grep -q hello || fail "tank/media lost its file while growing"
+    vm_ssh 'zpool detach tank $(zpool status -P tank | awk "/virtio-HSI-DATA-3/ {print \$1}")' || fail "could not detach disk 3 again"
+    log "A pool grown through HSI"
     # A pool whose dataset would mount outside the data folders: refused, and
     # exported again so that it does not mount there at the next boot.
     vm_ssh 'zpool create -f -m /opt/evil evil /dev/disk/by-id/virtio-HSI-DATA-3 && zpool export evil' || fail "could not create the evil pool"
