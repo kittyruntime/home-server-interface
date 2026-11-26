@@ -32,3 +32,23 @@ export function missingWatched<W extends { guid: string }>(watched: W[], pools: 
   const imported = new Set(pools.map(p => p.guid))
   return watched.filter(w => !imported.has(w.guid))
 }
+
+export type PoolLayout = 'stripe' | 'mirror' | 'raidz1' | 'raidz2' | 'raidz3'
+/** The fewest disks each layout takes (the worker checks the same). */
+export const LAYOUT_MIN: Record<PoolLayout, number> = { stripe: 1, mirror: 2, raidz1: 3, raidz2: 4, raidz3: 5 }
+
+/** What a new pool of these disks holds and how many failed disks it survives
+ *  (the smallest disk sets the size of every member but in a stripe). */
+export function poolCapacity(layout: PoolLayout, sizes: number[]): { usable: number; tolerates: number; enough: boolean } {
+  const n = sizes.length
+  const min = n ? Math.min(...sizes) : 0
+  const enough = n >= LAYOUT_MIN[layout]
+  switch (layout) {
+    case 'stripe': return { usable: sizes.reduce((a, b) => a + b, 0), tolerates: 0, enough }
+    case 'mirror': return { usable: enough ? min : 0, tolerates: Math.max(0, n - 1), enough }
+    default: {
+      const parity = Number(layout.slice(-1))
+      return { usable: enough ? (n - parity) * min : 0, tolerates: parity, enough }
+    }
+  }
+}

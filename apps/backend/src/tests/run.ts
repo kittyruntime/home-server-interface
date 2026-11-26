@@ -1162,7 +1162,7 @@ await testVolumeGuard()
 const sp = await import('../services/storage-plan')
 
 async function testStoragePlanAudit() {
-  assert.ok(sp.PLAN_OPS.includes('format') && sp.PLAN_OPS.includes('raid.stop') && sp.PLAN_OPS.includes('storage.reapply') && sp.PLAN_OPS.includes('storage.accept') && sp.PLAN_OPS.includes('system.identity') && sp.PLAN_OPS.includes('network.ipv4') && sp.PLAN_OPS.length === 36)
+  assert.ok(sp.PLAN_OPS.includes('format') && sp.PLAN_OPS.includes('raid.stop') && sp.PLAN_OPS.includes('storage.reapply') && sp.PLAN_OPS.includes('storage.accept') && sp.PLAN_OPS.includes('system.identity') && sp.PLAN_OPS.includes('network.ipv4') && sp.PLAN_OPS.length === 41)
   const meta = sp.planAuditMeta('format',
     [{ kind: 'run', target: '/dev/sdb1', summary: 'Create ext4', command: ['mkfs.ext4', '-F', '/dev/sdb1'], destructive: true },
       { kind: 'update', target: '/etc/mdadm/mdadm.conf', summary: 'Add ARRAY', diff: '+ARRAY' }],
@@ -4910,3 +4910,25 @@ async function testZfsAlerts() {
   assert.deepEqual(scrub.map(f => f.target), ['scrub:tank'])
 }
 await testZfsAlerts()
+
+// ZFS lot 2: a dataset or a pool in use is never deleted.
+async function testZfsDestroyBlocker() {
+  const { zfsDestroyBlocker } = await import('../services/zfs-volumes')
+  const v = (device: string, usedBy: Partial<{ places: any[]; shares: string[]; apps: string[] }> = {}) => ({
+    id: `zfs:1:${device}`, name: device, state: 'mounted', device, engine: 'zfs', redundancy: 'raid1', tolerates: 1, stack: [], disks: [], issues: [],
+    usedBy: { places: [], shares: [], apps: [], ...usedBy },
+  }) as any
+  const vols = [v('tank'), v('tank/media', { places: [{ id: 'p', name: 'Media' }] }), v('tank/docs'), v('tankette/x', { apps: ['nextcloud'] })]
+  assert.equal(zfsDestroyBlocker(vols, 'zfs.dataset.destroy', { name: 'tank/docs' }), null)
+  assert.match(zfsDestroyBlocker(vols, 'zfs.dataset.destroy', { name: 'tank/media' }) ?? '', /Media/)
+  assert.match(zfsDestroyBlocker(vols, 'zfs.pool.destroy', { name: 'tank' }) ?? '', /tank\/media/)
+  assert.equal(zfsDestroyBlocker(vols.filter(x => x.device !== 'tank/media'), 'zfs.pool.destroy', { name: 'tank' }), null, 'tankette is another pool')
+  assert.equal(zfsDestroyBlocker(vols, 'zfs.dataset.create', { name: 'tank/new' }), null)
+  // A dataset that is not a volume (canmount=noauto, mounted by hand) holding a Place.
+  const ds = [{ name: 'tank/x', mountPoint: '/srv/tank/x' }, { name: 'tank', mountPoint: '/srv/tank' }]
+  const uses = [{ what: 'Place Hidden', path: '/srv/tank/x/files' }, { what: 'app nextcloud', path: '/srv/other' }]
+  assert.match(zfsDestroyBlocker([], 'zfs.dataset.destroy', { name: 'tank/x' }, ds, uses) ?? '', /Place Hidden/)
+  assert.match(zfsDestroyBlocker([], 'zfs.pool.destroy', { name: 'tank' }, ds, uses) ?? '', /Place Hidden/)
+  assert.equal(zfsDestroyBlocker([], 'zfs.dataset.destroy', { name: 'tank/x' }, ds, [{ what: 'Place Top', path: '/srv/tank/y' }]), null, 'a Place outside the dataset')
+}
+await testZfsDestroyBlocker()

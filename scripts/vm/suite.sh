@@ -1275,6 +1275,23 @@ case "$scenario" in
     expect_running "$version"
     vm_ssh 'findmnt -n /srv/tank/media >/dev/null && test -f /srv/tank/media/hello.txt' || fail "tank/media is not mounted after a reboot"
     expect_hold_at /srv/tank/media none
+    # Lot 2: a mirror made through HSI on disks 3 and 4, a dataset with a
+    # quota, then both deleted: the disks come back free.
+    d3=$(data_disk 3); d4=$(data_disk 4)
+    apply_plan zfs.pool.create "{\"name\":\"made\",\"layout\":\"mirror\",\"disks\":[\"$d3\",\"$d4\"],\"compression\":\"lz4\"}" >/dev/null
+    vm_ssh 'zpool status made | grep -q mirror-0 && findmnt -n /srv/made >/dev/null && grep -q "\"name\": \"made\"" /etc/hsi/zfs-pools.json' \
+      || fail "the pool made through HSI is not a watched mirror mounted on /srv/made"
+    apply_plan zfs.dataset.create '{"name":"made/photos","quota":1000000000,"compression":"zstd"}' >/dev/null
+    [[ $(vm_ssh 'findmnt -n -o SOURCE /srv/made/photos; zfs get -Hp -o value quota,compression made/photos | paste -sd,') == $'made/photos\n1000000000,zstd' ]] \
+      || fail "made/photos is not mounted with its quota and compression"
+    apply_plan zfs.dataset.set '{"name":"made/photos","quota":0,"compression":"lz4"}' >/dev/null
+    [[ $(vm_ssh 'zfs get -Hp -o value quota,compression made/photos | paste -sd,') == "0,lz4" ]] || fail "the quota and compression of made/photos did not change"
+    apply_plan zfs.dataset.destroy '{"name":"made/photos"}' >/dev/null
+    vm_ssh '! zfs list made/photos >/dev/null 2>&1' || fail "made/photos is still there"
+    apply_plan zfs.pool.destroy '{"name":"made"}' >/dev/null
+    vm_ssh "! zpool list made >/dev/null 2>&1 && [ -z \"\$(lsblk -nro FSTYPE /dev/$d3 /dev/$d4 | tr -d '[:space:]')\" ] && [ \$(lsblk -nr /dev/$d3 /dev/$d4 | wc -l) -eq 2 ] && ! grep -q '\"name\": \"made\"' /etc/hsi/zfs-pools.json" \
+      || fail "the disks of the deleted pool are not free"
+    log "A pool and a dataset made and deleted through HSI"
     # A pool whose dataset would mount outside the data folders: refused, and
     # exported again so that it does not mount there at the next boot.
     vm_ssh 'zpool create -f -m /opt/evil evil /dev/disk/by-id/virtio-HSI-DATA-3 && zpool export evil' || fail "could not create the evil pool"

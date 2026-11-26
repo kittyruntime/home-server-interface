@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import { useToast } from '../../lib/toast'
+import { applyPlanned } from '../../lib/plan'
+import DatasetDialog from './DatasetDialog.vue'
 import { useI18n } from 'vue-i18n'
 import { computed, onMounted, ref } from 'vue'
 import { Card } from '@/components/ui/card'
@@ -32,6 +35,22 @@ const usedBy = (d: ZfsDataset) => {
   return [...v.usedBy.places.map(p => p.name), ...v.usedBy.apps].join(', ')
 }
 const rows = computed(() => [...(zfs.value?.datasets ?? [])].sort((a, b) => a.name.localeCompare(b.name)))
+const editing = ref<ZfsDataset | null>(null)
+const toast = useToast()
+
+async function destroy(d: ZfsDataset) {
+  try {
+    await applyPlanned('zfs.dataset.destroy', { name: d.name }, {
+      title: t('ui.storage.ZfsDataset.deleteTitle', { name: d.name }), actionLabel: t('ui.storage.ZfsDataset.delete'),
+      danger: true, confirmText: d.name, notice: t('ui.storage.ZfsDataset.deleteNotice'),
+    })
+    toast.success(t('ui.storage.ZfsDataset.deleted', { name: d.name }))
+    await loadZfs()
+  } catch (e: any) {
+    if (e?.message !== '') toast.error(e?.message ?? t('ui.storage.Zfs.failed'))
+  }
+}
+
 const isVolume = (d: ZfsDataset) => d.mountPoint.startsWith('/') && (d.canMount ?? 'on') === 'on'
 </script>
 
@@ -53,6 +72,7 @@ const isVolume = (d: ZfsDataset) => d.mountPoint.startsWith('/') && (d.canMount 
             <th class="text-right">{{ t('ui.storage.Zfs.colQuota') }}</th>
             <th class="text-right">{{ t('ui.storage.Zfs.colRatio') }}</th>
             <th>{{ t('ui.storage.Zfs.colUsedBy') }}</th>
+            <th><span class="sr-only">{{ t('ui.storage.ZfsDataset.actions') }}</span></th>
           </tr>
         </thead>
         <tbody>
@@ -70,9 +90,14 @@ const isVolume = (d: ZfsDataset) => d.mountPoint.startsWith('/') && (d.canMount 
             <td class="text-right tabular-nums">{{ d.quota ? fmtBytes(d.quota) : '-' }}</td>
             <td class="text-right tabular-nums">{{ d.ratio.toFixed(2) }}×</td>
             <td class="max-w-48 truncate text-xs text-base-content/80">{{ usedBy(d) || '-' }}</td>
+            <td class="whitespace-nowrap text-right">
+              <Button variant="ghost" size="xs" @click="editing = d">{{ t('ui.storage.ZfsDataset.edit') }}</Button>
+              <Button v-if="d.name.includes('/')" variant="ghost" size="xs" class="text-error" @click="destroy(d)">{{ t('ui.storage.ZfsDataset.delete') }}</Button>
+            </td>
           </tr>
         </tbody>
       </table>
     </Card>
+    <DatasetDialog v-if="editing" mode="edit" :dataset="editing" @close="editing = null" @done="editing = null; void loadZfs()" />
   </div>
 </template>

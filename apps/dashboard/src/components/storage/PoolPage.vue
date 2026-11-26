@@ -1,6 +1,7 @@
 <script setup lang="ts">
+import DatasetDialog from './DatasetDialog.vue'
 import { useI18n } from 'vue-i18n'
-import { computed, onMounted, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import LoadingState from '../ui/LoadingState.vue'
@@ -22,6 +23,21 @@ const pool = computed(() => zfs.value?.pools.find(p => p.name === props.name) ??
 const datasets = computed(() => (zfs.value?.datasets ?? []).filter(d => d.pool === props.name))
 const watched = computed(() => !!(zfs.value && pool.value && isWatched(zfs.value, pool.value)))
 watch(() => props.name, () => { void loadZfs() })
+const datasetOpen = ref(false)
+
+async function destroyPool() {
+  try {
+    await applyPlanned('zfs.pool.destroy', { name: props.name }, {
+      title: t('ui.storage.ZfsCreate.deleteTitle', { name: props.name }), actionLabel: t('ui.storage.ZfsCreate.deletePool'),
+      danger: true, confirmText: props.name, notice: t('ui.storage.ZfsCreate.deleteNotice'),
+    })
+    toast.success(t('ui.storage.ZfsCreate.deleted', { name: props.name }))
+    await loadZfs()
+    emit('navigate', 'pools')
+  } catch (e: any) {
+    if (e?.message !== '') toast.error(e?.message ?? t('ui.storage.Zfs.failed'))
+  }
+}
 
 async function run(op: 'zfs.watch' | 'zfs.unwatch') {
   const watching = op === 'zfs.watch'
@@ -51,7 +67,11 @@ async function run(op: 'zfs.watch' | 'zfs.unwatch') {
       <p class="mt-3 flex flex-wrap items-center gap-3 text-xs text-base-content/70">
         <span>{{ watched ? t('ui.storage.Zfs.watchedLine') : t('ui.storage.Zfs.notWatchedLine') }}</span>
         <Button v-if="watched" variant="outline" size="xs" @click="run('zfs.unwatch')">{{ t('ui.storage.Zfs.unwatch') }}</Button>
+        <Button variant="outline" size="xs" class="ml-auto" @click="datasetOpen = true">{{ t('ui.storage.ZfsDataset.newHeading') }}</Button>
+        <Button variant="outline" size="xs" class="text-error" @click="destroyPool">{{ t('ui.storage.ZfsCreate.deletePool') }}</Button>
       </p>
+      <DatasetDialog v-if="datasetOpen" mode="create" :parents="datasets.filter(d => !d.name.includes('@')).map(d => d.name)"
+        @close="datasetOpen = false" @done="datasetOpen = false; void loadZfs()" />
       <h3 class="mt-6 mb-2 text-sm font-semibold text-base-content">{{ t('ui.storage.Zfs.datasets') }}</h3>
       <Card class="block gap-0 py-0 shadow-none overflow-hidden">
         <ul class="divide-y divide-base-300">

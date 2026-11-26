@@ -26,6 +26,24 @@ their disks, with read, write and checksum errors), and the last
 [resilver](/home-server-interface/guide/features/storage-glossary/#resilver).
 The Disks tab colors the disks of a pool with their own color.
 
+## Create a pool
+
+**Pools > Create a pool** builds a pool from free whole disks: its name (it is
+mounted on `/srv/<name>`), its layout, its disks and its compression (lz4 by
+default). The dialog says how much space the pool holds and how many failed disks
+it survives: a **stripe** uses every disk with no redundancy, a **mirror** keeps a
+full copy on each disk, **RAID-Z1**, **Z2** and **Z3** survive one, two or three
+failed disks (3, 4 and 5 disks or more). The plan lists every disk it erases. HSI
+watches the pools it creates.
+
+A pool's page has **New dataset** (inside the pool or another dataset, with an
+optional quota and its compression) and **Delete the pool**: every dataset and
+file is destroyed and its disks are erased, so they show as free again. Under
+**Datasets**, **Edit** changes a dataset's quota and compression and **Delete**
+destroys it (delete the datasets inside it first). A pool or a dataset used by a
+Place, a share or an app cannot be deleted until nothing uses it; deleting asks
+you to type its name.
+
 ## Datasets are volumes
 
 A dataset ZFS mounts on a folder of its own is a volume like any other: Places,
@@ -83,5 +101,5 @@ healthy again or no longer imported.
 
 ## Coming next
 
-Creating pools and datasets, scheduled scrubs, replacing a disk, snapshots and
-growing a pool arrive in the next releases.
+Scheduled scrubs, replacing a disk, snapshots and growing a pool arrive in the
+next releases.
