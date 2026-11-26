@@ -167,7 +167,7 @@ const PLAN_INPUTS = {
   'zfs.scrub': z.object({ pool: z.string().regex(/^[A-Za-z][A-Za-z0-9_.:-]{0,63}$/), stop: z.boolean().optional() }),
   'zfs.clear': z.object({ pool: z.string().regex(/^[A-Za-z][A-Za-z0-9_.:-]{0,63}$/) }),
   // The leaf as zpool prints it: a device path, or a guid when it is missing.
-  'zfs.replace': z.object({ pool: z.string().regex(/^[A-Za-z][A-Za-z0-9_.:-]{0,63}$/), leaf: z.string().regex(/^(\/dev\/[A-Za-z0-9_.:\/-]{1,200}|[0-9]{1,20})$/), disk: z.string().regex(/^[a-z][a-z0-9]{1,31}$/) }),
+  'zfs.replace': z.object({ pool: z.string().regex(/^[A-Za-z][A-Za-z0-9_.:-]{0,63}$/), leaf: z.string().regex(/^(\/dev\/[A-Za-z0-9_.:/-]{1,200}|[0-9]{1,20})$/), disk: z.string().regex(/^[a-z][a-z0-9]{1,31}$/) }),
   'zfs.dataset.destroy': z.object({ name: z.string().regex(/^[A-Za-z][A-Za-z0-9_.:-]{0,63}(\/[A-Za-z0-9_.:-]{1,64})+$/) }),
   // Expand a volume (#7): the filesystem UUID, the way, and the disk to add.
   'volume.expand': z.object({
