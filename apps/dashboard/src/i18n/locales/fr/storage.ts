@@ -319,7 +319,7 @@ export default {
     addButton: 'Ajouter un disque | Ajouter {n} disques',
     attachButton: 'Ajouter un disque à {vdev}',
     expandButton: 'Utiliser toute la taille (+{size})',
-    mixed: 'Ce pool mélange les dispositions : agrandissez-le en ligne de commande.',
+    mixed: 'Ce pool a des groupes de types ou de tailles différents, ou un remplacement en cours : agrandissez-le en ligne de commande.',
     expanding: 'Répartition des données sur le nouveau disque de {vdev} : {pct} %',
     addHeading: 'Ajouter des disques au pool',
     addHint: 'Le pool est fait de groupes {layout} : un nouveau groupe de {n} disques est ajouté, aussi redondant que les autres.',

@@ -118,7 +118,7 @@ async function run(op: 'zfs.watch' | 'zfs.unwatch') {
         <p v-if="pool.expand?.state === 'running'" class="mt-1 text-xs text-base-content/80 tabular-nums">{{ t('ui.storage.ZfsGrow.expanding', { vdev: pool.expand.vdev, pct: Math.round(pool.expand.pct ?? 0) }) }}</p>
         <p class="mt-2 flex flex-wrap items-center gap-2 text-xs">
           <Button v-if="grow.layout" variant="outline" size="xs" @click="growing = { mode: 'add' }">{{ t('ui.storage.ZfsGrow.addButton', { n: grow.layout === 'stripe' ? 1 : grow.width }, grow.layout === 'stripe' ? 1 : grow.width) }}</Button>
-          <Button v-for="a in grow.attach" :key="a.vdev" variant="outline" size="xs" @click="growing = { mode: 'attach', vdev: a.vdev }">{{ t('ui.storage.ZfsGrow.attachButton', { vdev: a.vdev }) }}</Button>
+          <Button v-for="a in grow.attach.filter(x => x.kind === 'mirror' || pool.expand?.state !== 'running')" :key="a.vdev" variant="outline" size="xs" @click="growing = { mode: 'attach', vdev: a.vdev }">{{ t('ui.storage.ZfsGrow.attachButton', { vdev: a.vdev }) }}</Button>
           <Button v-if="grow.expand" variant="outline" size="xs" @click="expandPool">{{ t('ui.storage.ZfsGrow.expandButton', { size: fmtBytes(pool.expandSize ?? 0) }) }}</Button>
           <span v-if="!grow.layout" class="text-base-content/70">{{ t('ui.storage.ZfsGrow.mixed') }}</span>
         </p>

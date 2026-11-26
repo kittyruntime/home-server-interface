@@ -320,7 +320,7 @@ export default {
     addButton: 'Add a disk | Add {n} disks',
     attachButton: 'Add a disk to {vdev}',
     expandButton: 'Use the full size (+{size})',
-    mixed: 'This pool mixes layouts: grow it from the command line.',
+    mixed: 'This pool has groups of different kinds or widths, or a replacement running: grow it from the command line.',
     expanding: 'Spreading the data over the new disk of {vdev}: {pct}%',
     addHeading: 'Add disks to the pool',
     addHint: 'The pool is made of {layout} groups: a new group of {n} disks is added, as redundant as the others.',

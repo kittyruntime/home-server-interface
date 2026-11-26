@@ -115,7 +115,7 @@ func planZfsPoolAdd(raw json.RawMessage) (*opPlan, *fsError) {
 	}
 	layout, width, ok := poolDataLayout(pool.Vdevs)
 	if !ok {
-		return nil, &fsError{Code: "ERR", Message: req.Pool + " mixes layouts or uses dRAID: add to it from the command line"}
+		return nil, &fsError{Code: "ERR", Message: req.Pool + " has groups of different kinds or widths, a replacement running, or dRAID: add to it from the command line"}
 	}
 	if (layout == "stripe" && len(req.Disks) < 1) || (layout != "stripe" && len(req.Disks) != width) {
 		return nil, &fsError{Code: "ERR", Message: fmt.Sprintf("%s is made of %s groups of %d disks: add %d disks", req.Pool, layout, width, width)}
@@ -137,7 +137,7 @@ func planZfsPoolAdd(raw json.RawMessage) (*opPlan, *fsError) {
 		vdev = append(vdev, p)
 		observeDevice(obs, "/dev/"+d, "/dev/"+d)
 	}
-	argv := []string{"zpool", "add", req.Pool}
+	argv := []string{"zpool", "add", "-o", "ashift=" + poolAshift(req.Pool), req.Pool}
 	if layout != "stripe" {
 		argv = append(argv, layout)
 	}
@@ -165,14 +165,28 @@ func planZfsPoolExpand(raw json.RawMessage) (*opPlan, *fsError) {
 		return nil, &fsError{Code: "ERR", Message: req.Pool + " already uses all the space of its disks"}
 	}
 	steps := []planStep{cmdStep(req.Pool, "Let "+req.Pool+" grow by itself when its disks get bigger", []string{"zpool", "set", "autoexpand=on", req.Pool})}
-	for _, v := range dataVdevs(pool.Vdevs) {
+	for _, v := range pool.Vdevs {
+		// Log and cache devices hold no pool space; an offline disk stays offline.
+		if v.Type == "log" || v.Type == "cache" || v.Type == "spare" {
+			continue
+		}
 		for _, l := range leavesOf(v) {
-			if len(l.Children) == 0 && strings.HasPrefix(l.Name, "/dev/") {
+			if len(l.Children) == 0 && strings.HasPrefix(l.Name, "/dev/") && l.State == "ONLINE" {
 				steps = append(steps, cmdStep(l.Name, "Use the whole of "+l.Name, []string{"zpool", "online", "-e", req.Pool, l.Name}))
 			}
 		}
 	}
 	return &opPlan{Op: "zfs.pool.expand", Steps: steps, Observed: map[string]string{"pool": pool.GUID, "expandSize": strconv.FormatInt(pool.ExpandSize, 10)}}, nil
+}
+
+// poolAshift: the pool's ashift, 12 (4 KiB sectors) when it was left unset,
+// so a 512-byte disk added later does not slow the whole pool down.
+func poolAshift(pool string) string {
+	out, err := hostOutput("zpool", "get", "-Hp", "-o", "value", "ashift", pool)
+	if v := strings.TrimSpace(string(out)); err == nil && v != "" && v != "0" && v != "-" {
+		return v
+	}
+	return "12"
 }
 
 // versionAtLeast compares dotted versions: 2.3.1 is at least 2.3.
@@ -219,11 +233,30 @@ func planZfsPoolAttach(raw json.RawMessage) (*opPlan, *fsError) {
 	var summary string
 	switch {
 	case target.Type == "mirror":
-		argv = []string{"zpool", "attach", req.Pool, target.Children[0].Name, p}
+		// Next to a plain online disk of the group (not one being replaced).
+		var to string
+		for _, c := range target.Children {
+			if to == "" && len(c.Children) == 0 && c.Type == "disk" && c.State == "ONLINE" {
+				to = c.Name
+			}
+		}
+		if to == "" {
+			return nil, &fsError{Code: "ERR", Message: req.Vdev + " has no healthy disk to copy from: repair it first"}
+		}
+		argv = []string{"zpool", "attach", req.Pool, to, p}
 		summary = "Add " + dev + " to " + req.Vdev + " of " + req.Pool + " as one more copy, erasing it; ZFS copies the data onto it (resilver)"
 	case strings.HasPrefix(target.Type, "raidz"):
 		if v := zfsSnapshot().Version; !versionAtLeast(v, 2, 3) {
 			return nil, &fsError{Code: "ENOTOOL", Message: "widening a raidz group needs OpenZFS 2.3 or later (this server has " + v + ")"}
+		}
+		// The pool itself must have the feature (a pool made by an older
+		// ZFS has it only once upgraded).
+		out, err := hostOutput("zpool", "get", "-Hp", "-o", "value", "feature@raidz_expansion", req.Pool)
+		if f := strings.TrimSpace(string(out)); err != nil || (f != "enabled" && f != "active") {
+			return nil, &fsError{Code: "ENOTOOL", Message: req.Pool + " cannot widen a raidz group yet: upgrade the pool first (zpool upgrade " + req.Pool + "), after which older ZFS versions can no longer import it"}
+		}
+		if pool.Expand.State == "running" {
+			return nil, &fsError{Code: "EBUSY", Message: pool.Expand.Vdev + " is still being widened: wait for it to finish"}
 		}
 		argv = []string{"zpool", "attach", req.Pool, req.Vdev, p}
 		summary = "Widen " + req.Vdev + " of " + req.Pool + " with " + dev + ", erasing it; ZFS spreads the data over the new disk (hours on large pools), and the pool stays usable"
