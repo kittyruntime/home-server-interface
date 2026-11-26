@@ -78,6 +78,8 @@ const rollback = (s: Snap) => run('zfs.snapshot.rollback', { snapshot: s.name },
 }, t('ui.storage.ZfsSnap.rolledBack', { name: s.dataset }))
 const saveRules = () => run('zfs.snapshot.rules', { rules: draft.value }, { title: t('ui.storage.ZfsSnap.rulesTitle'), actionLabel: t('ui.storage.MaintenanceSection.saveSchedule') }, t('ui.storage.ZfsSnap.rulesSaved'))
 
+// Names HSI handles (the worker refuses others, such as one with a space).
+const manageable = (s: Snap) => /^[A-Za-z0-9_.:-]{1,128}$/.test(s.short)
 const KIND_CLASS: Record<string, string> = { manual: 'bg-base-200 text-base-content', other: 'bg-base-200 text-base-content/70' }
 </script>
 
@@ -128,7 +130,8 @@ const KIND_CLASS: Record<string, string> = { manual: 'bg-base-200 text-base-cont
             <span class="rounded-sm px-1.5 py-0.5 text-2xs font-semibold uppercase" :class="KIND_CLASS[snapKind(s.short)] ?? 'bg-engine-zfs/15 text-base-content'">{{ t(`ui.storage.ZfsSnap.kind.${snapKind(s.short)}`) }}</span>
             <span class="text-xs text-base-content/70">{{ formatDateTime(s.created * 1000) }}</span>
             <span class="w-20 text-right text-xs text-base-content/70 tabular-nums">{{ fmtBytes(s.used) }}</span>
-            <span class="flex gap-1">
+            <span v-if="!manageable(s)" class="text-xs text-base-content/70">{{ t('ui.storage.ZfsSnap.unmanageable') }}</span>
+            <span v-else class="flex gap-1">
               <Button variant="ghost" size="xs" @click="browsing = s.name">{{ t('ui.storage.ZfsSnap.browse') }}</Button>
               <Button variant="ghost" size="xs" @click="rollback(s)">{{ t('ui.storage.ZfsSnap.rollback') }}</Button>
               <Button variant="ghost" size="xs" class="text-error" @click="destroy(s)">{{ t('ui.storage.ZfsSnap.delete') }}</Button>
