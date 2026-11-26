@@ -10,6 +10,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/nats-io/nats.go"
@@ -165,7 +166,7 @@ func openNoLinks(root, rel string) (int, error) {
 
 type snapEntry struct {
 	Name  string `json:"name"`
-	Kind  string `json:"kind"` // dir, file, link, other
+	Kind  string `json:"kind"` // dir, file, link, dataset (a child's mount point), other
 	Size  int64  `json:"size"`
 	MTime int64  `json:"mtime"`
 }
@@ -173,24 +174,29 @@ type snapEntry struct {
 const maxSnapEntries = 5000
 
 // snapshotLs lists a folder of a snapshot, never following a link.
-func snapshotLs(snapshot, p string) ([]snapEntry, *fsError) {
+func snapshotLs(snapshot, p string) ([]snapEntry, bool, *fsError) {
 	rel, ok := cleanSnapPath(p)
 	if !ok {
-		return nil, &fsError{Code: "ERR", Message: "invalid path"}
+		return nil, false, &fsError{Code: "ERR", Message: "invalid path"}
 	}
 	mount, fe := snapshotMount(snapshot)
 	if fe != nil {
-		return nil, fe
+		return nil, false, fe
 	}
 	_, short, _ := splitSnapshot(snapshot)
 	fd, err := openNoLinks(filepath.Join(mount, ".zfs", "snapshot", short), rel)
 	if err != nil {
-		return nil, &fsError{Code: "ERR", Message: "cannot open " + p + " in the snapshot (a link or not a folder)"}
+		return nil, false, &fsError{Code: "ERR", Message: "cannot open " + p + " in the snapshot (a link or not a folder)"}
 	}
 	dir := os.NewFile(uintptr(fd), "snapshot")
 	defer dir.Close()
-	names, _ := dir.Readdirnames(maxSnapEntries) // io.EOF on an empty folder
+	names, _ := dir.Readdirnames(maxSnapEntries + 1) // io.EOF on an empty folder
+	truncated := len(names) > maxSnapEntries
+	if truncated {
+		names = names[:maxSnapEntries]
+	}
 	sort.Strings(names)
+	children := childMountsOf(mount)
 	entries := []snapEntry{}
 	for _, n := range names {
 		var st unix.Stat_t
@@ -198,6 +204,11 @@ func snapshotLs(snapshot, p string) ([]snapEntry, *fsError) {
 			continue
 		}
 		kind := "other"
+		if children[filepath.Join(mount, rel, n)] {
+			kind = "dataset" // another dataset mounts here: its files are in its own snapshots
+			entries = append(entries, snapEntry{Name: n, Kind: kind, MTime: st.Mtim.Sec})
+			continue
+		}
 		switch st.Mode & unix.S_IFMT {
 		case unix.S_IFDIR:
 			kind = "dir"
@@ -208,7 +219,7 @@ func snapshotLs(snapshot, p string) ([]snapEntry, *fsError) {
 		}
 		entries = append(entries, snapEntry{Name: n, Kind: kind, Size: st.Size, MTime: st.Mtim.Sec})
 	}
-	return entries, nil
+	return entries, truncated, nil
 }
 
 // restoredName: "photo.jpg" restored on 2026-11-26 10:05 becomes
@@ -259,54 +270,130 @@ func planZfsSnapshotRestore(raw json.RawMessage) (*opPlan, *fsError) {
 	if err != nil {
 		return nil, &fsError{Code: "ERR", Message: "the folder of " + req.Path + " no longer exists as a folder in " + mount + ": restore its parent folder instead"}
 	}
-	name := restoredName(base, st.Mode&unix.S_IFMT == unix.S_IFDIR, zfsNow())
-	var dst unix.Stat_t
-	exists := unix.Fstatat(dfd, name, &dst, unix.AT_SYMLINK_NOFOLLOW) == nil
+	isDir := st.Mode&unix.S_IFMT == unix.S_IFDIR
 	unix.Close(dfd)
-	if exists {
-		return nil, &fsError{Code: "EEXIST", Message: filepath.Join(mount, parentRel, name) + " already exists"}
+	if isChildMount(mount, rel) {
+		return nil, &fsError{Code: "ERR", Message: req.Path + " is another dataset mounted here: browse that dataset's own snapshots"}
+	}
+	if restoreBusy.Load() {
+		return nil, &fsError{Code: "EBUSY", Message: "a restore is still copying: wait for it to finish"}
 	}
 	src := filepath.Join(snapRoot, rel)
-	target := filepath.Join(mount, parentRel, name)
+	// The name carries the time of the copy, so it is not in the plan: a plan
+	// checked a second later must stay the same.
+	shown := restoredName(base, isDir, time.Date(2006, 1, 2, 15, 4, 0, 0, time.Local))
+	shown = strings.Replace(shown, "2006-01-02 15-04", "<date> <time>", 1)
+	target := filepath.Join(mount, parentRel, shown)
 	step := planStep{Kind: "create", Target: target,
-		Summary: "Copy " + req.Path + " from the snapshot " + short + " next to the original, as " + name,
+		Summary: "Copy " + req.Path + " from the snapshot " + short + " next to the original, as " + shown + " (nothing is overwritten)",
 		Command: []string{"cp", "-a", "--reflink=auto", "--", src, target},
 		run: func() (string, error) {
-			return "", restoreFromSnapshot(mount, parentRel, src, name)
+			return restoreFromSnapshot(mount, parentRel, src, restoredName(base, isDir, zfsNow()))
 		}}
-	return &opPlan{Op: "zfs.snapshot.restore", Steps: []planStep{step}, Observed: map[string]string{"target": target}}, nil
+	return &opPlan{Op: "zfs.snapshot.restore", Steps: []planStep{step}, Observed: map[string]string{}}, nil
 }
 
-// restoreFromSnapshot copies src into a folder only root can write, created
-// inside the destination folder held open, then moves it in place without
-// replacing anything: a folder swapped for a link meanwhile changes nothing.
-func restoreFromSnapshot(mount, parentRel, src, name string) error {
+// restoreBusy: one restore copies at a time (a long one goes on in the background).
+var restoreBusy atomic.Bool
+
+// restoreWait: how long a restore waits for its copy before letting it finish
+// in the background (the dashboard's request gives up after 3 minutes).
+var restoreWait = 2 * time.Minute
+
+// isChildMount: rel is where a child dataset mounts inside mount. In the
+// parent's snapshot it is an empty folder, not that dataset's files.
+func isChildMount(mount, rel string) bool {
+	return childMountsOf(mount)[filepath.Join(mount, rel)]
+}
+
+// childMountsOf: the mount points of the datasets mounted below mount.
+var childMountsOf = func(mount string) map[string]bool {
+	res := map[string]bool{}
+	for _, d := range zfsSnapshot().Datasets {
+		if d.Mounted && strings.HasPrefix(d.MountPoint, mount+"/") {
+			res[d.MountPoint] = true
+		}
+	}
+	return res
+}
+
+// restoreFromSnapshot copies src into a folder only root can write, made in
+// the destination folder held open. The copy runs inside that folder by its
+// descriptor (its name can be changed by the users of the folder, never what
+// it is), then is moved in place without replacing anything.
+func restoreFromSnapshot(mount, parentRel, src, name string) (string, error) {
 	dfd, err := openNoLinks(mount, parentRel)
 	if err != nil {
-		return errors.New("the destination folder changed: " + err.Error())
+		return "", errors.New("the destination folder changed: " + err.Error())
 	}
-	defer unix.Close(dfd)
 	tmp := ".hsi-restore-" + strconv.FormatInt(time.Now().UnixNano(), 36)
 	if err := unix.Mkdirat(dfd, tmp, 0o700); err != nil {
-		return err
+		unix.Close(dfd)
+		return "", err
 	}
-	defer func() {
-		_, _ = runArgv([]string{"rm", "-rf", "--one-file-system", "--", "/proc/" + strconv.Itoa(os.Getpid()) + "/fd/" + strconv.Itoa(dfd) + "/" + tmp})
-		_ = unix.Unlinkat(dfd, tmp, unix.AT_REMOVEDIR)
+	tfd, err := unix.Openat(dfd, tmp, unix.O_RDONLY|unix.O_DIRECTORY|unix.O_NOFOLLOW|unix.O_CLOEXEC, 0)
+	var tst unix.Stat_t
+	if err == nil {
+		err = unix.Fstat(tfd, &tst)
+		if err == nil && int(tst.Uid) != restoreOwnerUID() {
+			err = errors.New("the temporary folder was replaced")
+		}
+	}
+	if err != nil {
+		if tfd >= 0 {
+			unix.Close(tfd)
+		}
+		unix.Close(dfd)
+		return "", err
+	}
+	if !restoreBusy.CompareAndSwap(false, true) {
+		finishRestore(dfd, tfd, tmp, tst, false)
+		return "", errors.New("a restore is still copying: wait for it to finish")
+	}
+	done := make(chan error, 1)
+	go func() {
+		here := "/proc/" + strconv.Itoa(os.Getpid()) + "/fd/" + strconv.Itoa(tfd)
+		out, err := copyArgv(here, []string{"cp", "-a", "--reflink=auto", "--", src, "x"})
+		if err != nil {
+			err = cmdError{cmdErrMessage(out, err)}
+		} else if rerr := unix.Renameat2(tfd, "x", dfd, name, unix.RENAME_NOREPLACE); rerr != nil {
+			err = errors.New("could not put " + name + " in place: " + rerr.Error())
+		}
+		finishRestore(dfd, tfd, tmp, tst, true)
+		if err != nil {
+			logger.Warn("zfs restore", "target", name, "error", err.Error())
+		}
+		done <- err
 	}()
-	into := "/proc/" + strconv.Itoa(os.Getpid()) + "/fd/" + strconv.Itoa(dfd) + "/" + tmp + "/x"
-	if out, err := copyArgv([]string{"cp", "-a", "--reflink=auto", "--", src, into}); err != nil {
-		return cmdError{cmdErrMessage(out, err)}
+	select {
+	case err := <-done:
+		return "", err
+	case <-time.After(restoreWait):
+		return "still copying: " + name + " appears next to the original once done", nil
 	}
-	if err := unix.Renameat2(dfd, tmp+"/x", dfd, name, unix.RENAME_NOREPLACE); err != nil {
-		return errors.New("could not put " + name + " in place: " + err.Error())
-	}
-	return nil
 }
 
-// copyArgv runs the copy of a restore (tests keep the real one).
-var copyArgv = func(argv []string) ([]byte, error) {
-	return command(argv[0], argv[1:]...).CombinedOutput()
+// finishRestore removes what is left of the temporary folder (only if it is
+// still the folder HSI made) and releases the descriptors.
+func finishRestore(dfd, tfd int, tmp string, tst unix.Stat_t, busy bool) {
+	here := "/proc/" + strconv.Itoa(os.Getpid()) + "/fd/" + strconv.Itoa(tfd)
+	_, _ = copyArgv(here, []string{"rm", "-rf", "--one-file-system", "--", "x"})
+	var now unix.Stat_t
+	if unix.Fstatat(dfd, tmp, &now, unix.AT_SYMLINK_NOFOLLOW) == nil && now.Ino == tst.Ino && now.Dev == tst.Dev {
+		_ = unix.Unlinkat(dfd, tmp, unix.AT_REMOVEDIR)
+	}
+	unix.Close(tfd)
+	unix.Close(dfd)
+	if busy {
+		restoreBusy.Store(false)
+	}
+}
+
+// copyArgv runs a command of a restore in the folder dir (tests keep the real one).
+var copyArgv = func(dir string, argv []string) ([]byte, error) {
+	c := command(argv[0], argv[1:]...)
+	c.Dir = dir
+	return c.CombinedOutput()
 }
 
 func planZfsSnapshotCreate(raw json.RawMessage) (*opPlan, *fsError) {
@@ -319,10 +406,18 @@ func planZfsSnapshotCreate(raw json.RawMessage) (*opPlan, *fsError) {
 	if findDataset(zfsSnapshot().Datasets, req.Dataset) == nil {
 		return nil, &fsError{Code: "ENOENT", Message: req.Dataset + " does not exist"}
 	}
-	name := req.Dataset + "@hsi-manual-" + zfsNow().Format("20060102-150405")
-	return &opPlan{Op: "zfs.snapshot.create", Steps: []planStep{
-		cmdStep(name, "Take the snapshot "+name, []string{"zfs", "snapshot", name}),
-	}, Observed: map[string]string{}}, nil
+	// Named at the time it is taken, so the plan stays the same until then.
+	shown := req.Dataset + "@hsi-manual-<date>-<time>"
+	step := planStep{Kind: "run", Target: req.Dataset, Summary: "Take a snapshot of " + req.Dataset + " (" + shown + ")",
+		Command: []string{"zfs", "snapshot", shown},
+		run: func() (string, error) {
+			name := req.Dataset + "@hsi-manual-" + zfsNow().Format("20060102-150405")
+			if out, err := runArgv([]string{"zfs", "snapshot", name}); err != nil {
+				return "", cmdError{cmdErrMessage(out, err)}
+			}
+			return name, nil
+		}}
+	return &opPlan{Op: "zfs.snapshot.create", Steps: []planStep{step}, Observed: map[string]string{}}, nil
 }
 
 func planZfsSnapshotDestroy(raw json.RawMessage) (*opPlan, *fsError) {
@@ -380,10 +475,15 @@ func planZfsSnapshotRules(raw json.RawMessage) (*opPlan, *fsError) {
 		return nil, badRequest(err)
 	}
 	ds := zfsSnapshot().Datasets
+	saved := map[snapRule]bool{}
+	for _, r := range loadSnapRules() {
+		saved[r] = true
+	}
 	seen := map[string]bool{}
 	for _, r := range req.Rules {
 		switch {
-		case findDataset(ds, r.Dataset) == nil:
+		// A rule of a dataset deleted since is kept as it was (it does nothing).
+		case findDataset(ds, r.Dataset) == nil && !saved[r]:
 			return nil, &fsError{Code: "ERR", Message: r.Dataset + " does not exist"}
 		case !snapEvery[r.Every]:
 			return nil, &fsError{Code: "ERR", Message: "invalid period " + r.Every}
@@ -456,8 +556,12 @@ func runZfsSnapshotRules() []taskResult {
 			}
 		}
 		sort.SliceStable(mine, func(i, j int) bool { return mine[i].Created < mine[j].Created })
-		if len(mine) == 0 || snapDue(r.Every, time.Unix(mine[len(mine)-1].Created, 0), now) {
-			name := r.Dataset + "@" + prefix + now.Format("20060102-1504")
+		name := r.Dataset + "@" + prefix + now.Format("20060102-1504")
+		taken := false
+		for _, s := range mine {
+			taken = taken || s.Name == name
+		}
+		if !taken && (len(mine) == 0 || snapDue(r.Every, time.Unix(mine[len(mine)-1].Created, 0), now)) {
 			if out, err := runArgv([]string{"zfs", "snapshot", name}); err != nil {
 				results = append(results, taskResult{Device: r.Dataset, Status: "error", Message: cmdErrMessage(out, err)})
 				continue
@@ -488,10 +592,10 @@ func handleZfsSnapshotLs(nc *nats.Conn, msg *nats.Msg) {
 		replyErr(nc, msg.Reply, badRequest(err))
 		return
 	}
-	entries, fe := snapshotLs(req.Snapshot, req.Path)
+	entries, truncated, fe := snapshotLs(req.Snapshot, req.Path)
 	if fe != nil {
 		replyErr(nc, msg.Reply, fe)
 		return
 	}
-	replyOk(nc, msg.Reply, map[string]any{"entries": entries})
+	replyOk(nc, msg.Reply, map[string]any{"entries": entries, "truncated": truncated})
 }

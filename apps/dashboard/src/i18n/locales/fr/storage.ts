@@ -273,6 +273,9 @@ export default {
     refreshing: 'Suivi de la progression…',
   },
   ZfsSnap: {
+    childDataset: 'un autre dataset : voir ses propres snapshots',
+    truncated: 'Seules les 5000 premières entrées sont affichées.',
+    unmanageable: 'Nom non géré ici : utilisez la ligne de commande',
     gone: '{name} (disparu)',
     heading: 'Snapshots',
     subtitle: 'Un snapshot fige un dataset tel qu’il était : il ne prend aucune place au départ, puis garde les données modifiées ou supprimées depuis. Parcourez-en un pour récupérer un fichier.',
@@ -308,7 +311,7 @@ export default {
     emptyFolder: 'Ce dossier est vide.',
     restore: 'Restaurer',
     restoreTitle: 'Restaurer {path}',
-    restored: '{path} restauré à côté de l’original',
+    restored: '{path} restauré à côté de l’original (une grosse copie peut mettre un moment à apparaître)',
     restoreHint: 'Restaurer copie le fichier ou le dossier à côté de l’original, nommé « (restored date) ». Rien d’existant n’est écrasé.',
   },
   IntroCard: {

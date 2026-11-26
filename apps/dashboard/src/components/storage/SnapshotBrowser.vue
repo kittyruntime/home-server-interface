@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
 import { onMounted, ref } from 'vue'
-import { FileIcon, FolderIcon, LinkIcon } from '@lucide/vue'
+import { FileIcon, FolderIcon, LayersIcon, LinkIcon } from '@lucide/vue'
 import Modal from '../ui/Modal.vue'
 import { Button } from '@/components/ui/button'
 import LoadingState from '../ui/LoadingState.vue'
@@ -18,9 +18,10 @@ const props = defineProps<{ snapshot: string }>()
 const emit = defineEmits<{ close: [] }>()
 const { t } = useI18n()
 const toast = useToast()
-type Entry = { name: string; kind: 'dir' | 'file' | 'link' | 'other'; size: number; mtime: number }
+type Entry = { name: string; kind: 'dir' | 'file' | 'link' | 'dataset' | 'other'; size: number; mtime: number }
 const path = ref('')
 const entries = ref<Entry[]>([])
+const truncated = ref(false)
 const loading = ref(true)
 const error = ref('')
 
@@ -28,7 +29,9 @@ async function open(p: string) {
   loading.value = true
   error.value = ''
   try {
-    entries.value = (await trpc.storage.zfs.snapshotLs.query({ snapshot: props.snapshot, path: p })).entries
+    const r = await trpc.storage.zfs.snapshotLs.query({ snapshot: props.snapshot, path: p })
+    entries.value = r.entries
+    truncated.value = r.truncated
     path.value = p
   } catch (e: any) {
     error.value = e?.message ?? t('ui.storage.Zfs.failed')
@@ -49,7 +52,7 @@ async function restore(e: Entry) {
     if (err?.message !== '') toast.error(err?.message ?? t('ui.storage.Zfs.failed'))
   }
 }
-const ICON = { dir: FolderIcon, file: FileIcon, link: LinkIcon, other: FileIcon }
+const ICON = { dir: FolderIcon, file: FileIcon, link: LinkIcon, dataset: LayersIcon, other: FileIcon }
 </script>
 
 <template>
@@ -73,12 +76,13 @@ const ICON = { dir: FolderIcon, file: FileIcon, link: LinkIcon, other: FileIcon 
         <li v-for="e in entries" :key="e.name" class="group flex items-center gap-2 rounded-sm px-2 py-1.5 hover:bg-base-200">
           <component :is="ICON[e.kind]" class="size-4 shrink-0 text-base-content/70" aria-hidden="true" />
           <button v-if="e.kind === 'dir'" type="button" class="min-w-0 flex-1 truncate text-left text-sm link link-hover" @click="open(joinPath(path, e.name))">{{ e.name }}</button>
-          <span v-else class="min-w-0 flex-1 truncate text-sm">{{ e.name }}</span>
+          <span v-else class="min-w-0 flex-1 truncate text-sm">{{ e.name }}<span v-if="e.kind === 'dataset'" class="ml-2 text-xs text-base-content/70">{{ t('ui.storage.ZfsSnap.childDataset') }}</span></span>
           <span class="hidden shrink-0 text-xs text-base-content/70 tabular-nums sm:inline">{{ e.kind === 'file' ? fmtBytes(e.size) : '' }}</span>
           <span class="hidden shrink-0 text-xs text-base-content/70 md:inline">{{ formatDateTime(e.mtime * 1000) }}</span>
-          <Button variant="ghost" size="xs" class="shrink-0" @click="restore(e)">{{ t('ui.storage.ZfsSnap.restore') }}</Button>
+          <Button v-if="e.kind !== 'dataset'" variant="ghost" size="xs" class="shrink-0" @click="restore(e)">{{ t('ui.storage.ZfsSnap.restore') }}</Button>
         </li>
       </ul>
+      <p v-if="truncated" class="p-3 text-xs text-warning">{{ t('ui.storage.ZfsSnap.truncated') }}</p>
     </div>
     <p class="border-t border-base-300 px-5 py-3 text-xs text-base-content/70">{{ t('ui.storage.ZfsSnap.restoreHint') }}</p>
   </Modal>

@@ -596,7 +596,7 @@ export const storageRouter = router({
     // one (admins only: it shows the names of every user's files).
     snapshots: storageProcedure.query(async () => requestSync<{ snapshots: ZfsSnap[]; rules: ZfsSnapRule[] }>('root.zfs.snapshots', {}, 30_000)),
     snapshotLs: adminProcedure.input(z.object({ snapshot: z.string().regex(/^[A-Za-z][A-Za-z0-9_.:-]{0,63}(\/[A-Za-z0-9_.:-]{1,64})*@[A-Za-z0-9_.:-]{1,128}$/), path: zSnapPath }))
-      .query(async ({ input }) => requestSync<{ entries: Array<{ name: string; kind: 'dir' | 'file' | 'link' | 'other'; size: number; mtime: number }> }>('root.zfs.snapshot.ls', input, 30_000)),
+      .query(async ({ input }) => requestSync<{ entries: Array<{ name: string; kind: 'dir' | 'file' | 'link' | 'dataset' | 'other'; size: number; mtime: number }>; truncated: boolean }>('root.zfs.snapshot.ls', input, 30_000)),
   }),
 
   // Host commands each feature needs, so the dashboard can explain a missing

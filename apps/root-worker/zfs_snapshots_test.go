@@ -50,8 +50,9 @@ func stubSnapHost(t *testing.T) (mount string, ran *[]string) {
 	must(os.Symlink("/etc", filepath.Join(root, "out")))
 	must(os.MkdirAll(filepath.Join(mount, "dir"), 0o755))
 	must(os.Symlink("/etc", filepath.Join(mount, "link")))
-	prevM, prevO, prevR := snapshotMount, hostOutput, runArgv
-	t.Cleanup(func() { snapshotMount, hostOutput, runArgv = prevM, prevO, prevR })
+	prevM, prevO, prevR, prevC := snapshotMount, hostOutput, runArgv, childMountsOf
+	t.Cleanup(func() { snapshotMount, hostOutput, runArgv, childMountsOf = prevM, prevO, prevR, prevC })
+	childMountsOf = func(string) map[string]bool { return map[string]bool{filepath.Join(mount, "dir", "sub"): true} }
 	snapshotMount = func(snapshot string) (string, *fsError) {
 		if snapshot != "tank/media@s1" {
 			return "", &fsError{Code: "ENOENT", Message: snapshot + " does not exist"}
@@ -65,21 +66,24 @@ func stubSnapHost(t *testing.T) (mount string, ran *[]string) {
 
 func TestSnapshotLsNeverFollowsLinks(t *testing.T) {
 	stubSnapHost(t)
-	entries, fe := snapshotLs("tank/media@s1", "")
+	entries, _, fe := snapshotLs("tank/media@s1", "")
 	if fe != nil || len(entries) != 2 {
 		t.Fatalf("%+v %v", entries, fe)
 	}
 	if entries[0].Name != "dir" || entries[0].Kind != "dir" || entries[1].Name != "out" || entries[1].Kind != "link" {
 		t.Errorf("%+v", entries)
 	}
-	if _, fe := snapshotLs("tank/media@s1", "out"); fe == nil {
+	if _, _, fe := snapshotLs("tank/media@s1", "out"); fe == nil {
 		t.Error("listing a link out of the snapshot was allowed")
 	}
-	if _, fe := snapshotLs("tank/media@s1", "../.."); fe == nil {
+	if _, _, fe := snapshotLs("tank/media@s1", "../.."); fe == nil {
 		t.Error("a path out of the snapshot was allowed")
 	}
-	if e, fe := snapshotLs("tank/media@s1", "dir"); fe != nil || len(e) != 2 {
-		t.Errorf("%+v %v", e, fe)
+	if e, _, fe := snapshotLs("tank/media@s1", "dir"); fe != nil || len(e) != 2 || e[1].Name != "sub" || e[1].Kind != "dataset" {
+		t.Errorf("a child dataset's mount point shows as such: %+v %v", e, fe)
+	}
+	if _, fe := planZfsSnapshotRestore([]byte(`{"snapshot":"tank/media@s1","path":"dir/sub"}`)); fe == nil {
+		t.Error("restoring a child dataset's empty mount point was accepted")
 	}
 }
 
@@ -105,9 +109,16 @@ func TestPlanSnapshotRestore(t *testing.T) {
 	if fe != nil {
 		t.Fatal(fe.Message)
 	}
-	if len(p.Steps) != 1 || p.Steps[0].Target != filepath.Join(mount, "dir", "photo (restored 2026-11-26 10-05).jpg") {
+	if len(p.Steps) != 1 || p.Steps[0].Target != filepath.Join(mount, "dir", "photo (restored <date> <time>).jpg") {
 		t.Errorf("%+v", p.Steps)
 	}
+	// Checked again a minute later at apply time, the plan is the same.
+	zfsNow = func() time.Time { return time.Date(2026, 11, 26, 10, 6, 0, 0, time.Local) }
+	p2, _ := planZfsSnapshotRestore([]byte(`{"snapshot":"tank/media@s1","path":"dir/photo.jpg"}`))
+	if p.fingerprint(nil) != p2.fingerprint(nil) {
+		t.Error("the plan changes with the clock: apply would always find it stale")
+	}
+	zfsNow = func() time.Time { return time.Date(2026, 11, 26, 10, 5, 0, 0, time.Local) }
 	if _, err := p.Steps[0].run(); err != nil {
 		t.Fatal(err)
 	}
@@ -118,8 +129,15 @@ func TestPlanSnapshotRestore(t *testing.T) {
 		t.Errorf("a temporary folder was left: %v", entries)
 	}
 	// Once restored, the same name exists: never overwritten.
-	if _, fe := planZfsSnapshotRestore([]byte(`{"snapshot":"tank/media@s1","path":"dir/photo.jpg"}`)); fe == nil {
-		t.Error("an existing restored copy would be overwritten")
+	if err := os.WriteFile(filepath.Join(mount, "dir", "photo (restored 2026-11-26 10-05).jpg"), []byte("mine"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	p, _ = planZfsSnapshotRestore([]byte(`{"snapshot":"tank/media@s1","path":"dir/photo.jpg"}`))
+	if _, err := p.Steps[0].run(); err == nil {
+		t.Error("an existing restored copy was overwritten")
+	}
+	if b, _ := os.ReadFile(filepath.Join(mount, "dir", "photo (restored 2026-11-26 10-05).jpg")); string(b) != "mine" {
+		t.Error("the existing copy changed")
 	}
 	for _, bad := range []string{`"out/passwd"`, `""`, `"../x"`, `"nothing"`} {
 		if _, fe := planZfsSnapshotRestore([]byte(`{"snapshot":"tank/media@s1","path":` + bad + `}`)); fe == nil {
@@ -175,11 +193,19 @@ func TestPlanZfsSnapshotRollback(t *testing.T) {
 }
 
 func TestPlanZfsSnapshotCreateAndDestroy(t *testing.T) {
-	stubSnapList(t, snapList)
+	ran := stubSnapList(t, snapList)
 	zfsNow = func() time.Time { return time.Date(2026, 11, 26, 10, 5, 7, 0, time.Local) }
 	p, fe := planZfsSnapshotCreate([]byte(`{"dataset":"tank/media"}`))
-	if fe != nil || strings.Join(p.Steps[0].Command, " ") != "zfs snapshot tank/media@hsi-manual-20261126-100507" {
-		t.Errorf("%+v %v", p, fe)
+	if fe != nil {
+		t.Fatal(fe.Message)
+	}
+	zfsNow = func() time.Time { return time.Date(2026, 11, 26, 10, 5, 9, 0, time.Local) }
+	p2, _ := planZfsSnapshotCreate([]byte(`{"dataset":"tank/media"}`))
+	if p.fingerprint(nil) != p2.fingerprint(nil) {
+		t.Error("the plan changes with the clock: apply would always find it stale")
+	}
+	if _, err := p.Steps[0].run(); err != nil || strings.Join(*ran, ";") != "zfs snapshot tank/media@hsi-manual-20261126-100509" {
+		t.Errorf("ran %v %v", *ran, err)
 	}
 	if _, fe := planZfsSnapshotCreate([]byte(`{"dataset":"tank/nope"}`)); fe == nil {
 		t.Error("a missing dataset was accepted")
@@ -208,8 +234,14 @@ func TestPlanZfsSnapshotRules(t *testing.T) {
 	if got := loadSnapRules(); len(got) != 1 || got[0].Keep != 7 {
 		t.Errorf("%+v", got)
 	}
+	// A saved rule of a dataset deleted since does not block saving the others.
+	_ = os.WriteFile(zfsSnapshotRulesPath, []byte(`[{"dataset":"tank/gone","every":"daily","keep":7}]`), 0o644)
+	if _, fe := planZfsSnapshotRules([]byte(`{"rules":[{"dataset":"tank/gone","every":"daily","keep":7},{"dataset":"tank/media","every":"hourly","keep":3}]}`)); fe != nil {
+		t.Errorf("a kept rule of a gone dataset blocked the save: %s", fe.Message)
+	}
 	for _, bad := range []string{
 		`[{"dataset":"tank/nope","every":"daily","keep":7}]`,
+		`[{"dataset":"tank/gone","every":"daily","keep":9}]`,
 		`[{"dataset":"tank/media","every":"yearly","keep":7}]`,
 		`[{"dataset":"tank/media","every":"daily","keep":0}]`,
 		`[{"dataset":"tank/media","every":"daily","keep":7},{"dataset":"tank/media","every":"daily","keep":3}]`,
@@ -249,5 +281,78 @@ func TestRunSnapshotRules(t *testing.T) {
 	runZfsSnapshotRules()
 	if len(*ran) != 0 {
 		t.Errorf("ran %v", *ran)
+	}
+}
+
+// A user of the destination folder swaps the temporary folder for one of
+// their own holding a link out, while root copies: the copy still lands
+// inside the folder HSI made, and nothing is written through the link.
+func TestRestoreSurvivesASwappedTemporaryFolder(t *testing.T) {
+	mount, _ := stubSnapHost(t)
+	outside := t.TempDir()
+	prevC, prevN := copyArgv, zfsNow
+	t.Cleanup(func() { copyArgv, zfsNow = prevC, prevN })
+	zfsNow = func() time.Time { return time.Date(2026, 11, 26, 10, 5, 0, 0, time.Local) }
+	real := copyArgv
+	copyArgv = func(dir string, argv []string) ([]byte, error) {
+		if argv[0] == "cp" {
+			ents, _ := os.ReadDir(filepath.Join(mount, "dir"))
+			for _, e := range ents {
+				if strings.HasPrefix(e.Name(), ".hsi-restore-") {
+					tmp := filepath.Join(mount, "dir", e.Name())
+					if err := os.Rename(tmp, filepath.Join(mount, "dir", "junk")); err != nil {
+						t.Fatal(err)
+					}
+					_ = os.Mkdir(tmp, 0o755)
+					_ = os.Symlink(outside, filepath.Join(tmp, "x"))
+				}
+			}
+		}
+		return real(dir, argv)
+	}
+	p, fe := planZfsSnapshotRestore([]byte(`{"snapshot":"tank/media@s1","path":"dir/photo.jpg"}`))
+	if fe != nil {
+		t.Fatal(fe.Message)
+	}
+	if _, err := p.Steps[0].run(); err != nil {
+		t.Fatal(err)
+	}
+	if ents, _ := os.ReadDir(outside); len(ents) != 0 {
+		t.Fatalf("root wrote through the link: %v", ents)
+	}
+	if b, err := os.ReadFile(filepath.Join(mount, "dir", "photo (restored 2026-11-26 10-05).jpg")); err != nil || string(b) != "x" {
+		t.Errorf("not restored where it belongs: %v", err)
+	}
+}
+
+func TestRestoreGoesOnInTheBackground(t *testing.T) {
+	mount, _ := stubSnapHost(t)
+	prevC, prevW := copyArgv, restoreWait
+	t.Cleanup(func() { copyArgv, restoreWait = prevC, prevW })
+	release := make(chan struct{})
+	real := copyArgv
+	copyArgv = func(dir string, argv []string) ([]byte, error) {
+		if argv[0] == "cp" {
+			<-release
+		}
+		return real(dir, argv)
+	}
+	restoreWait = 50 * time.Millisecond
+	p, _ := planZfsSnapshotRestore([]byte(`{"snapshot":"tank/media@s1","path":"dir"}`))
+	if detail, err := p.Steps[0].run(); err != nil || !strings.Contains(detail, "still copying") {
+		t.Fatalf("%q %v", detail, err)
+	}
+	if _, fe := planZfsSnapshotRestore([]byte(`{"snapshot":"tank/media@s1","path":"dir/photo.jpg"}`)); fe == nil {
+		t.Error("a second restore started while one copies")
+	}
+	close(release)
+	for i := 0; i < 100 && restoreBusy.Load(); i++ {
+		time.Sleep(20 * time.Millisecond)
+	}
+	if restoreBusy.Load() {
+		t.Fatal("the background copy never finished")
+	}
+	if ents, _ := os.ReadDir(mount); len(ents) < 3 {
+		t.Errorf("the folder was not restored: %v", ents)
 	}
 }
