@@ -61,7 +61,7 @@ const heading = computed(() => (props.mode === 'add' ? t('ui.storage.ZfsGrow.add
     <div class="p-5 space-y-3">
       <p v-if="!free.length" class="text-sm text-base-content/70">{{ t('ui.storage.ZfsCreate.noFreeDisk') }}</p>
       <label v-for="d in free" :key="d.name" class="flex items-center gap-2 text-sm">
-        <input :type="mode === 'attach' ? 'radio' : 'checkbox'" name="disk" :checked="picked.includes(d.name)" :class="mode === 'attach' ? 'radio radio-xs' : 'checkbox checkbox-xs'" @change="toggle(d.name)" />
+        <input :type="mode === 'attach' ? 'radio' : 'checkbox'" name="disk" :checked="picked.includes(d.name)" :class="mode === 'attach' ? 'radio radio-xs' : 'checkbox checkbox-xs'" @change="toggle(d.name)">
         <span class="font-mono">{{ d.name }}</span>
         <span class="text-xs text-base-content/70">{{ fmtBytes(d.size) }} · {{ d.model }}</span>
       </label>
