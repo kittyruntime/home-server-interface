@@ -28,7 +28,7 @@ func envOr(key, def string) string {
 	return def
 }
 
-var maintenanceTasks = []string{"smartShort", "smartLong", "raidCheck"}
+var maintenanceTasks = []string{"smartShort", "smartLong", "raidCheck", "zfsScrub"}
 
 type taskResult struct {
 	Device  string `json:"device"`
@@ -134,6 +134,8 @@ func (c maintenanceConfig) schedule(task string) taskSchedule {
 		return c.SmartShort
 	case "smartLong":
 		return c.SmartLong
+	case "zfsScrub":
+		return c.ZfsScrub
 	default:
 		return c.RaidCheck
 	}
@@ -265,6 +267,8 @@ var runMaintenanceTask = func(task string) []taskResult {
 		return runSmartTests("short")
 	case "smartLong":
 		return runSmartTests("long")
+	case "zfsScrub":
+		return runZfsScrubs()
 	default:
 		return runRaidChecks()
 	}
@@ -346,6 +350,15 @@ func runMaintenanceCLI() int {
 
 // ── NATS requests from the dashboard ─────────────────────────────────────────
 
+// refreshResults reads back what a run started: SMART self-tests from the
+// disks, scrubs from zpool status.
+func refreshResults(task string, results []taskResult) []taskResult {
+	if task == "zfsScrub" {
+		return refreshScrubResults(results)
+	}
+	return refreshSelfTests(results)
+}
+
 func handleMaintenanceGet(nc *nats.Conn, msg *nats.Msg) {
 	cfg := loadMaintenanceConfig()
 	state := loadMaintenanceState()
@@ -356,7 +369,7 @@ func handleMaintenanceGet(nc *nats.Conn, msg *nats.Msg) {
 			"schedule":  cfg.schedule(t),
 			"lastRun":   state[t].LastRun,
 			"postponed": state[t].Postponed,
-			"results":   refreshSelfTests(state[t].Results),
+			"results":   refreshResults(t, state[t].Results),
 			"nextRun":   cfg.schedule(t).nextRun(now),
 		}
 	}
