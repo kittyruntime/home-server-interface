@@ -103,6 +103,8 @@ const statusClass: Record<string, string> = {
   started: 'bg-info/10 text-info',
   running: 'bg-info/10 text-info',
   passed:  'bg-success/10 text-success',
+  canceled: 'bg-base-200 text-base-content/70',
+  unknown: 'bg-base-200 text-base-content/70',
   skipped: 'bg-base-200 text-base-content/70',
   error:   'bg-error/10 text-error',
   failed:  'bg-error/10 text-error',

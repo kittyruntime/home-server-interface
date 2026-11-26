@@ -32,7 +32,8 @@ const busy = computed(() => pool.value?.scan.state === 'running')
 const hasErrors = computed(() => {
   const walk = (vs: Array<{ read: number; write: number; checksum: number; children: any[] }>): boolean =>
     vs.some(v => v.read + v.write + v.checksum > 0 || walk(v.children))
-  return !!pool.value && (pool.value.scan.errors > 0 || walk(pool.value.vdevs))
+  // The disks' counters only: zpool clear resets them, not the last scan's summary.
+  return !!pool.value && walk(pool.value.vdevs)
 })
 let timer: ReturnType<typeof setInterval> | null = null
 watch(busy, b => {

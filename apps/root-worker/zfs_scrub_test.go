@@ -2,9 +2,12 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"strings"
 	"testing"
 )
+
+var errTest = errors.New("test failure")
 
 const twoPools = `  pool: tank
  state: ONLINE
@@ -151,5 +154,68 @@ func TestMaintenanceSetKeepsAMissingZfsScrub(t *testing.T) {
 	next := maintenanceConfig{SmartShort: prev.SmartShort, SmartLong: prev.SmartLong, RaidCheck: prev.RaidCheck}
 	if got := withKeptSchedules(next, prev); got.ZfsScrub != prev.ZfsScrub {
 		t.Errorf("a client that does not send zfsScrub keeps the saved one: %+v", got.ZfsScrub)
+	}
+}
+
+func TestRefreshScrubResultsByGuidAndTime(t *testing.T) {
+	canceled := strings.Replace(twoPools, "scrub repaired 0B in 00:24:01 with 0 errors on Sun Nov 22 00:24:01 2026", "scrub canceled on Wed Nov 25 11:00:00 2026", 1)
+	stubScrubHost(t, canceled)
+	started := "2026-11-25T10:00:00Z"
+	got := refreshScrubResults([]taskResult{
+		{Device: "tank", PoolGUID: "1", Status: "started", StartedAt: started},
+		{Device: "tank", PoolGUID: "999", Status: "started", StartedAt: started},
+	})
+	if got[0].Status != "canceled" {
+		t.Errorf("a stopped scrub reads canceled: %+v", got[0])
+	}
+	if got[1].Status != "unknown" {
+		t.Errorf("a pool with another guid (exported, another imported under its name) is unknown: %+v", got[1])
+	}
+	// A scrub that finished before this run started is an older one: still waiting.
+	stubScrubHost(t, twoPools)
+	got = refreshScrubResults([]taskResult{{Device: "tank", PoolGUID: "1", Status: "started", StartedAt: "2026-11-25T10:00:00Z"}})
+	if got[0].Status != "started" {
+		t.Errorf("an older finished scrub is not this run's: %+v", got[0])
+	}
+}
+
+func TestZfsScrubTaskSkipsWhenStatusFails(t *testing.T) {
+	ran := stubScrubHost(t, twoPools)
+	inner := hostOutput
+	hostOutput = func(name string, args ...string) ([]byte, error) {
+		if name == "zpool" && args[0] == "status" {
+			return nil, errTest
+		}
+		return inner(name, args...)
+	}
+	res := runZfsScrubs()
+	if len(*ran) != 0 || len(res) != 2 || res[0].Status != "skipped" || res[1].Status != "skipped" {
+		t.Errorf("without a readable status nothing starts: ran %v, results %+v", *ran, res)
+	}
+}
+
+func TestPlanZfsReplaceLeafKinds(t *testing.T) {
+	stubTankPool(t)
+	inner := hostOutput
+	hostOutput = func(name string, args ...string) ([]byte, error) {
+		if name == "zpool" && args[0] == "status" {
+			return []byte(poolStatus("tank", "\t  mirror-0 DEGRADED 0 0 0\n\t    /dev/sdf1 ONLINE 0 0 0\n\t    replacing-1 DEGRADED 0 0 0\n\t      /dev/sdg1 UNAVAIL 0 0 0\n\t      /dev/sdh1 ONLINE 0 0 0\n\tlogs\n\t  /dev/nvme0n1p1 ONLINE 0 0 0\n\tcache\n\t  /dev/nvme1n1p1 ONLINE 0 0 0\n")), nil
+		}
+		return inner(name, args...)
+	}
+	try := func(leaf string) *fsError {
+		_, fe := planZfsReplace([]byte(`{"pool":"tank","leaf":"` + leaf + `","disk":"sdh"}`))
+		return fe
+	}
+	if fe := try("/dev/nvme0n1p1"); fe != nil {
+		t.Errorf("a single-disk log can be replaced: %s", fe.Message)
+	}
+	for _, leaf := range []string{"/dev/sdg1", "/dev/sdh1", "/dev/nvme1n1p1"} {
+		if try(leaf) == nil {
+			t.Errorf("%s was accepted (in a replacement already, or a cache device)", leaf)
+		}
+	}
+	if fe := try("/dev/sdf1"); fe != nil {
+		t.Errorf("an ordinary disk can be replaced: %s", fe.Message)
 	}
 }

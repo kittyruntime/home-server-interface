@@ -38,6 +38,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Note for a rollback: saving the maintenance schedule from the previous release
+  drops the ZFS scrub schedule, which is off again after the next update.
+
 - ZFS: a missing disk shown by its guid keeps the path it had; dRAID vdevs count
   their parity in the redundancy; names ZFS reserves (mirror, raidz, spare...)
   are refused before the plan; a dataset holding snapshots, or whose folder is

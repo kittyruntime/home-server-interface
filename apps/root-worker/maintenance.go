@@ -38,6 +38,10 @@ type taskResult struct {
 	// LogCount: entries in the disk's self-test log when HSI started the test,
 	// so its outcome is the entry that comes after.
 	LogCount *int `json:"logCount,omitempty"`
+	// PoolGUID and StartedAt (ZFS scrubs): the pool by its guid, which a name
+	// reused by another pool does not change, and when the run started it.
+	PoolGUID  string `json:"poolGuid,omitempty"`
+	StartedAt string `json:"startedAt,omitempty"`
 }
 
 // smartSelfTestJSON is the part of `smartctl -j -c -l selftest` HSI reads.
@@ -365,11 +369,21 @@ func handleMaintenanceGet(nc *nats.Conn, msg *nats.Msg) {
 	now := time.Now()
 	tasks := map[string]any{}
 	for _, t := range maintenanceTasks {
+		results := refreshResults(t, state[t].Results)
+		// A scrub's outcome is kept once known: a later scrub must not show as this one.
+		if t == "zfsScrub" && settledChanged(state[t].Results, results) {
+			st := state[t]
+			st.Results = results
+			state[t] = st
+			if err := saveJSON(maintenanceStatePath, state); err != nil {
+				logger.Warn("maintenance: could not save the scrub results", "error", err.Error())
+			}
+		}
 		tasks[t] = map[string]any{
 			"schedule":  cfg.schedule(t),
 			"lastRun":   state[t].LastRun,
 			"postponed": state[t].Postponed,
-			"results":   refreshResults(t, state[t].Results),
+			"results":   results,
 			"nextRun":   cfg.schedule(t).nextRun(now),
 		}
 	}

@@ -3,6 +3,8 @@ package main
 import (
 	"encoding/json"
 	"strconv"
+	"strings"
+	"time"
 )
 
 // ZFS lot 3: the scheduled scrub, a maintenance task like the SMART tests and
@@ -16,6 +18,9 @@ func zpoolStatuses() map[string]zfsPoolStatus {
 	}
 	return parseZpoolStatus(string(out))
 }
+
+// zfsNow is the clock of the scrub task (tests swap it).
+var zfsNow = time.Now
 
 func runZfsScrubs() []taskResult {
 	if !zfsAvailable() {
@@ -32,41 +37,114 @@ func runZfsScrubs() []taskResult {
 	st := zpoolStatuses()
 	results := []taskResult{}
 	for _, p := range pools {
-		if s, ok := st[p.Name]; ok && s.Scan.State == "running" {
-			results = append(results, taskResult{Device: p.Name, Status: "skipped", Message: "a " + s.Scan.Kind + " is running"})
+		switch {
+		case st == nil:
+			// Whether a scrub or a resilver runs is unknown: start nothing, retry later.
+			results = append(results, taskResult{Device: p.Name, Status: "skipped", Message: "zpool status could not be read"})
+			continue
+		case p.State != "ONLINE" && p.State != "DEGRADED":
+			results = append(results, taskResult{Device: p.Name, Status: "skipped", Message: "the pool is " + p.State})
+			continue
+		case st[p.Name].Scan.State == "running":
+			results = append(results, taskResult{Device: p.Name, Status: "skipped", Message: "a " + st[p.Name].Scan.Kind + " is running"})
 			continue
 		}
+		started := zfsNow().UTC().Format(time.RFC3339)
 		if out, err := runArgv([]string{"zpool", "scrub", p.Name}); err != nil {
-			results = append(results, taskResult{Device: p.Name, Status: "error", Message: cmdErrMessage(out, err)})
+			results = append(results, taskResult{Device: p.Name, PoolGUID: p.GUID, Status: "error", Message: cmdErrMessage(out, err)})
 			continue
 		}
-		results = append(results, taskResult{Device: p.Name, Status: "started"})
+		results = append(results, taskResult{Device: p.Name, PoolGUID: p.GUID, StartedAt: started, Status: "started"})
 	}
 	return results
 }
 
-// refreshScrubResults reads back the scrubs a run started: running while the
-// pool still scrubs, then passed or failed (errors found).
+// zpoolTime reads a time as zpool status prints it (Wed Nov 25 10:00:00 2026).
+func zpoolTime(s string) (time.Time, bool) {
+	t, err := time.ParseInLocation("Mon Jan 2 15:04:05 2006", strings.Join(strings.Fields(s), " "), time.Local)
+	return t, err == nil
+}
+
+// refreshScrubResults reads back the scrubs a run started, by the pool's
+// guid: running, then passed, failed (errors found) or canceled; unknown when
+// the pool is gone. A scan that ended before the run started is an older one.
 func refreshScrubResults(results []taskResult) []taskResult {
+	pending := false
+	for _, r := range results {
+		pending = pending || r.Status == "started"
+	}
+	if !pending {
+		return results
+	}
+	byGUID := map[string]string{}
+	if out, err := hostOutput("zpool", "list", "-Hp", "-o", "name,guid,size,allocated,free,fragmentation,health"); err == nil {
+		for _, p := range parseZpoolList(string(out)) {
+			byGUID[p.GUID] = p.Name
+		}
+	}
 	st := zpoolStatuses()
 	out := make([]taskResult, len(results))
 	for i, r := range results {
 		out[i] = r
-		s, ok := st[r.Device]
-		if r.Status != "started" || !ok || s.Scan.Kind != "scrub" && s.Scan.Kind != "resilver" {
+		if r.Status != "started" || st == nil {
 			continue
 		}
+		name := r.Device
+		if r.PoolGUID != "" {
+			n, ok := byGUID[r.PoolGUID]
+			if !ok {
+				out[i].Status, out[i].Message = "unknown", "the pool is not imported now"
+				continue
+			}
+			name = n
+		}
+		s, ok := st[name]
+		if !ok {
+			continue
+		}
+		since, hasSince := time.Time{}, false
+		if r.StartedAt != "" {
+			since, hasSince = func() (time.Time, bool) { t, err := time.Parse(time.RFC3339, r.StartedAt); return t, err == nil }()
+		}
+		ended := func() bool {
+			if !hasSince {
+				return true
+			}
+			end, ok := zpoolTime(s.Scan.End)
+			return ok && !end.Before(since)
+		}
+		startedAfter := func() bool {
+			start, ok := zpoolTime(s.Scan.Start)
+			return hasSince && ok && !start.Before(since)
+		}
 		switch {
-		case s.Scan.State == "running":
+		case s.Scan.Kind == "scrub" && s.Scan.State == "running":
 			out[i].Status = "running"
-		case s.Scan.State == "finished" && s.Scan.Errors > 0:
+		case s.Scan.Kind == "resilver" && s.Scan.State == "running" && !startedAfter():
+			out[i].Status = "running" // a resilver from before the run (it was skipped)
+		case s.Scan.Kind == "resilver" && (startedAfter() || (s.Scan.State != "running" && ended())):
+			out[i].Status, out[i].Message = "canceled", "a resilver took its place"
+		case s.Scan.Kind == "scrub" && s.Scan.State == "canceled" && ended():
+			out[i].Status = "canceled"
+		case s.Scan.Kind == "scrub" && s.Scan.State == "finished" && ended() && s.Scan.Errors > 0:
 			out[i].Status = "failed"
 			out[i].Message = strconv.FormatInt(s.Scan.Errors, 10) + " errors found"
-		case s.Scan.State == "finished":
+		case s.Scan.Kind == "scrub" && s.Scan.State == "finished" && ended():
 			out[i].Status = "passed"
 		}
 	}
 	return out
+}
+
+// settledChanged: a result went from started to an outcome that will not
+// change (passed, failed, canceled, unknown).
+func settledChanged(before, after []taskResult) bool {
+	for i := range after {
+		if i < len(before) && before[i].Status == "started" && after[i].Status != "started" && after[i].Status != "running" {
+			return true
+		}
+	}
+	return false
 }
 
 // ── Plans: scrub now or stop, replace a disk, clear errors ───────────────────
@@ -133,16 +211,8 @@ func planZfsReplace(raw json.RawMessage) (*opPlan, *fsError) {
 	if fe != nil {
 		return nil, fe
 	}
-	found := false
-	for _, top := range pool.Vdevs {
-		for _, l := range leavesOf(top) {
-			if l.Name == req.Leaf && len(l.Children) == 0 && l.Type == "disk" {
-				found = true
-			}
-		}
-	}
-	if !found {
-		return nil, &fsError{Code: "ERR", Message: req.Leaf + " is not a disk of " + req.Pool}
+	if !replaceableLeaf(pool.Vdevs, req.Leaf) {
+		return nil, &fsError{Code: "ERR", Message: req.Leaf + " is not a disk of " + req.Pool + " that can be replaced (not a cache or spare device, not already being replaced)"}
 	}
 	d := req.Disk
 	if !reBlockDev.MatchString(d) {
@@ -167,4 +237,22 @@ func planZfsReplace(raw json.RawMessage) (*opPlan, *fsError) {
 		"Replace "+req.Leaf+" in "+req.Pool+" with /dev/"+d+", erasing it; ZFS then rebuilds its data from the other disks (resilver)",
 		[]string{"zpool", "replace", req.Pool, req.Leaf, target}), []string{"/dev/" + d})
 	return &opPlan{Op: "zfs.replace", Steps: []planStep{s}, Observed: obs}, nil
+}
+
+// replaceableLeaf: a data, log or special disk of the pool, not a cache or a
+// hot spare, and not inside a replacement or a spare already in use.
+func replaceableLeaf(vs []zfsVdev, leaf string) bool {
+	var walk func(vs []zfsVdev, parent string) bool
+	walk = func(vs []zfsVdev, parent string) bool {
+		for _, v := range vs {
+			if len(v.Children) == 0 && v.Name == leaf {
+				return (v.Type == "disk" || v.Type == "log" || v.Type == "special") && parent != "replacing" && parent != "spare"
+			}
+			if walk(v.Children, v.Type) {
+				return true
+			}
+		}
+		return false
+	}
+	return walk(vs, "")
 }

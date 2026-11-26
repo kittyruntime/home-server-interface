@@ -90,3 +90,14 @@ test('a disk row keeps the name zpool knows it by (to replace it)', async () => 
   ] }] })
   assert.deepEqual(rows.filter(r => r.kind === 'disk').map(r => [r.label, r.leaf]), [['sda', '/dev/disk/by-id/ata-A-part1'], ['1234512345', '1234512345']])
 })
+
+test('which disk rows can be replaced', async () => {
+  const { topology, canReplace } = await import('../src/components/storage/zfs-topology.ts')
+  const leaf = (name: string, type = 'disk') => ({ name, type, state: 'ONLINE', read: 0, write: 0, checksum: 0, children: [] })
+  const rows = topology({ name: 'tank', state: 'DEGRADED', vdevs: [
+    { name: 'mirror-0', type: 'mirror', state: 'DEGRADED', read: 0, write: 0, checksum: 0, children: [leaf('/dev/a1'), { name: 'replacing-1', type: 'replacing', state: 'DEGRADED', read: 0, write: 0, checksum: 0, children: [leaf('/dev/b1'), leaf('/dev/c1')] }] },
+    leaf('/dev/log1', 'log'), leaf('/dev/cache1', 'cache'), leaf('/dev/spare1', 'spare'),
+  ] })
+  const ok = rows.filter(canReplace).map(r => r.leaf)
+  assert.deepEqual(ok, ['/dev/a1', '/dev/log1'])
+})
