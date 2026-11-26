@@ -119,8 +119,9 @@ const navItems = computed(() => TAB_SECTIONS[tab.value].map(id => ({ id, label: 
   <div class="@container flex h-full flex-col">
     <!-- Manual activation: arrow keys move the focus; Enter or Space opens a tab
          (an open wizard asks before leaving, it must not ask on each arrow key). -->
-    <Tabs v-model="tab" activation-mode="manual" class="shrink-0 border-b border-base-300 px-4 pt-3 @2xl:px-6">
-      <TabsList class="max-w-full overflow-x-auto" :aria-label="t('ui.storage.StoragePanel.storageTabs')">
+    <!-- Underlined tabs on the header's own border, like the other panels' sections. -->
+    <Tabs v-model="tab" activation-mode="manual" class="shrink-0 border-b border-base-300 px-2 pt-1 @2xl:px-4">
+      <TabsList variant="border" class="-mb-px max-w-full overflow-x-auto" :aria-label="t('ui.storage.StoragePanel.storageTabs')">
         <TabsTrigger v-for="item in tabs" :key="item.id" :value="item.id">
           <span class="inline-flex items-center gap-1.5 whitespace-nowrap"><component :is="item.icon" class="size-4" aria-hidden="true" />{{ item.label }}</span>
         </TabsTrigger>
