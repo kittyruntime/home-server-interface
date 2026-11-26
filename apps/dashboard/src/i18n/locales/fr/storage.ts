@@ -133,6 +133,7 @@ export default {
     nothing: 'rien de prévu',
   },
   Zfs: {
+    guardNew: 'Protéger son nouveau dataset | Protéger ses {n} nouveaux datasets',
     container: 'canmount={cm} : un conteneur, pas un volume',
     unavailable: 'ZFS n’est plus disponible sur ce serveur (son module noyau ne s’est pas chargé, souvent après une mise à jour du noyau). Les pools surveillés ci-dessous sont absents jusqu’à son retour.',
     bootUnitsOff: 'Les services qui importent et montent les pools ZFS au démarrage sont désactivés : après un redémarrage, les pools restent démontés. Activez-les avec',
@@ -158,7 +159,7 @@ export default {
     notWatchedLine: 'HSI ne surveille pas ce pool : rien n’est bloqué s’il disparaît.',
     capacity: '{used} sur {size}',
     disks: '1 disque | {n} disques',
-    layout: { mirror: 'miroir', raidz1: 'raidz1', raidz2: 'raidz2', raidz3: 'raidz3', draid: 'dRAID', stripe: 'agrégat', mixed: 'mixte' },
+    layout: { mirror: 'miroir', raidz1: 'raidz1', raidz2: 'raidz2', raidz3: 'raidz3', draid: 'dRAID', draid1: 'dRAID1', draid2: 'dRAID2', draid3: 'dRAID3', stripe: 'agrégat', mixed: 'mixte' },
     state: { ONLINE: 'Sain', DEGRADED: 'Dégradé', FAULTED: 'En panne', UNAVAIL: 'Indisponible', OFFLINE: 'Hors ligne', REMOVED: 'Retiré', SUSPENDED: 'Suspendu' },
     errors: '{n} erreurs',
     noScrub: 'Jamais vérifié (scrub)',
@@ -193,6 +194,7 @@ export default {
     none: 'Tous les disques sont utilisés par une grappe, un groupe de volumes, un pool ou le système.',
   },
   ZfsCreate: {
+    reservedName: 'ZFS réserve ce nom (mirror, raidz, draid, spare, log, cache, special, dedup, c0...).',
     heading: 'Créer un pool',
     subtitle: 'Un pool ZFS sur des disques entiers libres. Leur contenu est effacé.',
     name: 'Nom',

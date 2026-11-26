@@ -134,6 +134,7 @@ export default {
     nothing: 'nothing scheduled',
   },
   Zfs: {
+    guardNew: 'Guard its new dataset | Guard its {n} new datasets',
     container: 'canmount={cm}: a container, not a volume',
     unavailable: 'ZFS is not available on this server any more (its kernel module did not load, often after a kernel update). The watched pools below are missing until it is back.',
     bootUnitsOff: 'The units that import and mount ZFS pools at boot are disabled: after a reboot the pools stay unmounted. Enable them with',
@@ -159,7 +160,7 @@ export default {
     notWatchedLine: 'HSI does not watch this pool: nothing is held if it goes missing.',
     capacity: '{used} of {size}',
     disks: '1 disk | {n} disks',
-    layout: { mirror: 'mirror', raidz1: 'raidz1', raidz2: 'raidz2', raidz3: 'raidz3', draid: 'dRAID', stripe: 'stripe', mixed: 'mixed' },
+    layout: { mirror: 'mirror', raidz1: 'raidz1', raidz2: 'raidz2', raidz3: 'raidz3', draid: 'dRAID', draid1: 'dRAID1', draid2: 'dRAID2', draid3: 'dRAID3', stripe: 'stripe', mixed: 'mixed' },
     state: { ONLINE: 'Healthy', DEGRADED: 'Degraded', FAULTED: 'Failed', UNAVAIL: 'Unavailable', OFFLINE: 'Offline', REMOVED: 'Removed', SUSPENDED: 'Suspended' },
     errors: '{n} errors',
     noScrub: 'Never scrubbed',
@@ -194,6 +195,7 @@ export default {
     none: 'Every disk is in use by an array, a volume group, a pool or the system.',
   },
   ZfsCreate: {
+    reservedName: 'ZFS reserves this name (mirror, raidz, draid, spare, log, cache, special, dedup, c0...).',
     heading: 'Create a pool',
     subtitle: 'A ZFS pool from free whole disks. Their contents are erased.',
     name: 'Name',

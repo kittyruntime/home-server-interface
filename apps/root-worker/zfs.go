@@ -140,8 +140,12 @@ func vdevType(name string) string {
 	if strings.HasPrefix(name, "raidz-") {
 		return "raidz1"
 	}
+	// draid2:4d:1c:6c-0: the digit after draid is the parity.
 	if strings.HasPrefix(name, "draid") {
-		return "draid"
+		if len(name) > 5 && name[5] >= '1' && name[5] <= '3' {
+			return "draid" + string(name[5])
+		}
+		return "draid1"
 	}
 	return "disk"
 }
@@ -179,6 +183,12 @@ func parseConfigTree(lines []string) (pool zfsVdev, ok bool) {
 		if len(f) > 1 {
 			n.State = f[1]
 		}
+		// A missing device is printed by its guid, then "was /dev/...".
+		for i := 2; i+1 < len(f); i++ {
+			if f[i] == "was" && strings.HasPrefix(f[i+1], "/") {
+				n.Path = f[i+1]
+			}
+		}
 		if len(f) >= 5 {
 			r, ok1 := humanCount(f[2])
 			w, ok2 := humanCount(f[3])
@@ -207,7 +217,7 @@ func parseConfigTree(lines []string) (pool zfsVdev, ok bool) {
 		if depth == 1 && class != "" {
 			n.Type = class
 		}
-		if n.Type == "disk" || (depth == 1 && class != "" && vdevType(n.Name) == "disk") {
+		if (n.Type == "disk" || (depth == 1 && class != "" && vdevType(n.Name) == "disk")) && n.Path == "" {
 			n.Path = n.Name
 		}
 		parent.Children = append(parent.Children, n)

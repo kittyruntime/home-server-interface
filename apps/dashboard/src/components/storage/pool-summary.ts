@@ -2,7 +2,7 @@
 // Pure, tested with node (tests/zfs-model.test.ts).
 
 type V = { type: string; children: V[] }
-const DATA = new Set(['mirror', 'raidz1', 'raidz2', 'raidz3', 'draid', 'disk'])
+const DATA = new Set(['mirror', 'raidz1', 'raidz2', 'raidz3', 'draid1', 'draid2', 'draid3', 'disk'])
 const leaves = (v: V): number => (v.children.length ? v.children.reduce((n, c) => n + leaves(c), 0) : 1)
 
 /** "mirror · 2 disks", "2 × raidz2 · 8 disks", "stripe · 3 disks". */
@@ -51,4 +51,19 @@ export function poolCapacity(layout: PoolLayout, sizes: number[]): { usable: num
       return { usable: enough ? (n - parity) * min : 0, tolerates: parity, enough }
     }
   }
+}
+
+/** Datasets of a watched pool that ZFS mounts by itself but the watched list
+ *  does not hold yet (made by hand since): Watch again guards them. */
+export function unguardedDatasets(
+  pool: string,
+  datasets: Array<{ name: string; pool: string; mountPoint: string; mounted: boolean; canMount?: string }>,
+  watched: Array<{ name: string; datasets: Array<{ name: string }> }>,
+): string[] {
+  const w = watched.find(x => x.name === pool)
+  if (!w) return []
+  const known = new Set(w.datasets.map(d => d.name))
+  return datasets
+    .filter(d => d.pool === pool && d.mounted && d.mountPoint.startsWith('/') && (d.canMount ?? 'on') === 'on' && !known.has(d.name))
+    .map(d => d.name)
 }

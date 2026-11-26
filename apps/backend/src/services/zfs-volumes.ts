@@ -41,7 +41,7 @@ export type ZfsInfo = {
 export const NO_ZFS: ZfsInfo = { available: false, complete: false, version: '', pools: [], datasets: [], watched: [] }
 
 // Vdevs that hold data: not logs, caches or spares.
-const DATA_TYPES = new Set(['mirror', 'raidz1', 'raidz2', 'raidz3', 'draid', 'disk'])
+const DATA_TYPES = new Set(['mirror', 'raidz1', 'raidz2', 'raidz3', 'draid1', 'draid2', 'draid3', 'disk'])
 const NEARLY_FULL = 0.9
 
 export function leavesOf(v: ZfsVdev): ZfsVdev[] {
@@ -58,6 +58,10 @@ export function poolRedundancy(p: ZfsPool): { level: Redundancy; tolerates: numb
       case 'raidz1': return { level: 'raidz1', tolerates: 1 }
       case 'raidz2': return { level: 'raidz2', tolerates: 2 }
       case 'raidz3': return { level: 'raidz3', tolerates: 3 }
+      // dRAID: distributed parity, as many failures as a raidz of the same parity.
+      case 'draid1': return { level: 'raidz1', tolerates: 1 }
+      case 'draid2': return { level: 'raidz2', tolerates: 2 }
+      case 'draid3': return { level: 'raidz3', tolerates: 3 }
       default: return { level: 'none', tolerates: 0 }
     }
   }

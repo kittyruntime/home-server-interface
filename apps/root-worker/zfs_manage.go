@@ -30,6 +30,13 @@ func zfsPoolNames() []string {
 	return names
 }
 
+var reReservedPool = regexp.MustCompile(`^(mirror|raidz|draid|spare|log|cache|special|dedup)|^c[0-9]`)
+
+// reservedPoolName: names zpool refuses (vdev keywords, and c<digit> device names).
+func reservedPoolName(name string) bool {
+	return reReservedPool.MatchString(name)
+}
+
 // watchAfter is the deferred step that watches a pool once it exists, with the
 // datasets it mounts.
 func watchAfter(name string) planStep {
@@ -62,8 +69,8 @@ func planZfsPoolCreate(raw json.RawMessage) (*opPlan, *fsError) {
 	if !zfsAvailable() {
 		return nil, &fsError{Code: "ENOTOOL", Message: "ZFS is not available on this server"}
 	}
-	if !reZpoolName.MatchString(req.Name) || systemTopLevel[req.Name] {
-		return nil, &fsError{Code: "ERR", Message: "invalid pool name: use letters, digits, - _ . : and not the name of a system folder"}
+	if !reZpoolName.MatchString(req.Name) || systemTopLevel[req.Name] || reservedPoolName(req.Name) {
+		return nil, &fsError{Code: "ERR", Message: "invalid pool name: use letters, digits, - _ . :, not the name of a system folder nor a name ZFS reserves (mirror, raidz, draid, spare, log, cache, special, dedup, c0...)"}
 	}
 	for _, n := range zfsPoolNames() {
 		if n == req.Name {
@@ -360,6 +367,9 @@ func planZfsDatasetCreate(raw json.RawMessage) (*opPlan, *fsError) {
 		if !mountPointAllowed(mp, pool, zfsMountTable(), filepath.EvalSymlinks) {
 			return nil, &fsError{Code: "ERR", Message: mp + " is outside the data folders or already in use"}
 		}
+		if hostExists(mp) && !hostDirEmpty(mp) {
+			return nil, &fsError{Code: "ERR", Message: mp + " is not empty: ZFS would not mount the new dataset there; choose another name"}
+		}
 	}
 	argv := []string{"zfs", "create"}
 	if req.Quota > 0 {
@@ -425,6 +435,15 @@ func planZfsDatasetDestroy(raw json.RawMessage) (*opPlan, *fsError) {
 	info := zfsSnapshot()
 	if findDataset(info.Datasets, req.Name) == nil {
 		return nil, &fsError{Code: "ENOENT", Message: req.Name + " does not exist"}
+	}
+	// Children of every kind: datasets, zvols and snapshots.
+	if out, err := hostOutput("zfs", "list", "-H", "-o", "name", "-t", "all", "-r", req.Name); err == nil {
+		for _, line := range strings.Split(string(out), "\n") {
+			n := strings.SplitN(line, "\t", 2)[0]
+			if strings.HasPrefix(n, req.Name+"/") || strings.HasPrefix(n, req.Name+"@") {
+				return nil, &fsError{Code: "ERR", Message: req.Name + " holds " + n + ": delete it first"}
+			}
+		}
 	}
 	for _, d := range info.Datasets {
 		if strings.HasPrefix(d.Name, req.Name+"/") {

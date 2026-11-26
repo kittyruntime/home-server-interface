@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { unguardedDatasets } from './pool-summary'
 import DatasetDialog from './DatasetDialog.vue'
 import { useI18n } from 'vue-i18n'
 import { computed, onMounted, ref, watch } from 'vue'
@@ -24,6 +25,8 @@ const datasets = computed(() => (zfs.value?.datasets ?? []).filter(d => d.pool =
 const watched = computed(() => !!(zfs.value && pool.value && isWatched(zfs.value, pool.value)))
 watch(() => props.name, () => { void loadZfs() })
 const datasetOpen = ref(false)
+// Datasets made by hand since the pool was watched: Watch again guards them too.
+const unguarded = computed(() => (zfs.value ? unguardedDatasets(props.name, zfs.value.datasets, zfs.value.watched) : []))
 
 async function destroyPool() {
   try {
@@ -67,6 +70,7 @@ async function run(op: 'zfs.watch' | 'zfs.unwatch') {
       <p class="mt-3 flex flex-wrap items-center gap-3 text-xs text-base-content/70">
         <span>{{ watched ? t('ui.storage.Zfs.watchedLine') : t('ui.storage.Zfs.notWatchedLine') }}</span>
         <Button v-if="watched" variant="outline" size="xs" @click="run('zfs.unwatch')">{{ t('ui.storage.Zfs.unwatch') }}</Button>
+        <Button v-if="watched && unguarded.length" variant="outline" size="xs" @click="run('zfs.watch')">{{ t('ui.storage.Zfs.guardNew', { n: unguarded.length }, unguarded.length) }}</Button>
         <Button variant="outline" size="xs" class="ml-auto" @click="datasetOpen = true">{{ t('ui.storage.ZfsDataset.newHeading') }}</Button>
         <Button variant="outline" size="xs" class="text-error" @click="destroyPool">{{ t('ui.storage.ZfsCreate.deletePool') }}</Button>
       </p>

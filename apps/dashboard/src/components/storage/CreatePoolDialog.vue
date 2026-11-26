@@ -31,6 +31,8 @@ const cap = computed(() => poolCapacity(layout.value, sizes.value))
 const nameError = computed(() => {
   if (!name.value) return ''
   if (!/^[A-Za-z][A-Za-z0-9_.:-]{0,63}$/.test(name.value) || SYSTEM.has(name.value)) return t('ui.storage.ZfsCreate.badName')
+  // Words zpool reserves for vdevs, and c<digit> device names.
+  if (/^(mirror|raidz|draid|spare|log|cache|special|dedup)|^c[0-9]/.test(name.value)) return t('ui.storage.ZfsCreate.reservedName')
   if (props.taken.includes(name.value)) return t('ui.storage.ZfsCreate.nameTaken')
   return ''
 })

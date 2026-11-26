@@ -332,3 +332,38 @@ func TestPlanZfsDatasetDestroy(t *testing.T) {
 		}
 	}
 }
+
+func TestPlanZfsPoolCreateRefusesReservedNames(t *testing.T) {
+	stubZfsHost(t)
+	for _, n := range []string{"mirror", "raidz", "raidz2", "draid1", "spare", "log", "cache", "special", "dedup", "c0", "c1t2"} {
+		if _, fe := planZfsPoolCreate([]byte(`{"name":"` + n + `","layout":"stripe","disks":["sdf"],"compression":"lz4"}`)); fe == nil {
+			t.Errorf("the reserved name %q was accepted", n)
+		}
+	}
+	if _, fe := planZfsPoolCreate([]byte(`{"name":"cats","layout":"stripe","disks":["sdf"],"compression":"lz4"}`)); fe != nil {
+		t.Errorf("an ordinary name starting with c was refused: %s", fe.Message)
+	}
+}
+
+func TestPlanZfsDatasetDestroySeesSnapshots(t *testing.T) {
+	stubTankPool(t)
+	inner := hostOutput
+	hostOutput = func(name string, args ...string) ([]byte, error) {
+		if name == "zfs" && args[0] == "list" && containsString(args, "all") {
+			return []byte("tank/docs\ntank/docs@monday\n"), nil
+		}
+		return inner(name, args...)
+	}
+	if _, fe := planZfsDatasetDestroy([]byte(`{"name":"tank/docs"}`)); fe == nil || !strings.Contains(fe.Message, "tank/docs@monday") {
+		t.Errorf("a dataset with a snapshot is refused at preview, naming it: %v", fe)
+	}
+}
+
+func TestPlanZfsDatasetCreateRefusesNonEmptyFolder(t *testing.T) {
+	stubTankPool(t)
+	hostExists = func(p string) bool { return p == "/srv/tank/photos" }
+	hostDirEmpty = func(string) bool { return false }
+	if _, fe := planZfsDatasetCreate([]byte(`{"name":"tank/photos"}`)); fe == nil {
+		t.Errorf("a dataset whose folder exists and is not empty was accepted")
+	}
+}

@@ -544,7 +544,9 @@ export const storageRouter = router({
 
   // Scheduled disk checks (SMART self-tests, RAID consistency checks). The
   // schedule is run by a systemd timer, independently of the backend.
-  maintenance: storageProcedure.query(async () => requestSync<{
+  // serverOffset: the server's clock (minutes, as getTimezoneOffset), so the
+  // dashboard's calendar puts each run on the day the server runs it.
+  maintenance: storageProcedure.query(async () => ({ serverOffset: new Date().getTimezoneOffset(), ...await requestSync<{
     timerInstalled: boolean
     tasks: Record<'smartShort' | 'smartLong' | 'raidCheck', {
       schedule: MaintenanceSchedule
@@ -554,7 +556,7 @@ export const storageRouter = router({
       postponed?: { at: string; reason: string } | null
       results: Array<{ device: string; serial?: string; status: 'started' | 'skipped' | 'error' | 'running' | 'passed' | 'failed'; message?: string }> | null
     }>
-  }>('root.sys.maintenance.get', {}, 10_000)),
+  }>('root.sys.maintenance.get', {}, 10_000) })),
 
   setMaintenance: storageProcedure
     .input(z.object({ smartShort: zMaintenanceSchedule, smartLong: zMaintenanceSchedule, raidCheck: zMaintenanceSchedule }))

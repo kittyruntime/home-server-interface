@@ -42,10 +42,13 @@ export const UPSTREAM = {
  *  of the LVM explanation older releases showed, so a closed one stays closed. */
 export const dismissKey = (id: string) => `${id}-intro-dismissed`
 
-/** Whether the intro card `id` was closed; storage that throws counts as not. */
-export function isDismissed(id: string, storage: Pick<Storage, 'getItem'>): boolean {
+/** Whether the intro card `id` was closed. The storage is passed as a getter
+ *  too: with site data blocked, merely reading `localStorage` throws. Either
+ *  failure counts as not closed. */
+export function isDismissed(id: string, storage: Pick<Storage, 'getItem'> | (() => Pick<Storage, 'getItem'>)): boolean {
   try {
-    return storage.getItem(dismissKey(id)) === '1'
+    const s = typeof storage === 'function' ? storage() : storage
+    return s.getItem(dismissKey(id)) === '1'
   } catch {
     return false
   }

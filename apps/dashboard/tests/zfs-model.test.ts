@@ -66,3 +66,18 @@ test('usable capacity and failures tolerated of a new pool', async () => {
   assert.deepEqual(poolCapacity('raidz3', [4 * T, 4 * T]), { usable: 0, tolerates: 3, enough: false })
   assert.equal(poolCapacity('mirror', [4 * T]).enough, false)
 })
+
+test('dRAID vdevs and datasets a watched pool does not guard yet', async () => {
+  const { layoutOf, unguardedDatasets } = await import('../src/components/storage/pool-summary.ts')
+  const d = { type: 'disk', children: [] }
+  assert.deepEqual(layoutOf([{ type: 'draid2', children: [d, d, d, d, d, d] }]), { kind: 'draid2', groups: 1, disks: 6 })
+  const datasets = [
+    { name: 'tank', pool: 'tank', mountPoint: '/srv/tank', mounted: true, canMount: 'on' },
+    { name: 'tank/new', pool: 'tank', mountPoint: '/srv/tank/new', mounted: true, canMount: 'on' },
+    { name: 'tank/vm', pool: 'tank', mountPoint: 'none', mounted: false, canMount: 'on' },
+    { name: 'other/x', pool: 'other', mountPoint: '/srv/other/x', mounted: true, canMount: 'on' },
+  ]
+  const watched = [{ name: 'tank', guid: '1', datasets: [{ name: 'tank', mountPoint: '/srv/tank' }] }]
+  assert.deepEqual(unguardedDatasets('tank', datasets, watched), ['tank/new'])
+  assert.deepEqual(unguardedDatasets('other', datasets, watched), [], 'a pool not watched has nothing to guard')
+})

@@ -36,3 +36,14 @@ test('the calendar has one entry per day, with every task of that day', () => {
   assert.deepEqual(cal.find(c => c.date.getDate() === 29)!.tasks.sort(), ['raidCheck', 'smartShort'])
   assert.deepEqual(cal[0]!.tasks, [])
 })
+
+test('slots follow the server clock, not the browser one', () => {
+  // A browser at UTC+0 looking at a server at UTC+2 (offset -120 as getTimezoneOffset gives it):
+  // the server's 02:00 is 00:00 UTC.
+  const from = new Date(Date.UTC(2026, 10, 25, 12))
+  const runs = occurrences(s({ every: 'daily', hour: 2 }), from, 2, -120)
+  assert.deepEqual(runs.map(d => d.toISOString()), ['2026-11-26T00:00:00.000Z'])
+  // A weekly Sunday 01:00 on a server at UTC-5 (offset 300) is Sunday 06:00 UTC.
+  const sun = occurrences(s({ every: 'weekly', weekday: 0, hour: 1 }), from, 7, 300)
+  assert.deepEqual(sun.map(d => d.toISOString()), ['2026-11-29T06:00:00.000Z'])
+})
