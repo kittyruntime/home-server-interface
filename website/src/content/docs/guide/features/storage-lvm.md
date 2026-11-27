@@ -1,6 +1,6 @@
 ---
 title: LVM volumes
-description: LVM and mdadm in Storage: arrays and volume groups in Pools, their volumes and mounts.
+description: 'LVM and mdadm in Storage: arrays and volume groups in Pools, their volumes and mounts.'
 sidebar:
   label: 'Storage: LVM'
   order: 1.2
