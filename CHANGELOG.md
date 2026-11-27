@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.97.1] - 2026-11-27
+
 ### Changed
 
 - The default Light and Dark themes are plain grays with a graphite signal
@@ -2575,7 +2577,8 @@ First stable release.
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.97.0...HEAD
+[Unreleased]: https://github.com/kittyruntime/home-server-interface/compare/v1.97.1...HEAD
+[1.97.1]: https://github.com/kittyruntime/home-server-interface/compare/v1.97.0...v1.97.1
 [1.97.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.96.0...v1.97.0
 [1.96.0]: https://github.com/kittyruntime/home-server-interface/compare/v1.95.1...v1.96.0
 [1.95.1]: https://github.com/kittyruntime/home-server-interface/compare/v1.95.0...v1.95.1
