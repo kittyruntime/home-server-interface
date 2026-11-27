@@ -531,7 +531,7 @@ export default {
   },
   PhysicalDisksSection: {
     usedBy: 'Utilisé par',
-    hardwareSubtitle: 'Les disques du serveur, côté matériel : identité, santé, température, et ce qui utilise chacun. Partitions, formatage et volumes sont dans les onglets LVM et ZFS.',
+    hardwareSubtitle: 'Les disques du serveur, côté matériel : identité, santé, température, et ce qui utilise chacun. Les disques que rien n’utilise se partitionnent et se formatent plus bas ; pools et volumes ont leurs propres sections.',
     filterByUsedBy: 'Filtrer selon ce qui utilise le disque',
     usedByAll: 'Tout usage',
     healthPassed: 'Sain',

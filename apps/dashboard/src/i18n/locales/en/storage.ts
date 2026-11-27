@@ -532,7 +532,7 @@ export default {
   },
   PhysicalDisksSection: {
     usedBy: 'Used by',
-    hardwareSubtitle: 'The server\'s disks as hardware: identity, health, temperature, and what uses each one. Partitions, formatting and volumes are in the LVM and ZFS tabs.',
+    hardwareSubtitle: 'The server\'s disks as hardware: identity, health, temperature, and what uses each one. Disks nothing uses can be partitioned and formatted below; pools and volumes have their own sections.',
     filterByUsedBy: 'Filter by what uses the disk',
     usedByAll: 'Any use',
     healthPassed: 'Healthy',

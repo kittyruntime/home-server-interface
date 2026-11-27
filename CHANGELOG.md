@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Storage is organized by function instead of by technology: Overview, Disks,
+  Pools, Volumes, Mounts, Snapshots and Maintenance. `mdadm`, LVM and ZFS are
+  types shown as badges, their own actions on each object's page. Pools lists
+  arrays, volume groups and ZFS pools together with what each sits on and holds;
+  creating one starts with its type, and one Import gathers every type found on
+  the disks. Disks gains partitioning and formatting of free disks; Volumes shows
+  every volume with its type and a type filter; Maintenance shows what is in
+  progress first; the new Overview sums up capacity, health and what needs
+  attention.
+
 ## [1.97.1] - 2026-11-27
 
 ### Changed
