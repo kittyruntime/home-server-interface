@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- The default Light and Dark themes are plain grays with a graphite signal
+  instead of warm grays with copper (an accent in Settings still colors it); the
+  active item of a menu is a soft gray in every theme; Storage's tabs are
+  underlined on the header's border instead of a boxed pill group.
+- Storage, finishing touches: the "How it works" cards read as one flow without
+  boxes inside the card (a rail on a phone); dialogs of the ZFS tab put their
+  title in the dialog's header instead of under an empty bar; on a phone the
+  datasets list keeps name, folder, size and actions readable, snapshot names
+  are shown in full above their date and actions, and schedule rules no longer
+  break across lines; a pool's root dataset keeps Edit aligned with the others;
+  a dataset's snapshot list shows that it opens.
+
 ### Fixed
 
 - ZFS: rolling a dataset back lists the newer bookmarks it deletes, and a newer

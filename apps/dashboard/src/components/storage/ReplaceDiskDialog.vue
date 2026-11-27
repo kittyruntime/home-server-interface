@@ -36,10 +36,12 @@ async function replace() {
 
 <template>
   <Modal :label="t('ui.storage.ZfsRepair.replaceHeading')" panel-class="w-full max-w-md" @close="emit('close')">
-    <div class="px-5 py-4 border-b border-base-300">
-      <h3 class="font-semibold text-base-content">{{ t('ui.storage.ZfsRepair.replaceHeading') }}</h3>
-      <p class="mt-0.5 break-all text-xs text-base-content/70">{{ t('ui.storage.ZfsRepair.replaceSubtitle', { leaf, pool }) }}</p>
-    </div>
+    <template #header>
+      <div class="min-w-0">
+        <h3 class="text-sm font-semibold text-base-content">{{ t('ui.storage.ZfsRepair.replaceHeading') }}</h3>
+        <p class="mt-0.5 break-all text-xs text-base-content/70">{{ t('ui.storage.ZfsRepair.replaceSubtitle', { leaf, pool }) }}</p>
+      </div>
+    </template>
     <div class="p-5 space-y-3">
       <p v-if="!free.length" class="text-sm text-base-content/70">{{ t('ui.storage.ZfsCreate.noFreeDisk') }}</p>
       <label v-for="d in free" :key="d.name" class="flex items-center gap-2 text-sm">

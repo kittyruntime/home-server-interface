@@ -9,24 +9,24 @@
    differs by its neutrals and its signal color. Light and dark keep their
    names, so Auto and every stored choice still resolve; lib/appearance.ts maps
    the retired stock names to the closest theme here.
-   Light and Dark: graphite neutrals leaning slightly warm, copper signal. */
+   Light and Dark: plain grays, graphite signal (an accent can color it). */
 @plugin "daisyui/theme" {
   name: "light";
   default: true;
   prefersdark: false;
   color-scheme: light;
-  --color-base-100: oklch(98.9% 0.003 80);
-  --color-base-200: oklch(96.4% 0.005 80);
-  --color-base-300: oklch(91.6% 0.007 75);
-  --color-base-content: oklch(23.5% 0.01 60);
-  --color-primary: oklch(53% 0.145 48);
-  --color-primary-content: oklch(98.5% 0.008 75);
+  --color-base-100: oklch(99.6% 0 0);
+  --color-base-200: oklch(97.2% 0 0);
+  --color-base-300: oklch(91.5% 0 0);
+  --color-base-content: oklch(21% 0 0);
+  --color-primary: oklch(25% 0 0);
+  --color-primary-content: oklch(98.5% 0 0);
   --color-secondary: oklch(47% 0.06 235);
   --color-secondary-content: oklch(98% 0.005 235);
   --color-accent: oklch(50% 0.075 190);
   --color-accent-content: oklch(98% 0.006 190);
-  --color-neutral: oklch(27% 0.01 60);
-  --color-neutral-content: oklch(96% 0.005 80);
+  --color-neutral: oklch(27% 0 0);
+  --color-neutral-content: oklch(97% 0 0);
   --color-info: oklch(52% 0.13 245);
   --color-info-content: oklch(98% 0.008 245);
   --color-success: oklch(51% 0.12 155);
@@ -50,18 +50,18 @@
   default: false;
   prefersdark: true;
   color-scheme: dark;
-  --color-base-100: oklch(20.5% 0.006 65);
-  --color-base-200: oklch(17.6% 0.006 65);
-  --color-base-300: oklch(28.5% 0.008 65);
-  --color-base-content: oklch(92.5% 0.008 80);
-  --color-primary: oklch(74% 0.135 55);
-  --color-primary-content: oklch(21% 0.035 50);
+  --color-base-100: oklch(23.5% 0 0);
+  --color-base-200: oklch(20.5% 0 0);
+  --color-base-300: oklch(31.5% 0 0);
+  --color-base-content: oklch(93% 0 0);
+  --color-primary: oklch(93% 0 0);
+  --color-primary-content: oklch(21% 0 0);
   --color-secondary: oklch(74% 0.065 230);
   --color-secondary-content: oklch(20% 0.02 230);
   --color-accent: oklch(76% 0.075 185);
   --color-accent-content: oklch(20% 0.02 185);
-  --color-neutral: oklch(30% 0.008 65);
-  --color-neutral-content: oklch(92% 0.008 80);
+  --color-neutral: oklch(32% 0 0);
+  --color-neutral-content: oklch(93% 0 0);
   --color-info: oklch(73% 0.11 240);
   --color-info-content: oklch(20% 0.03 240);
   --color-success: oklch(74% 0.13 155);
@@ -784,4 +784,11 @@ html, body, #app {
       --btn-color: color-mix(in oklch, var(--color-primary) 50%, oklch(from var(--color-base-content) l none none));
     }
   }
+}
+
+/* The active item of a menu: a soft gray in every theme, not the neutral fill
+   (black on light themes) daisyUI uses by default. */
+.menu {
+  --menu-active-bg: var(--color-base-300);
+  --menu-active-fg: var(--color-base-content);
 }

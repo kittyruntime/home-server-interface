@@ -13,6 +13,7 @@ import { fmtBytes } from './store'
 import { loadZfs, zfs } from './zfs-data'
 import { byDataset, snapKind, type Snap } from './snapshot-model'
 import SnapshotBrowser from './SnapshotBrowser.vue'
+import { ChevronRightIcon } from '@lucide/vue'
 
 // Snapshots of the ZFS datasets: taken by hand or on a schedule (the hourly
 // maintenance timer), browsed to restore a file, rolled back, deleted.
@@ -96,19 +97,22 @@ const KIND_CLASS: Record<string, string> = { manual: 'bg-base-200 text-base-cont
         <h3 class="text-sm font-semibold text-base-content">{{ t('ui.storage.ZfsSnap.rulesHeading') }}</h3>
         <p class="mt-0.5 text-xs text-base-content/70">{{ t('ui.storage.ZfsSnap.rulesHint') }}</p>
         <p v-if="!draft.length" class="mt-3 text-sm text-base-content/70">{{ t('ui.storage.ZfsSnap.noRules') }}</p>
+        <!-- One rule a line when wide; narrow, the dataset gets its own line. -->
         <div v-for="(r, i) in draft" :key="i" class="mt-3 flex flex-wrap items-center gap-2 text-sm">
-          <select v-model="r.dataset" class="select select-sm w-auto min-w-0 font-mono" :aria-label="t('ui.storage.ZfsSnap.dataset')">
+          <select v-model="r.dataset" class="select select-sm min-w-0 basis-full font-mono @xl/content:basis-auto @xl/content:w-auto" :aria-label="t('ui.storage.ZfsSnap.dataset')">
             <option v-for="n in datasets" :key="n" :value="n">{{ n }}</option>
             <option v-if="r.dataset && !datasets.includes(r.dataset)" :value="r.dataset">{{ t('ui.storage.ZfsSnap.gone', { name: r.dataset }) }}</option>
           </select>
-          <select v-model="r.every" class="select select-sm w-auto" :aria-label="t('ui.storage.ZfsSnap.every')" @change="r.keep = KEEP[r.every]">
-            <option v-for="e in EVERY" :key="e" :value="e">{{ t(`ui.storage.ZfsSnap.everyOpt.${e}`) }}</option>
-          </select>
-          <label class="flex items-center gap-1.5">
-            {{ t('ui.storage.ZfsSnap.keep') }}
-            <input v-model.number="r.keep" type="number" min="1" max="1000" class="input input-sm w-20 tabular-nums">
-          </label>
-          <Button variant="ghost" size="xs" @click="draft.splice(i, 1)">{{ t('ui.storage.ZfsSnap.removeRule') }}</Button>
+          <span class="flex flex-1 flex-nowrap items-center gap-2 @xl/content:flex-none">
+            <select v-model="r.every" class="select select-sm w-auto" :aria-label="t('ui.storage.ZfsSnap.every')" @change="r.keep = KEEP[r.every]">
+              <option v-for="e in EVERY" :key="e" :value="e">{{ t(`ui.storage.ZfsSnap.everyOpt.${e}`) }}</option>
+            </select>
+            <label class="flex items-center gap-1.5 whitespace-nowrap">
+              {{ t('ui.storage.ZfsSnap.keep') }}
+              <input v-model.number="r.keep" type="number" min="1" max="1000" class="input input-sm w-16 tabular-nums">
+            </label>
+            <Button variant="ghost" size="xs" class="ml-auto @xl/content:ml-0" @click="draft.splice(i, 1)">{{ t('ui.storage.ZfsSnap.removeRule') }}</Button>
+          </span>
         </div>
         <div class="mt-3 flex flex-wrap gap-2">
           <Button variant="outline" size="xs" @click="addRule">{{ t('ui.storage.ZfsSnap.addRule') }}</Button>
@@ -118,20 +122,24 @@ const KIND_CLASS: Record<string, string> = { manual: 'bg-base-200 text-base-cont
 
       <Card v-for="g in groups" :key="g.dataset" class="mb-3 block gap-0 py-0 shadow-none">
         <div class="flex flex-wrap items-center gap-3 p-4">
-          <button type="button" class="min-w-0 flex-1 text-left" :aria-expanded="!!open[g.dataset]" @click="open[g.dataset] = !open[g.dataset]">
-            <span class="font-mono text-sm font-semibold text-base-content">{{ g.dataset }}</span>
-            <span class="ml-2 text-xs text-base-content/70">{{ t('ui.storage.ZfsSnap.count', { n: g.snaps.length }, g.snaps.length) }}<template v-if="g.used"> · {{ t('ui.storage.ZfsSnap.holding', { size: fmtBytes(g.used) }) }}</template></span>
+          <button type="button" class="flex min-w-0 flex-1 items-center gap-2 text-left" :aria-expanded="!!open[g.dataset]" @click="open[g.dataset] = !open[g.dataset]">
+            <ChevronRightIcon class="size-4 shrink-0 text-base-content/60 transition-transform" :class="open[g.dataset] && 'rotate-90'" aria-hidden="true" />
+            <span class="flex min-w-0 flex-wrap items-baseline gap-x-2">
+              <span class="break-all font-mono text-sm font-semibold text-base-content">{{ g.dataset }}</span>
+              <span class="text-xs text-base-content/70">{{ t('ui.storage.ZfsSnap.count', { n: g.snaps.length }, g.snaps.length) }}<template v-if="g.used"> · {{ t('ui.storage.ZfsSnap.holding', { size: fmtBytes(g.used) }) }}</template></span>
+            </span>
           </button>
           <Button variant="outline" size="xs" @click="take(g.dataset)">{{ t('ui.storage.ZfsSnap.take') }}</Button>
         </div>
         <ul v-if="open[g.dataset] && g.snaps.length" class="border-t border-base-300">
           <li v-for="s in g.snaps" :key="s.name" class="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2 text-sm">
-            <span class="min-w-0 flex-1 truncate font-mono" :title="s.short">{{ s.short }}</span>
+            <!-- Narrow: the name on its own line, then what and when, then the actions. -->
+            <span class="min-w-0 basis-full truncate font-mono @3xl/content:basis-auto @3xl/content:flex-1" :title="s.short">{{ s.short }}</span>
             <span class="rounded-sm px-1.5 py-0.5 text-2xs font-semibold uppercase" :class="KIND_CLASS[snapKind(s.short)] ?? 'bg-engine-zfs/15 text-base-content'">{{ t(`ui.storage.ZfsSnap.kind.${snapKind(s.short)}`) }}</span>
             <span class="text-xs text-base-content/70">{{ formatDateTime(s.created * 1000) }}</span>
-            <span class="w-20 text-right text-xs text-base-content/70 tabular-nums">{{ fmtBytes(s.used) }}</span>
+            <span class="text-xs text-base-content/70 tabular-nums @3xl/content:w-20 @3xl/content:text-right">{{ fmtBytes(s.used) }}</span>
             <span v-if="!manageable(s)" class="text-xs text-base-content/70">{{ t('ui.storage.ZfsSnap.unmanageable') }}</span>
-            <span v-else class="flex gap-1">
+            <span v-else class="ml-auto flex gap-1 @3xl/content:ml-0">
               <Button variant="ghost" size="xs" @click="browsing = s.name">{{ t('ui.storage.ZfsSnap.browse') }}</Button>
               <Button variant="ghost" size="xs" @click="rollback(s)">{{ t('ui.storage.ZfsSnap.rollback') }}</Button>
               <Button variant="ghost" size="xs" class="text-error" @click="destroy(s)">{{ t('ui.storage.ZfsSnap.delete') }}</Button>

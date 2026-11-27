@@ -50,14 +50,16 @@ const heading = computed(() => (props.mode === 'add' ? t('ui.storage.ZfsGrow.add
 
 <template>
   <Modal :label="heading" panel-class="w-full max-w-md" @close="emit('close')">
-    <div class="px-5 py-4 border-b border-base-300">
-      <h3 class="font-semibold text-base-content">{{ heading }}</h3>
-      <p class="mt-0.5 text-xs text-base-content/70">
-        <template v-if="mode === 'attach'">{{ vdev?.startsWith('mirror') ? t('ui.storage.ZfsGrow.attachMirrorHint') : t('ui.storage.ZfsGrow.attachRaidzHint') }}</template>
-        <template v-else-if="need === 0">{{ t('ui.storage.ZfsGrow.addStripeHint') }}</template>
-        <template v-else>{{ t('ui.storage.ZfsGrow.addHint', { layout, n: need }) }}</template>
-      </p>
-    </div>
+    <template #header>
+      <div class="min-w-0">
+        <h3 class="text-sm font-semibold text-base-content">{{ heading }}</h3>
+        <p class="mt-0.5 text-xs text-base-content/70">
+          <template v-if="mode === 'attach'">{{ vdev?.startsWith('mirror') ? t('ui.storage.ZfsGrow.attachMirrorHint') : t('ui.storage.ZfsGrow.attachRaidzHint') }}</template>
+          <template v-else-if="need === 0">{{ t('ui.storage.ZfsGrow.addStripeHint') }}</template>
+          <template v-else>{{ t('ui.storage.ZfsGrow.addHint', { layout, n: need }) }}</template>
+        </p>
+      </div>
+    </template>
     <div class="p-5 space-y-3">
       <p v-if="!free.length" class="text-sm text-base-content/70">{{ t('ui.storage.ZfsCreate.noFreeDisk') }}</p>
       <label v-for="d in free" :key="d.name" class="flex items-center gap-2 text-sm">

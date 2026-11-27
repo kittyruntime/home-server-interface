@@ -49,10 +49,12 @@ async function submit() {
 
 <template>
   <Modal :label="mode === 'create' ? t('ui.storage.ZfsDataset.newHeading') : t('ui.storage.ZfsDataset.editHeading', { name: dataset?.name })" panel-class="w-full max-w-md" @close="emit('close')">
-    <div class="px-5 py-4 border-b border-base-300">
-      <h3 class="font-semibold text-base-content">{{ mode === 'create' ? t('ui.storage.ZfsDataset.newHeading') : t('ui.storage.ZfsDataset.editHeading', { name: dataset?.name }) }}</h3>
-      <p class="mt-0.5 text-xs text-base-content/70">{{ t('ui.storage.ZfsDataset.subtitle') }}</p>
-    </div>
+    <template #header>
+      <div class="min-w-0">
+        <h3 class="text-sm font-semibold text-base-content">{{ mode === 'create' ? t('ui.storage.ZfsDataset.newHeading') : t('ui.storage.ZfsDataset.editHeading', { name: dataset?.name }) }}</h3>
+        <p class="mt-0.5 text-xs text-base-content/70">{{ t('ui.storage.ZfsDataset.subtitle') }}</p>
+      </div>
+    </template>
     <div class="p-5 space-y-4">
       <template v-if="mode === 'create'">
         <label class="block">
