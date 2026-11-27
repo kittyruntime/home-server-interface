@@ -26,7 +26,7 @@ type Dev = { name: string; size: number }
 type PV = { name: string; vgName: string }
 type VG = { name: string; size: number; free: number; lvCount: number }
 type Vdev = { name: string; type: string; disk?: string; children: Vdev[] }
-type Pool = { name: string; state: string; size: number; alloc: number; vdevs: Vdev[]; scan: { state: string; percent?: number } }
+type Pool = { name: string; state: string; size: number; alloc: number; vdevs: Vdev[]; scan: { state: string; percent?: number }; expand?: { state: string; pct?: number } }
 
 const bare = (d: string) => d.replace(/^\/dev\//, '')
 const DATA_VDEV = (t: string) => !['log', 'cache', 'spare', 'special', 'dedup', 'logs', 'spares'].includes(t)
@@ -55,11 +55,14 @@ export function poolRows(o: { raids: Raid[]; devices: Dev[]; pvs: PV[]; vgs: VG[
     on: o.pvs.filter(p => p.vgName === v.name).map(p => bare(p.name)), holds: { kind: 'volumes', n: v.lvCount }, location: { kind: 'vg', name: v.name },
   }))
   const zfs: PoolRow[] = o.pools.map(p => {
-    const running = p.scan.state === 'running'
+    // A scrub or resilver, or a raidz being widened (OpenZFS 2.3+).
+    const widening = p.expand?.state === 'running'
+    const running = p.scan.state === 'running' || widening
+    const percent = widening ? p.expand!.pct : p.scan.percent
     const health: PoolHealth = ['FAULTED', 'UNAVAIL', 'SUSPENDED'].includes(p.state) ? 'failed' : p.state !== 'ONLINE' ? 'degraded' : running ? 'rebuilding' : 'ok'
     return {
       type: 'zfs', name: p.name, layout: zfsLayout(p.vdevs), size: p.size, used: p.alloc, health,
-      ...(running && p.scan.percent != null ? { progress: Math.round(p.scan.percent) } : {}),
+      ...(running && percent != null ? { progress: Math.round(percent) } : {}),
       on: leafDisks(p.vdevs.filter(v => DATA_VDEV(v.type))), holds: { kind: 'datasets', n: o.datasets.filter(d => d.pool === p.name).length },
       location: { kind: 'pool', name: p.name },
     }
@@ -79,16 +82,27 @@ export function volumeType(v: { engine?: string; stack: Array<{ kind: string }> 
 export function storageFacts(o: {
   disks: Array<{ health: string }>
   rows: PoolRow[]
-  volumes: Array<{ state: string; space?: { total: number; used: number }; issues: unknown[] }>
+  volumes: Array<{ state: string; engine?: string; space?: { total: number; used: number }; issues: unknown[] }>
 }) {
   const mounted = o.volumes.filter(v => v.state === 'mounted')
+  // ZFS datasets share their pool's free space: the pools count once each,
+  // the other volumes by their own filesystem.
+  const zfs = o.rows.filter(r => r.type === 'zfs')
+  const own = mounted.filter(v => v.engine !== 'zfs')
+  const checked = o.disks.filter(d => d.health !== 'unknown')
   return {
     disks: o.disks.length,
-    healthyDisks: o.disks.filter(d => d.health === 'ok').length,
+    checkedDisks: checked.length,
+    healthyDisks: checked.filter(d => d.health === 'ok').length,
+    /** Not read yet: asleep (never woken for this) or SMART not available. */
+    uncheckedDisks: o.disks.length - checked.length,
     pools: o.rows.length,
     volumes: o.volumes.length,
     mounted: mounted.length,
-    capacity: mounted.reduce((c, v) => ({ total: c.total + (v.space?.total ?? 0), used: c.used + (v.space?.used ?? 0) }), { total: 0, used: 0 }),
+    capacity: [
+      ...own.map(v => ({ total: v.space?.total ?? 0, used: v.space?.used ?? 0 })),
+      ...zfs.map(r => ({ total: r.size, used: r.used ?? 0 })),
+    ].reduce((c, x) => ({ total: c.total + x.total, used: c.used + x.used }), { total: 0, used: 0 }),
     running: o.rows.filter(r => r.progress != null),
     troubled: o.rows.filter(r => r.health === 'degraded' || r.health === 'failed'),
   }

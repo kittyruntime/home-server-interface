@@ -19,9 +19,10 @@ const { t } = useI18n()
 const { loading, raids, devices, lvmPVs, lvmVGs } = useStorageData()
 type Overview = Awaited<ReturnType<typeof trpc.storage.volumes.overview.query>>
 const overview = ref<Overview | null>(null)
+const failed = ref('')
 onMounted(async () => {
   void loadZfs()
-  try { overview.value = await trpc.storage.volumes.overview.query() } catch { overview.value = null }
+  try { overview.value = await trpc.storage.volumes.overview.query() } catch (e) { failed.value = (e as Error).message || 'error' }
 })
 
 // Disk health as the Disks section reads it (disks in standby are not woken).
@@ -40,7 +41,19 @@ const rows = computed(() => poolRows({
 }))
 const facts = computed(() => storageFacts({ disks: diskHealth.value, rows: rows.value, volumes: overview.value?.volumes ?? [] }))
 const sickDisks = computed(() => diskHealth.value.filter(d => d.health === 'warning' || d.health === 'failed'))
-const volumeIssues = computed(() => (overview.value?.volumes ?? []).flatMap(v => v.issues.map(i => ({ id: v.id, name: v.name, text: i.text }))))
+// A pool's trouble is said once, on the pool: its volumes repeat it (each
+// dataset of a degraded pool, each volume of a rebuilding array).
+const volumeIssues = computed(() => {
+  const named = new Set([...facts.value.troubled, ...facts.value.running].map(r => r.name))
+  const seen = new Set<string>()
+  return (overview.value?.volumes ?? []).flatMap(v => {
+    const onPool = v.stack.some(l => (l.kind === 'pool' || l.kind === 'array') && named.has(l.name))
+    return v.issues
+      .filter(i => !(onPool && (i.kind === 'degraded' || i.kind === 'rebuilding')))
+      .filter(i => !seen.has(i.text) && !!seen.add(i.text))
+      .map(i => ({ id: v.id, name: v.name, text: i.text }))
+  })
+})
 const pct = (used: number, total: number) => (total ? Math.round((used / total) * 100) : 0)
 const sized = computed(() => rows.value.filter(r => r.used != null && r.size))
 
@@ -59,6 +72,7 @@ const barClass = (r: PoolRow) => (r.health === 'ok' ? 'bg-base-content/70' : 'bg
       <h2 class="text-lg font-semibold text-base-content">{{ t('ui.storage.Overview.heading') }}</h2>
       <p class="mt-0.5 text-sm text-base-content/70">{{ t('ui.storage.Overview.subtitle') }}</p>
     </div>
+    <p v-if="failed" role="alert" class="status-text mb-4 text-error"><span class="status-tag">[ERR]</span> {{ t('ui.storage.Overview.failed', { error: failed }) }}</p>
     <LoadingState v-if="loading && !devices.length" variant="block" />
     <template v-else>
       <div class="grid gap-3 @3xl/content:grid-cols-3">
@@ -70,8 +84,8 @@ const barClass = (r: PoolRow) => (r.health === 'ok' ? 'bg-base-content/70' : 'bg
         </Card>
         <Card class="block gap-0 py-0 shadow-none p-4">
           <p class="text-xs text-base-content/70">{{ t('ui.storage.Overview.health') }}</p>
-          <p class="mt-1 font-figure text-2xl font-bold tabular-nums text-base-content">{{ facts.healthyDisks }} / {{ facts.disks }}</p>
-          <p class="mt-1 text-xs text-base-content/70">{{ t('ui.storage.Overview.healthyDisks', facts.healthyDisks) }}</p>
+          <p class="mt-1 font-figure text-2xl font-bold tabular-nums text-base-content">{{ facts.healthyDisks }} / {{ facts.checkedDisks }}</p>
+          <p class="mt-1 text-xs text-base-content/70">{{ t('ui.storage.Overview.healthyDisks', facts.healthyDisks) }}<template v-if="facts.uncheckedDisks"> · {{ t('ui.storage.Overview.unchecked', { n: facts.uncheckedDisks }, facts.uncheckedDisks) }}</template></p>
           <ul v-if="sickDisks.length" class="mt-2 space-y-0.5 text-xs">
             <li v-for="d in sickDisks" :key="d.name" :class="d.health === 'failed' ? 'text-error' : 'text-warning'">
               <button type="button" class="hover:underline" @click="emit('navigate', { kind: 'disk', name: d.name })"><span class="font-mono">{{ d.name }}</span> · {{ t(`ui.storage.Overview.disk.${d.health}`) }}</button>
@@ -134,7 +148,7 @@ const barClass = (r: PoolRow) => (r.health === 'ok' ? 'bg-base-content/70' : 'bg
             <button type="button" class="btn btn-ghost btn-xs" @click="emit('navigate', { kind: 'volume', id: v.id })">{{ t('ui.storage.Overview.see') }}</button>
           </li>
         </ul>
-        <p v-else class="flex items-center gap-2 px-4 py-3 text-sm text-success"><CircleCheckIcon class="size-4" aria-hidden="true" />{{ t('ui.storage.Overview.allWell') }}</p>
+        <p v-else-if="!failed" class="flex items-center gap-2 px-4 py-3 text-sm text-success"><CircleCheckIcon class="size-4" aria-hidden="true" />{{ t('ui.storage.Overview.allWell') }}</p>
       </Card>
     </template>
   </div>

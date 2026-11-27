@@ -59,12 +59,9 @@ function focusOn(target: StorageSection | StorageLocation) {
 }
 onMounted(() => { void loadZfs() })
 
-// Free disks picked in Disks, handed to the RAID or LVM create wizard in Pools.
-const preselect = ref<{ kind: 'raid' | 'lvm'; devices: string[] } | null>(null)
-function startCreate(kind: 'raid' | 'lvm' | 'volume', devices: string[]) {
-  if (kind === 'volume') { void open({ kind: 'create-volume', disks: devices }); return }
-  preselect.value = { kind, devices }
-  void open({ kind: 'section', section: 'pools' })
+// A free bay of Disks starts the Create volume wizard with its disks.
+function startCreate(_kind: string, devices: string[]) {
+  void open({ kind: 'create-volume', disks: devices })
 }
 
 const { load: loadTools, missingStorageTools } = useHostTools()
@@ -124,7 +121,7 @@ const navItems = computed(() => visibleSections({ snapshots: !!zfs.value?.availa
             <PoolsImport v-else-if="location.current.kind === 'import'" @navigate="focusOn" />
             <OverviewSection v-else-if="active === 'overview'" @navigate="focusOn" />
             <DisksSection v-else-if="active === 'disks'" @navigate="focusOn" @open="n => open({ kind: 'disk', name: n })" @create="startCreate" />
-            <PoolsSection v-else-if="active === 'pools'" :preselect="preselect ?? undefined" @preselected="preselect = null" @navigate="focusOn" />
+            <PoolsSection v-else-if="active === 'pools'" @navigate="focusOn" />
             <VolumesSection v-else-if="active === 'volumes'" @navigate="focusOn" />
             <MountsSection v-else-if="active === 'mounts'" @navigate="focusOn" />
             <SnapshotsSection v-else-if="active === 'snapshots'" />

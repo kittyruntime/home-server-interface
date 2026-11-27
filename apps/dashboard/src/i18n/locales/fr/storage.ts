@@ -339,6 +339,7 @@ export default {
     expand: 'Utiliser toute la taille',
   },
   Pools: {
+    nothingToImport: 'Aucune grappe ni aucun groupe de volumes à importer n’a été trouvé sur les disques.',
     heading: 'Pools',
     subtitle: 'Ce qui rassemble des disques : grappes mdadm, groupes de volumes LVM et pools ZFS. L’un peut reposer sur l’autre (LVM sur une grappe mdadm).',
     import: 'Importer',
@@ -384,6 +385,8 @@ export default {
     importSubtitle: 'Les pools trouvés sur les disques et inutilisés : grappes, groupes de volumes et pools ZFS venant d’une autre machine ou d’une réinstallation. Importer ne change aucune donnée.',
   },
   Overview: {
+    failed: 'Impossible de lire les volumes : {error}',
+    unchecked: '{n} non vérifié (en veille) | {n} non vérifiés (en veille)',
     heading: 'Vue d’ensemble',
     subtitle: 'Ce que le serveur stocke, ce qui va bien et ce qui demande votre attention.',
     capacity: 'Capacité utilisable',

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { PlusIcon, DownloadIcon, ChevronRightIcon } from '@lucide/vue'
 import { trpc } from '../../lib/trpc'
 import { applyPlanned } from '../../lib/plan'
@@ -25,9 +25,7 @@ import type { StorageLocation, StorageSection } from '../../lib/storage-nav'
 
 // Every pool, whatever its type: mdadm arrays, LVM volume groups, ZFS pools.
 // Their own actions are on their pages; creating one starts with its type.
-// `preselect`: free disks picked in Disks, for the RAID or LVM create wizard.
-const props = defineProps<{ preselect?: { kind: 'raid' | 'lvm'; devices: string[] } }>()
-const emit = defineEmits<{ navigate: [target: StorageSection | StorageLocation]; preselected: [] }>()
+const emit = defineEmits<{ navigate: [target: StorageSection | StorageLocation] }>()
 const { t } = useI18n()
 const toast = useToast()
 const { loading, raids, devices, lvmPVs, lvmVGs, refresh } = useStorageData()
@@ -46,13 +44,7 @@ const bootOff = computed(() => zfsReady.value && !!zfs.value?.bootUnits && (!zfs
 const choosing = ref(false)
 const choice = ref<PoolType>('zfs')
 const creating = ref<PoolType | null>(null)
-const picked = ref<string[] | undefined>(undefined)
-watch(() => props.preselect, p => {
-  if (!p?.devices.length) return
-  picked.value = p.devices
-  creating.value = p.kind === 'raid' ? 'md' : 'lvm'
-  emit('preselected')
-}, { immediate: true })
+
 const freeDisks = ref<Array<{ name: string; size: number; model: string; serial?: string }>>([])
 const TYPES = computed(() => ([
   { id: 'zfs' as const, off: !zfsReady.value, why: t('ui.storage.Pools.zfsMissing') },
@@ -72,7 +64,6 @@ async function startCreate() {
 }
 function created(loc?: StorageLocation) {
   creating.value = null
-  picked.value = undefined
   void refresh(); void loadZfs()
   if (loc) emit('navigate', loc)
 }
@@ -179,7 +170,7 @@ const HEALTH_CLASS: Record<PoolRow['health'], string> = {
     </Modal>
     <CreatePoolDialog v-if="creating === 'zfs'" :free-disks="freeDisks" :taken="zfs?.pools.map(p => p.name) ?? []"
       @close="creating = null" @created="name => created({ kind: 'pool', name })" />
-    <RaidSection v-if="creating === 'md'" wizard :preselect="picked" @closed="created()" @navigate="l => typeof l === 'object' && created(l)" />
-    <LvmSection v-if="creating === 'lvm'" wizard :preselect="picked" @closed="created()" @navigate="l => created(l)" />
+    <RaidSection v-if="creating === 'md'" wizard @closed="created()" />
+    <LvmSection v-if="creating === 'lvm'" wizard @closed="created()" />
   </div>
 </template>

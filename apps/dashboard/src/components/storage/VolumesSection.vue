@@ -8,7 +8,7 @@ import { useI18n } from 'vue-i18n'
 import { Alert } from '@/components/ui/alert'
 import { Progress } from '@/components/ui/progress'
 import { Card } from '@/components/ui/card'
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { trpc } from '../../lib/trpc'
 import LoadingState from '../ui/LoadingState.vue'
 import DeviceMountDialog from './dialogs/DeviceMountDialog.vue'
@@ -130,6 +130,8 @@ const unlisted = computed(() => unlistedDrift(descriptions.value, (overview.valu
 type VType = ReturnType<typeof volumeType>
 const typeFilter = ref<VType | 'all'>('all')
 const presentTypes = computed(() => [...new Set((overview.value?.volumes ?? []).map(volumeType))] as VType[])
+// A type that is gone (its last volume removed) no longer filters the list.
+watch(presentTypes, types => { if (typeFilter.value !== 'all' && !types.includes(typeFilter.value)) typeFilter.value = 'all' })
 const lvmVolumes = computed(() => (overview.value?.volumes ?? []).filter(v => typeFilter.value === 'all' || volumeType(v) === typeFilter.value))
 
 const volumes = computed(() => {

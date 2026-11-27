@@ -48,6 +48,31 @@ test('the overview counts from disks to mounts and sums what pools offer', () =>
     volumes: [{ state: 'mounted', space: { total: 10, used: 4, free: 6 }, issues: [] }, { state: 'missing', issues: [{ kind: 'missing', text: 'x' }] }] as any,
   })
   assert.deepEqual([f.disks, f.healthyDisks, f.pools, f.volumes, f.mounted], [3, 2, 4, 2, 1])
-  assert.deepEqual([f.capacity.total, f.capacity.used], [10, 4])
+  assert.deepEqual([f.capacity.total, f.capacity.used], [10 + 8e12, 4 + 6e12], 'the ZFS pool by its own size, the other volume by its filesystem')
   assert.deepEqual(f.running.map(r => r.name), ['md1', 'tank'], 'operations in progress, by pool')
+})
+
+test('a ZFS pool counts once in the capacity, whatever its datasets', () => {
+  const zpool = { ...pools[0], state: 'ONLINE', size: 10, alloc: 3, scan: { kind: 'none', state: 'none', repaired: 0, errors: 0 } }
+  const f = storageFacts({
+    disks: [],
+    rows: poolRows({ raids: [], devices: [], pvs: [], vgs: [], pools: [zpool], datasets: [] }),
+    volumes: [
+      { state: 'mounted', engine: 'zfs', space: { total: 8, used: 1, free: 7 }, issues: [] },
+      { state: 'mounted', engine: 'zfs', space: { total: 9, used: 2, free: 7 }, issues: [] },
+      { state: 'mounted', space: { total: 4, used: 1, free: 3 }, issues: [] },
+    ] as any,
+  })
+  assert.deepEqual([f.capacity.total, f.capacity.used], [14, 4])
+})
+
+test('disks not read yet (asleep) are counted apart, not as unhealthy', () => {
+  const f = storageFacts({ disks: [{ health: 'ok' }, { health: 'unknown' }, { health: 'warning' }] as any, rows: [], volumes: [] })
+  assert.deepEqual([f.disks, f.checkedDisks, f.healthyDisks, f.uncheckedDisks], [3, 2, 1, 1])
+})
+
+test('a raidz being widened shows as in progress', () => {
+  const p = { ...pools[0], state: 'ONLINE', scan: { kind: 'scrub', state: 'finished', repaired: 0, errors: 0 }, expand: { state: 'running', vdev: 'raidz1-0', pct: 37.5 } }
+  const r = poolRows({ raids: [], devices: [], pvs: [], vgs: [], pools: [p], datasets: [] })[0]!
+  assert.deepEqual([r.health, r.progress], ['rebuilding', 38])
 })

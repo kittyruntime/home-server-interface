@@ -340,6 +340,7 @@ export default {
     expand: 'Use the full size',
   },
   Pools: {
+    nothingToImport: 'No array or volume group to import was found on the disks.',
     heading: 'Pools',
     subtitle: 'What gathers disks: mdadm arrays, LVM volume groups and ZFS pools. One can sit on another (LVM on an mdadm array).',
     import: 'Import',
@@ -385,6 +386,8 @@ export default {
     importSubtitle: 'Pools found on the disks and not in use: arrays, volume groups and ZFS pools from another machine or a reinstall. Importing changes no data.',
   },
   Overview: {
+    failed: 'Could not read the volumes: {error}',
+    unchecked: '{n} not checked (asleep) | {n} not checked (asleep)',
     heading: 'Overview',
     subtitle: 'What the server stores, what is well and what needs your attention.',
     capacity: 'Usable capacity',
