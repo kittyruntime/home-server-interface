@@ -83,7 +83,7 @@ const targets = computed(() => vgTargets({
     :loading="!loaded && !error"
     :error="(error || lvmError) && !vg ? (error || lvmError) : ''"
     :gone="loaded && !loading && !lvmError && !vg ? { text: 'This volume group is no longer there.', back: 'Back to Volume groups' } : undefined"
-    @back="emit('navigate', 'lvm')"
+    @back="emit('navigate', 'pools')"
   >
     <template v-if="vg" #chips>
       <span class="text-2xs px-1.5 py-0.5 rounded-sm border border-base-300 bg-base-200 text-base-content/80">{{ vg.pvCount }} {{ vg.pvCount === 1 ? 'physical volume' : 'physical volumes' }}</span>

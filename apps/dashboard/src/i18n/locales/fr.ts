@@ -46,8 +46,8 @@ export default {
     },
   },
   storage: {
-    nav: { 'volumes': 'Volumes', 'disks': 'Disques', 'raid': 'Grappes RAID', 'lvm': 'Groupes de volumes', 'partitions': 'Partitions et formatage', 'mounts': 'Montages', 'maintenance': 'Maintenance', 'pools': 'Pools', 'datasets': 'Datasets', 'snapshots': 'Snapshots', 'zfs-import': 'Importer' },
-    tabs: { disks: 'Disques', lvm: 'LVM', zfs: 'ZFS', maintenance: 'Maintenance' },
+    nav: { overview: 'Vue d’ensemble', disks: 'Disques', pools: 'Pools', volumes: 'Volumes', mounts: 'Montages', snapshots: 'Snapshots', maintenance: 'Maintenance' },
+    importPools: 'Importer',
     createVolume: 'Créer un volume',
     roles: { system: 'Système', raid: 'Membre RAID', lvm: 'PV LVM', zfs: 'Pool ZFS', mounted: 'Monté', free: 'Libre', unmounted: 'Non monté' },
   },

@@ -73,7 +73,7 @@ const targets = computed(() => arrayTargets({ name: props.name, mountPoint: find
     :loading="!loaded && !error"
     :error="error && !array ? error : ''"
     :gone="loaded && !loading && !array ? { text: 'This array is no longer assembled.', back: 'Back to Arrays' } : undefined"
-    @back="emit('navigate', 'raid')"
+    @back="emit('navigate', 'pools')"
   >
     <template v-if="array" #chips>
       <span class="text-2xs px-1.5 py-0.5 rounded-sm border border-base-300 bg-base-200 text-base-content/80">{{ LEVEL[array.level] ?? array.level }}</span>

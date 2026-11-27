@@ -31,8 +31,8 @@ const { t } = useI18n()
 // `preselect`: whole disks picked in Devices; opens the create wizard with them.
 // `only`: show just this array / volume group (its page, #40), without the
 // section header and create entry points.
-const props = defineProps<{ preselect?: string[]; only?: string }>()
-const emit = defineEmits<{ preselected: []; navigate: [target: StorageLocation] }>()
+const props = defineProps<{ preselect?: string[]; only?: string; wizard?: boolean }>()
+const emit = defineEmits<{ preselected: []; closed: []; navigate: [target: StorageLocation] }>()
 
 const { loading, error, devices, lvmPVs, lvmVGs, lvmLVs, refresh } = useStorageData()
 const { isMissing } = useHostTools()
@@ -80,6 +80,11 @@ const lvmWiz = ref<{
 function openLvmWizard(devs: string[] = []) {
   lvmWiz.value = { step: 1, pvDevs: [...devs], vgName: '', lvName: 'lv0', lvSizeGB: 0, busy: false, err: '' }
 }
+
+// `wizard`: only the create wizard, open at once (Pools > Create a pool);
+// `closed` tells the parent once it is gone.
+if (props.wizard && !props.preselect?.length) openLvmWizard()
+watch(() => lvmWiz.value, w => { if (props.wizard && !w) emit('closed') })
 
 watch(() => props.preselect, devs => {
   if (!devs?.length) return
@@ -205,154 +210,156 @@ const shown = computed(() => props.only ? lvmVGs.value.filter(x => x.name === pr
 
 <template>
   <div>
-    <div v-if="!only" class="flex flex-wrap items-start justify-between gap-x-4 gap-y-2 mb-4">
-      <div class="min-w-0 flex-1 basis-56">
-        <h2 class="text-lg font-semibold text-base-content flex items-center gap-1.5">{{ t('ui.storage.LvmSection.volumeGroups') }}<TermHelp term="volumeGroup" /></h2>
-        <p class="text-sm text-base-content/70 mt-0.5">{{ t('ui.storage.LvmSection.physicalVolumesVolumeGroupsAnd') }}</p>
-      </div>
-      <div class="flex items-center gap-2">
-        <Tip :text="isMissing('pvcreate') ? t('ui.storage.LvmSection.toolsNotInstalled') : undefined" wrap>
-          <Button variant="outline" size="sm" @click="openLvmWizard()" :disabled="isMissing('pvcreate')">
-            <PlusIcon class="w-3.5 h-3.5" aria-hidden="true" />
-            {{ t('ui.storage.LvmSection.createVolumeGroup') }}
+    <template v-if="!wizard">
+      <div v-if="!only" class="flex flex-wrap items-start justify-between gap-x-4 gap-y-2 mb-4">
+        <div class="min-w-0 flex-1 basis-56">
+          <h2 class="text-lg font-semibold text-base-content flex items-center gap-1.5">{{ t('ui.storage.LvmSection.volumeGroups') }}<TermHelp term="volumeGroup" /></h2>
+          <p class="text-sm text-base-content/70 mt-0.5">{{ t('ui.storage.LvmSection.physicalVolumesVolumeGroupsAnd') }}</p>
+        </div>
+        <div class="flex items-center gap-2">
+          <Tip :text="isMissing('pvcreate') ? t('ui.storage.LvmSection.toolsNotInstalled') : undefined" wrap>
+            <Button variant="outline" size="sm" @click="openLvmWizard()" :disabled="isMissing('pvcreate')">
+              <PlusIcon class="w-3.5 h-3.5" aria-hidden="true" />
+              {{ t('ui.storage.LvmSection.createVolumeGroup') }}
+            </Button>
+          </Tip>
+          <Button variant="ghost" size="icon-sm" @click="refresh" :disabled="loading" :tooltip="t('ui.storage.LvmSection.refresh')" :aria-label="t('ui.storage.LvmSection.refresh')" class="text-base-content/70 hover:text-base-content">
+            <LoadingSpinner v-if="loading" class="text-base" />
+            <RefreshCwIcon v-else class="w-4 h-4" aria-hidden="true" />
           </Button>
-        </Tip>
-        <Button variant="ghost" size="icon-sm" @click="refresh" :disabled="loading" :tooltip="t('ui.storage.LvmSection.refresh')" :aria-label="t('ui.storage.LvmSection.refresh')" class="text-base-content/70 hover:text-base-content">
-          <LoadingSpinner v-if="loading" class="text-base" />
-          <RefreshCwIcon v-else class="w-4 h-4" aria-hidden="true" />
-        </Button>
+        </div>
       </div>
-    </div>
 
-    <StorageIntro v-if="!only" tab="lvm" />
+      <StorageIntro v-if="!only" tab="lvm" />
 
-    <ImportFound v-if="!only" kind="lvm" @imported="refresh" />
+      <ImportFound v-if="!only" kind="lvm" @imported="refresh" />
 
-    <LoadingState v-if="loading && !lvmVGs.length" variant="block" />
-    <Alert variant="destructive" v-else-if="error" class="mt-4"><AlertDescription>{{ error }}</AlertDescription></Alert>
+      <LoadingState v-if="loading && !lvmVGs.length" variant="block" />
+      <Alert variant="destructive" v-else-if="error" class="mt-4"><AlertDescription>{{ error }}</AlertDescription></Alert>
 
-    <!-- VG list -->
-    <div v-if="!only" class="flex items-center justify-between mb-3">
-      <span v-if="lvmVGs.length" class="text-2xs px-1.5 py-0.5 rounded-sm bg-base-200 text-base-content/70 tabular-nums">{{ t('uip.storage.LvmSection.volumeGroup', { p0: lvmVGs.length, p1: lvmVGs.length !== 1 ? 's' : '' }) }}</span>
-    </div>
+      <!-- VG list -->
+      <div v-if="!only" class="flex items-center justify-between mb-3">
+        <span v-if="lvmVGs.length" class="text-2xs px-1.5 py-0.5 rounded-sm bg-base-200 text-base-content/70 tabular-nums">{{ t('uip.storage.LvmSection.volumeGroup', { p0: lvmVGs.length, p1: lvmVGs.length !== 1 ? 's' : '' }) }}</span>
+      </div>
 
-    <div v-if="!only && !loading && lvmVGs.length === 0" class="rounded-xl border border-dashed border-base-300 bg-base-100 px-4 py-6 text-center text-sm text-base-content/70">
-      {{ t('ui.storage.LvmSection.noLvmVolumeGroupsCreate') }}
-    </div>
+      <div v-if="!only && !loading && lvmVGs.length === 0" class="rounded-xl border border-dashed border-base-300 bg-base-100 px-4 py-6 text-center text-sm text-base-content/70">
+        {{ t('ui.storage.LvmSection.noLvmVolumeGroupsCreate') }}
+      </div>
 
-    <div v-else class="space-y-3">
-      <Card v-for="vg in shown" :key="vg.name"
-        class="gap-0 py-0 shadow-none overflow-hidden flex flex-row"
-        :class="isSystemVg(vg.name) ? 'border-warning/20' : 'border-base-300'">
-        <!-- Left stripe -->
-        <div class="w-0.5 shrink-0" :class="isSystemVg(vg.name) ? 'bg-warning/60' : 'bg-secondary/50'" />
-        <div class="flex-1 min-w-0">
-          <!-- VG header -->
-          <div class="flex items-center gap-3 px-4 py-3">
-            <div class="flex-1 min-w-0">
-              <div class="flex items-center gap-2 flex-wrap">
-                <Button variant="link" v-if="!only" class="h-auto p-0 font-mono font-semibold text-base-content" @click="emit('navigate', { kind: 'vg', name: vg.name })">{{ vg.name }}</Button>
-                <span v-else class="font-mono text-sm font-semibold text-base-content">{{ vg.name }}</span>
-                <span class="text-2xs text-base-content/70">{{ fmtBytes(vg.size) }}</span>
-                <span class="text-2xs px-1.5 py-0.5 rounded-sm bg-secondary/10 text-secondary shrink-0">{{ vg.pvCount }} PV · {{ vg.lvCount }} LV</span>
-                <span v-if="isSystemVg(vg.name)" class="inline-flex items-center gap-1 text-2xs px-1.5 py-0.5 rounded-sm bg-warning/10 text-warning border border-warning/20">
-                  <CircleAlertIcon class="w-2.5 h-2.5" aria-hidden="true" />
-                  SYSTEM
+      <div v-else class="space-y-3">
+        <Card v-for="vg in shown" :key="vg.name"
+          class="gap-0 py-0 shadow-none overflow-hidden flex flex-row"
+          :class="isSystemVg(vg.name) ? 'border-warning/20' : 'border-base-300'">
+          <!-- Left stripe -->
+          <div class="w-0.5 shrink-0" :class="isSystemVg(vg.name) ? 'bg-warning/60' : 'bg-secondary/50'" />
+          <div class="flex-1 min-w-0">
+            <!-- VG header -->
+            <div class="flex items-center gap-3 px-4 py-3">
+              <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-2 flex-wrap">
+                  <Button variant="link" v-if="!only" class="h-auto p-0 font-mono font-semibold text-base-content" @click="emit('navigate', { kind: 'vg', name: vg.name })">{{ vg.name }}</Button>
+                  <span v-else class="font-mono text-sm font-semibold text-base-content">{{ vg.name }}</span>
+                  <span class="text-2xs text-base-content/70">{{ fmtBytes(vg.size) }}</span>
+                  <span class="text-2xs px-1.5 py-0.5 rounded-sm bg-secondary/10 text-secondary shrink-0">{{ vg.pvCount }} PV · {{ vg.lvCount }} LV</span>
+                  <span v-if="isSystemVg(vg.name)" class="inline-flex items-center gap-1 text-2xs px-1.5 py-0.5 rounded-sm bg-warning/10 text-warning border border-warning/20">
+                    <CircleAlertIcon class="w-2.5 h-2.5" aria-hidden="true" />
+                    SYSTEM
+                  </span>
+                </div>
+                <!-- Capacity bar -->
+                <div class="mt-2 flex items-center gap-2">
+                  <Progress class="flex-1 h-1 bg-base-200 rounded-full max-w-[200px]" :model-value="(100 - vgFreePct(vg))" indicator-class="rounded-full bg-secondary/70" />
+                  <span class="text-2xs text-base-content/70 tabular-nums shrink-0">{{ t('uip.storage.LvmSection.freeSpace', { p0: fmtBytes(vg.free) }) }}</span>
+                </div>
+              </div>
+              <div class="flex items-center gap-1.5 shrink-0">
+                <Button variant="outline" size="xs" v-if="!isSystemVg(vg.name)" @click="addLvDlg = { vg, lvName: 'lv' + vg.lvCount, lvSizeGB: 0, busy: false, err: '' }"
+                  class="text-base-content/80 hover:border-secondary/50 hover:text-secondary">
+                  {{ t('ui.storage.LvmSection.addLv') }}
+                </Button>
+                <!-- ⋯ menu for VG -->
+                <DropdownMenu v-if="!isSystemVg(vg.name)">
+                  <DropdownMenuTrigger as-child>
+                    <Button variant="ghost" size="icon-sm" class="text-base-content/70" :aria-label="t('ui.storage.LvmSection.volumeGroupActions')">
+                      <EllipsisVerticalIcon />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" class="min-w-[176px]">
+                    <DropdownMenuLabel class="text-2xs font-semibold uppercase tracking-caps text-base-content/70">{{ t('ui.storage.LvmSection.dangerZone') }}</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem variant="destructive" @select="removeVgDlg = { vg, busy: false, err: '' }">
+                      <Trash2Icon />
+                      {{ t('ui.storage.LvmSection.removeVg') }}
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            </div>
+
+            <!-- PVs -->
+            <div class="px-4 py-2 border-t border-base-300 bg-base-200/30">
+              <div class="flex flex-wrap gap-1.5">
+                <span v-for="pv in lvmPVs.filter(p => p.vgName === vg.name)" :key="pv.name"
+                  class="inline-flex items-center gap-1.5 text-2xs font-mono px-2 py-0.5 rounded-md bg-base-200 text-base-content/70 border border-base-300">
+                  {{ pv.name }} <span class="text-base-content/40">{{ fmtBytes(pv.size) }}</span>
                 </span>
               </div>
-              <!-- Capacity bar -->
-              <div class="mt-2 flex items-center gap-2">
-                <Progress class="flex-1 h-1 bg-base-200 rounded-full max-w-[200px]" :model-value="(100 - vgFreePct(vg))" indicator-class="rounded-full bg-secondary/70" />
-                <span class="text-2xs text-base-content/70 tabular-nums shrink-0">{{ t('uip.storage.LvmSection.freeSpace', { p0: fmtBytes(vg.free) }) }}</span>
-              </div>
             </div>
-            <div class="flex items-center gap-1.5 shrink-0">
-              <Button variant="outline" size="xs" v-if="!isSystemVg(vg.name)" @click="addLvDlg = { vg, lvName: 'lv' + vg.lvCount, lvSizeGB: 0, busy: false, err: '' }"
-                class="text-base-content/80 hover:border-secondary/50 hover:text-secondary">
-                {{ t('ui.storage.LvmSection.addLv') }}
-              </Button>
-              <!-- ⋯ menu for VG -->
-              <DropdownMenu v-if="!isSystemVg(vg.name)">
-                <DropdownMenuTrigger as-child>
-                  <Button variant="ghost" size="icon-sm" class="text-base-content/70" :aria-label="t('ui.storage.LvmSection.volumeGroupActions')">
-                    <EllipsisVerticalIcon />
+
+            <!-- LVs -->
+            <div class="divide-y divide-base-300">
+              <div v-if="lvmLVs.filter(l => l.vgName === vg.name).length === 0"
+                class="px-4 py-3 text-2xs text-base-content/70">
+                {{ t('ui.storage.LvmSection.noLogicalVolumesClickAdd') }}
+              </div>
+              <div v-for="lv in lvmLVs.filter(l => l.vgName === vg.name)" :key="lv.name"
+                class="group/lv flex items-center gap-3 px-4 py-2.5 hover:bg-base-200/30 transition-colors">
+                <div class="w-1.5 h-1.5 rounded-full shrink-0"
+                  :class="lv2bd(lv).isSystem ? 'bg-warning/70' : lv2bd(lv).mountpoint ? 'bg-success/70' : 'bg-secondary/40'" />
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-center gap-1.5 flex-wrap">
+                    <span class="font-mono text-xs text-base-content/80">{{ lv.path }}</span>
+                    <span class="text-2xs text-base-content/70 tabular-nums">{{ fmtBytes(lv.size) }}</span>
+                    <span v-if="lv2bd(lv).fstype" class="text-2xs font-mono px-1.5 py-0.5 rounded-sm bg-base-200 text-base-content/70 uppercase">{{ lv2bd(lv).fstype }}</span>
+                    <span v-else class="text-2xs text-base-content/70">{{ t('ui.storage.LvmSection.unformatted') }}</span>
+                  </div>
+                  <div v-if="lv2bd(lv).mountpoint" class="text-2xs font-mono text-base-content/70 mt-0.5">↳ {{ lv2bd(lv).mountpoint }}</div>
+                  <div v-if="lv2bd(lv).usageTotal > 0" class="mt-1.5 flex items-center gap-2">
+                    <Progress class="w-24 h-0.5 bg-base-200 rounded-full" :model-value="usagePct(lv2bd(lv))" :indicator-class="['rounded-full', usageBarClass(usagePct(lv2bd(lv)))]" />
+                    <span class="text-2xs text-base-content/70 tabular-nums">{{ t('uip.storage.LvmSection.freeSpace', { p0: fmtBytes(lv2bd(lv).usageFree) }) }}</span>
+                  </div>
+                </div>
+                <!-- LV actions: revealed on hover, hidden by default -->
+                <div v-if="!lv2bd(lv).isSystem" class="flex items-center gap-1 shrink-0 opacity-0 group-hover/lv:opacity-100 focus-within:opacity-100 pointer-coarse:opacity-100 transition-opacity">
+                  <Button variant="outline" size="xs" v-if="!lv2bd(lv).mountpoint" @click="openFormat(lv2bd(lv))"
+                    class="text-2xs text-base-content/70 hover:border-primary/50 hover:text-primary">{{ t('ui.storage.LvmSection.format') }}</Button>
+                  <Button variant="outline" size="xs" v-if="lv2bd(lv).fstype && !lv2bd(lv).mountpoint" @click="openMount(lv2bd(lv))"
+                    class="text-2xs text-base-content/70 hover:border-success/50 hover:text-success">{{ t('ui.storage.LvmSection.mount') }}</Button>
+                  <Button variant="outline" size="xs" v-if="lv2bd(lv).mountpoint" @click="openUmount(lv2bd(lv))"
+                    class="text-2xs text-base-content/70 hover:border-warning/50 hover:text-warning">{{ t('ui.storage.LvmSection.unmount') }}</Button>
+                  <!-- Thin separator before destructive -->
+                  <Separator orientation="vertical" class="data-[orientation=vertical]:h-3 mx-1" />
+                  <Button variant="ghost" size="icon-xs" @click="removeLvDlg = { lv, busy: false, err: '' }"
+                    :tooltip="t('ui.storage.LvmSection.deleteThisLogicalVolume')" :aria-label="t('ui.storage.LvmSection.deleteThisLogicalVolume')"
+                    class="text-base-content/30 hover:text-error hover:bg-error/10">
+                    <Trash2Icon class="w-3.5 h-3.5" aria-hidden="true" />
                   </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" class="min-w-[176px]">
-                  <DropdownMenuLabel class="text-2xs font-semibold uppercase tracking-caps text-base-content/70">{{ t('ui.storage.LvmSection.dangerZone') }}</DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem variant="destructive" @select="removeVgDlg = { vg, busy: false, err: '' }">
-                    <Trash2Icon />
-                    {{ t('ui.storage.LvmSection.removeVg') }}
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-          </div>
-
-          <!-- PVs -->
-          <div class="px-4 py-2 border-t border-base-300 bg-base-200/30">
-            <div class="flex flex-wrap gap-1.5">
-              <span v-for="pv in lvmPVs.filter(p => p.vgName === vg.name)" :key="pv.name"
-                class="inline-flex items-center gap-1.5 text-2xs font-mono px-2 py-0.5 rounded-md bg-base-200 text-base-content/70 border border-base-300">
-                {{ pv.name }} <span class="text-base-content/40">{{ fmtBytes(pv.size) }}</span>
-              </span>
-            </div>
-          </div>
-
-          <!-- LVs -->
-          <div class="divide-y divide-base-300">
-            <div v-if="lvmLVs.filter(l => l.vgName === vg.name).length === 0"
-              class="px-4 py-3 text-2xs text-base-content/70">
-              {{ t('ui.storage.LvmSection.noLogicalVolumesClickAdd') }}
-            </div>
-            <div v-for="lv in lvmLVs.filter(l => l.vgName === vg.name)" :key="lv.name"
-              class="group/lv flex items-center gap-3 px-4 py-2.5 hover:bg-base-200/30 transition-colors">
-              <div class="w-1.5 h-1.5 rounded-full shrink-0"
-                :class="lv2bd(lv).isSystem ? 'bg-warning/70' : lv2bd(lv).mountpoint ? 'bg-success/70' : 'bg-secondary/40'" />
-              <div class="flex-1 min-w-0">
-                <div class="flex items-center gap-1.5 flex-wrap">
-                  <span class="font-mono text-xs text-base-content/80">{{ lv.path }}</span>
-                  <span class="text-2xs text-base-content/70 tabular-nums">{{ fmtBytes(lv.size) }}</span>
-                  <span v-if="lv2bd(lv).fstype" class="text-2xs font-mono px-1.5 py-0.5 rounded-sm bg-base-200 text-base-content/70 uppercase">{{ lv2bd(lv).fstype }}</span>
-                  <span v-else class="text-2xs text-base-content/70">{{ t('ui.storage.LvmSection.unformatted') }}</span>
-                </div>
-                <div v-if="lv2bd(lv).mountpoint" class="text-2xs font-mono text-base-content/70 mt-0.5">↳ {{ lv2bd(lv).mountpoint }}</div>
-                <div v-if="lv2bd(lv).usageTotal > 0" class="mt-1.5 flex items-center gap-2">
-                  <Progress class="w-24 h-0.5 bg-base-200 rounded-full" :model-value="usagePct(lv2bd(lv))" :indicator-class="['rounded-full', usageBarClass(usagePct(lv2bd(lv)))]" />
-                  <span class="text-2xs text-base-content/70 tabular-nums">{{ t('uip.storage.LvmSection.freeSpace', { p0: fmtBytes(lv2bd(lv).usageFree) }) }}</span>
                 </div>
               </div>
-              <!-- LV actions: revealed on hover, hidden by default -->
-              <div v-if="!lv2bd(lv).isSystem" class="flex items-center gap-1 shrink-0 opacity-0 group-hover/lv:opacity-100 focus-within:opacity-100 pointer-coarse:opacity-100 transition-opacity">
-                <Button variant="outline" size="xs" v-if="!lv2bd(lv).mountpoint" @click="openFormat(lv2bd(lv))"
-                  class="text-2xs text-base-content/70 hover:border-primary/50 hover:text-primary">{{ t('ui.storage.LvmSection.format') }}</Button>
-                <Button variant="outline" size="xs" v-if="lv2bd(lv).fstype && !lv2bd(lv).mountpoint" @click="openMount(lv2bd(lv))"
-                  class="text-2xs text-base-content/70 hover:border-success/50 hover:text-success">{{ t('ui.storage.LvmSection.mount') }}</Button>
-                <Button variant="outline" size="xs" v-if="lv2bd(lv).mountpoint" @click="openUmount(lv2bd(lv))"
-                  class="text-2xs text-base-content/70 hover:border-warning/50 hover:text-warning">{{ t('ui.storage.LvmSection.unmount') }}</Button>
-                <!-- Thin separator before destructive -->
-                <Separator orientation="vertical" class="data-[orientation=vertical]:h-3 mx-1" />
-                <Button variant="ghost" size="icon-xs" @click="removeLvDlg = { lv, busy: false, err: '' }"
-                  :tooltip="t('ui.storage.LvmSection.deleteThisLogicalVolume')" :aria-label="t('ui.storage.LvmSection.deleteThisLogicalVolume')"
-                  class="text-base-content/30 hover:text-error hover:bg-error/10">
-                  <Trash2Icon class="w-3.5 h-3.5" aria-hidden="true" />
-                </Button>
-              </div>
             </div>
           </div>
-        </div>
-      </Card>
-    </div>
+        </Card>
+      </div>
 
-    <!-- Shared device dialogs (format / mount / unmount) -->
-    <DeviceFormatWizard ref="formatWiz" @done="refresh" @mount="d => mountDlg?.open(d)" />
-    <DeviceMountDialog ref="mountDlg" @done="refresh" />
-    <DeviceUnmountDialog ref="umountDlg" @done="refresh" />
+      <!-- Shared device dialogs (format / mount / unmount) -->
+      <DeviceFormatWizard ref="formatWiz" @done="refresh" @mount="d => mountDlg?.open(d)" />
+      <DeviceMountDialog ref="mountDlg" @done="refresh" />
+      <DeviceUnmountDialog ref="umountDlg" @done="refresh" />
 
     <!-- ════════════════════════════════════════════════════════════════════ -->
     <!-- LVM CREATE WIZARD                                                    -->
     <!-- ════════════════════════════════════════════════════════════════════ -->
+    </template>
     <Modal :label="t('ui.storage.LvmSection.createVolumeGroup2')" v-if="lvmWiz" panel-class="w-full max-w-md" :show-close="false" :prevent-close="!!lvmWiz.busy" @close="lvmWiz = null">
 
       <!-- Step indicator -->
@@ -463,80 +470,82 @@ const shown = computed(() => props.only ? lvmVGs.value.filter(x => x.name === pr
       </div>
 
     </Modal>
+    <template v-if="!wizard">
 
-    <!-- ════════════════════════════════════════════════════════════════════ -->
-    <!-- ADD LV DIALOG                                                        -->
-    <!-- ════════════════════════════════════════════════════════════════════ -->
-    <Modal :label="t('ui.storage.LvmSection.addLogicalVolume')" v-if="addLvDlg" panel-class="w-full max-w-sm" :show-close="false" :prevent-close="!!addLvDlg.busy" @close="addLvDlg = null">
-      <div class="px-5 py-4 border-b border-base-300">
-        <h3 class="font-semibold text-base-content">{{ t('ui.storage.LvmSection.addLogicalVolume') }}</h3>
-        <p class="text-xs text-base-content/70 mt-0.5">VG <span class="text-secondary">{{ addLvDlg.vg.name }}</span> {{ t('uip.storage.LvmSection.free', { p0: fmtBytes(addLvDlg.vg.free) }) }}</p>
-      </div>
-      <div class="p-5 space-y-4">
-        <div>
-          <label class="block text-xs font-medium text-base-content/80 mb-1.5">{{ t('ui.storage.LvmSection.logicalVolumeName') }}</label>
-          <Input v-model="addLvDlg.lvName" type="text" laceholder="lv0"
-            class="w-full px-3 py-2 text-sm font-mono" />
+      <!-- ════════════════════════════════════════════════════════════════════ -->
+      <!-- ADD LV DIALOG                                                        -->
+      <!-- ════════════════════════════════════════════════════════════════════ -->
+      <Modal :label="t('ui.storage.LvmSection.addLogicalVolume')" v-if="addLvDlg" panel-class="w-full max-w-sm" :show-close="false" :prevent-close="!!addLvDlg.busy" @close="addLvDlg = null">
+        <div class="px-5 py-4 border-b border-base-300">
+          <h3 class="font-semibold text-base-content">{{ t('ui.storage.LvmSection.addLogicalVolume') }}</h3>
+          <p class="text-xs text-base-content/70 mt-0.5">VG <span class="text-secondary">{{ addLvDlg.vg.name }}</span> {{ t('uip.storage.LvmSection.free', { p0: fmtBytes(addLvDlg.vg.free) }) }}</p>
         </div>
-        <div>
-          <label class="block text-xs font-medium text-base-content/80 mb-1.5">
-            {{ t('ui.storage.LvmSection.sizeGb') }} <span class="text-base-content/70 font-normal">{{ t('ui.storage.LvmSection.n0AllRemainingFreeSpace') }}</span>
-          </label>
-          <Input v-model.number="addLvDlg.lvSizeGB" type="number" min="0" placeholder="0"
-            class="w-full px-3 py-2 text-sm font-mono" />
+        <div class="p-5 space-y-4">
+          <div>
+            <label class="block text-xs font-medium text-base-content/80 mb-1.5">{{ t('ui.storage.LvmSection.logicalVolumeName') }}</label>
+            <Input v-model="addLvDlg.lvName" type="text" laceholder="lv0"
+              class="w-full px-3 py-2 text-sm font-mono" />
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-base-content/80 mb-1.5">
+              {{ t('ui.storage.LvmSection.sizeGb') }} <span class="text-base-content/70 font-normal">{{ t('ui.storage.LvmSection.n0AllRemainingFreeSpace') }}</span>
+            </label>
+            <Input v-model.number="addLvDlg.lvSizeGB" type="number" min="0" placeholder="0"
+              class="w-full px-3 py-2 text-sm font-mono" />
+          </div>
+          <p v-if="addLvDlg.err" role="alert" class="status-text text-error"><span class="status-tag">[ERR]</span> {{ addLvDlg.err }}</p>
+          <div class="flex gap-2 pt-1">
+            <Button variant="outline" @click="addLvDlg = null" class="flex-1 justify-center">{{ t('ui.storage.LvmSection.cancel') }}</Button>
+            <Button @click="doAddLv" :disabled="!addLvDlg.lvName || addLvDlg.busy"
+              class="flex-1 justify-center">
+              <span v-if="addLvDlg.busy">{{ t('ui.storage.LvmSection.creating') }}</span>
+              <span v-else>{{ t('ui.storage.LvmSection.createLogicalVolume') }}</span>
+            </Button>
+          </div>
         </div>
-        <p v-if="addLvDlg.err" role="alert" class="status-text text-error"><span class="status-tag">[ERR]</span> {{ addLvDlg.err }}</p>
-        <div class="flex gap-2 pt-1">
-          <Button variant="outline" @click="addLvDlg = null" class="flex-1 justify-center">{{ t('ui.storage.LvmSection.cancel') }}</Button>
-          <Button @click="doAddLv" :disabled="!addLvDlg.lvName || addLvDlg.busy"
-            class="flex-1 justify-center">
-            <span v-if="addLvDlg.busy">{{ t('ui.storage.LvmSection.creating') }}</span>
-            <span v-else>{{ t('ui.storage.LvmSection.createLogicalVolume') }}</span>
-          </Button>
-        </div>
-      </div>
-    </Modal>
+      </Modal>
 
-    <!-- Remove LV -->
-    <ConfirmDestroyDialog
-      v-if="removeLvDlg"
-      :title="t('ui.storage.LvmSection.deleteLogicalVolume')"
-      :confirm-word="removeLvDlg.lv.name"
-      :action-label="t('ui.storage.LvmSection.deleteLvAction')"
-      :busy-label="t('ui.storage.LvmSection.deleting')"
-      :busy="removeLvDlg.busy"
-      :error="removeLvDlg.err"
-      @confirm="doRemoveLv"
-      @close="removeLvDlg = null"
-    >
-      <template #warning>{{ t('ui.storage.LvmSection.allDataOn') }} <span class="font-bold">{{ removeLvDlg.lv.path }}</span> {{ t('ui.storage.LvmSection.willBePermanentlyDestroyed') }}</template>
-      <template #details>
-        <div class="flex gap-2"><span class="w-16 text-base-content/80">LV</span><span class="font-mono">{{ removeLvDlg.lv.path }}</span></div>
-        <div class="flex gap-2"><span class="w-16 text-base-content/80">VG</span><span class="font-mono">{{ removeLvDlg.lv.vgName }}</span></div>
-        <div class="flex gap-2"><span class="w-16 text-base-content/80">{{ t('ui.storage.LvmSection.size') }}</span><span>{{ fmtBytes(removeLvDlg.lv.size) }}</span></div>
-      </template>
-    </ConfirmDestroyDialog>
+      <!-- Remove LV -->
+      <ConfirmDestroyDialog
+        v-if="removeLvDlg"
+        :title="t('ui.storage.LvmSection.deleteLogicalVolume')"
+        :confirm-word="removeLvDlg.lv.name"
+        :action-label="t('ui.storage.LvmSection.deleteLvAction')"
+        :busy-label="t('ui.storage.LvmSection.deleting')"
+        :busy="removeLvDlg.busy"
+        :error="removeLvDlg.err"
+        @confirm="doRemoveLv"
+        @close="removeLvDlg = null"
+      >
+        <template #warning>{{ t('ui.storage.LvmSection.allDataOn') }} <span class="font-bold">{{ removeLvDlg.lv.path }}</span> {{ t('ui.storage.LvmSection.willBePermanentlyDestroyed') }}</template>
+        <template #details>
+          <div class="flex gap-2"><span class="w-16 text-base-content/80">LV</span><span class="font-mono">{{ removeLvDlg.lv.path }}</span></div>
+          <div class="flex gap-2"><span class="w-16 text-base-content/80">VG</span><span class="font-mono">{{ removeLvDlg.lv.vgName }}</span></div>
+          <div class="flex gap-2"><span class="w-16 text-base-content/80">{{ t('ui.storage.LvmSection.size') }}</span><span>{{ fmtBytes(removeLvDlg.lv.size) }}</span></div>
+        </template>
+      </ConfirmDestroyDialog>
 
-    <!-- Remove VG -->
-    <ConfirmDestroyDialog
-      v-if="removeVgDlg"
-      :title="t('ui.storage.LvmSection.removeVolumeGroup')"
-      :subtitle="t('ui.storage.LvmSection.removeVgSubtitle')"
-      :confirm-word="removeVgDlg.vg.name"
-      :action-label="t('ui.storage.LvmSection.removeVgAction')"
-      :busy-label="t('ui.storage.LvmSection.removingBusy')"
-      :busy="removeVgDlg.busy"
-      :error="removeVgDlg.err"
-      @confirm="doRemoveVg"
-      @close="removeVgDlg = null"
-    >
-      <template #warning>{{ t('ui.storage.LvmSection.removing') }} <span class="font-bold">{{ removeVgDlg.vg.name }}</span> {{ t('uip.storage.LvmSection.willDestroyAllLogicalVolume', { p0: removeVgDlg.vg.lvCount }) }}</template>
-      <template #details>
-        <div class="flex gap-2"><span class="w-16 text-base-content/80">VG</span><span class="font-mono">{{ removeVgDlg.vg.name }}</span></div>
-        <div class="flex gap-2"><span class="w-16 text-base-content/80">{{ t('ui.storage.LvmSection.size') }}</span><span>{{ fmtBytes(removeVgDlg.vg.size) }}</span></div>
-        <div class="flex gap-2"><span class="w-16 text-base-content/80">{{ t('ui.storage.LvmSection.pvs') }}</span><span>{{ removeVgDlg.vg.pvCount }}</span></div>
-        <div class="flex gap-2"><span class="w-16 text-base-content/80">{{ t('ui.storage.LvmSection.lvs') }}</span><span>{{ removeVgDlg.vg.lvCount }}</span></div>
-      </template>
-    </ConfirmDestroyDialog>
+      <!-- Remove VG -->
+      <ConfirmDestroyDialog
+        v-if="removeVgDlg"
+        :title="t('ui.storage.LvmSection.removeVolumeGroup')"
+        :subtitle="t('ui.storage.LvmSection.removeVgSubtitle')"
+        :confirm-word="removeVgDlg.vg.name"
+        :action-label="t('ui.storage.LvmSection.removeVgAction')"
+        :busy-label="t('ui.storage.LvmSection.removingBusy')"
+        :busy="removeVgDlg.busy"
+        :error="removeVgDlg.err"
+        @confirm="doRemoveVg"
+        @close="removeVgDlg = null"
+      >
+        <template #warning>{{ t('ui.storage.LvmSection.removing') }} <span class="font-bold">{{ removeVgDlg.vg.name }}</span> {{ t('uip.storage.LvmSection.willDestroyAllLogicalVolume', { p0: removeVgDlg.vg.lvCount }) }}</template>
+        <template #details>
+          <div class="flex gap-2"><span class="w-16 text-base-content/80">VG</span><span class="font-mono">{{ removeVgDlg.vg.name }}</span></div>
+          <div class="flex gap-2"><span class="w-16 text-base-content/80">{{ t('ui.storage.LvmSection.size') }}</span><span>{{ fmtBytes(removeVgDlg.vg.size) }}</span></div>
+          <div class="flex gap-2"><span class="w-16 text-base-content/80">{{ t('ui.storage.LvmSection.pvs') }}</span><span>{{ removeVgDlg.vg.pvCount }}</span></div>
+          <div class="flex gap-2"><span class="w-16 text-base-content/80">{{ t('ui.storage.LvmSection.lvs') }}</span><span>{{ removeVgDlg.vg.lvCount }}</span></div>
+        </template>
+      </ConfirmDestroyDialog>
+    </template>
   </div>
 </template>

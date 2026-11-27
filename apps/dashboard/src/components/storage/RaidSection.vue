@@ -37,8 +37,8 @@ const { t } = useI18n()
 // `preselect`: whole disks picked in Devices; opens the create wizard with them.
 // `only`: show just this array / volume group (its page, #40), without the
 // section header and create entry points.
-const props = defineProps<{ preselect?: string[]; only?: string }>()
-const emit = defineEmits<{ navigate: [target: 'disks' | 'lvm' | StorageLocation]; preselected: [] }>()
+const props = defineProps<{ preselect?: string[]; only?: string; wizard?: boolean }>()
+const emit = defineEmits<{ navigate: [target: 'disks' | 'pools' | StorageLocation]; preselected: []; closed: [] }>()
 
 const { loading, error, devices, raids, lvmPVs, refresh } = useStorageData()
 const { isMissing } = useHostTools()
@@ -195,6 +195,11 @@ function openRaidWizard(devs: string[] = []) {
   raidWiz.value = { step: 1, level: 1, devs: [...devs], name: nextMdName(), confirm: '', busy: false, err: '' }
 }
 
+// `wizard`: only the create wizard, open at once (Pools > Create a pool);
+// `closed` tells the parent once it is gone.
+if (props.wizard && !props.preselect?.length) openRaidWizard()
+watch(() => raidWiz.value, w => { if (props.wizard && !w) emit('closed') })
+
 watch(() => props.preselect, devs => {
   if (!devs?.length) return
   openRaidWizard(devs)
@@ -315,226 +320,228 @@ const shown = computed(() => props.only ? raids.value.filter(x => x.name === pro
 
 <template>
   <div>
-    <div v-if="!only" class="flex flex-wrap items-start justify-between gap-x-4 gap-y-2 mb-4">
-      <div class="min-w-0 flex-1 basis-56">
-        <h2 class="text-lg font-semibold text-base-content flex items-center gap-1.5">{{ t('ui.storage.RaidSection.arrays') }}<TermHelp term="array" /></h2>
-        <p class="text-sm text-base-content/70 mt-0.5">{{ t('ui.storage.RaidSection.manageSoftwareRaidArraysMdadm') }}</p>
-      </div>
-      <div class="flex items-center gap-2">
-        <Tip :text="isMissing('mdadm') ? t('ui.storage.RaidSection.toolsNotInstalled') : undefined" wrap>
-          <Button variant="outline" size="sm" @click="openRaidWizard()" :disabled="isMissing('mdadm')">
-            <PlusIcon class="w-3.5 h-3.5" aria-hidden="true" />
-            {{ t('ui.storage.RaidSection.createRaid') }}
-          </Button>
-        </Tip>
-        <Button variant="ghost" size="icon-sm" @click="refresh" :disabled="loading" :tooltip="t('ui.storage.RaidSection.refresh')" :aria-label="t('ui.storage.RaidSection.refresh')" class="text-base-content/70 hover:text-base-content">
-          <LoadingSpinner v-if="loading" class="text-base" />
-          <RefreshCwIcon v-else class="w-4 h-4" aria-hidden="true" />
-        </Button>
-      </div>
-    </div>
-
-    <ImportFound v-if="!only" kind="raid" @imported="refresh" />
-
-    <LoadingState v-if="loading && !raids.length" variant="block" />
-    <Alert variant="destructive" v-else-if="error" class="mt-4"><AlertDescription>{{ error }}</AlertDescription></Alert>
-
-    <!-- RAID arrays list -->
-    <div v-if="!only" class="flex items-center justify-between mb-3">
-      <div class="flex items-center gap-2">
-        <span v-if="raids.length" class="text-2xs px-1.5 py-0.5 rounded-sm bg-base-200 text-base-content/70 tabular-nums">{{ t('uip.storage.RaidSection.arrayCount', { count: raids.length }, raids.length) }}</span>
-      </div>
-    </div>
-
-    <div v-if="!only && raids.length === 0 && !loading" class="rounded-xl border border-dashed border-base-300 bg-base-100 px-4 py-6 text-center text-sm text-base-content/70">
-      {{ t('ui.storage.RaidSection.noRaidArraysConfiguredCreate') }}
-    </div>
-
-    <div v-else class="space-y-3">
-      <Card v-for="r in shown" :key="r.name"
-        class="gap-0 py-0 shadow-none overflow-hidden flex flex-row"
-        :class="isRaidHealthy(r) ? 'border-base-300' : 'border-error/20'">
-        <!-- Left accent stripe -->
-        <div class="w-0.5 shrink-0" :class="isRaidHealthy(r) ? 'bg-primary/50' : 'bg-error'" />
-        <div class="flex-1 min-w-0">
-          <!-- Header -->
-          <div class="flex flex-wrap items-center gap-x-3 gap-y-1.5 px-4 pt-3.5 pb-2">
-            <span class="text-2xs font-bold px-2 py-0.5 rounded-sm tracking-wide shrink-0"
-              :class="isRaidHealthy(r) ? 'bg-primary/10 text-primary' : 'bg-error/10 text-error'">
-              {{ raidLevelLabel(r.level) }}
-            </span>
-            <Button variant="link" v-if="!only" class="h-auto p-0 font-mono text-base-content" @click="emit('navigate', { kind: 'array', name: r.name })">/dev/{{ r.name }}</Button>
-            <span v-else class="font-mono text-sm text-base-content">/dev/{{ r.name }}</span>
-            <div class="ml-auto flex flex-wrap items-center justify-end gap-x-3 gap-y-1">
-              <span class="text-2xs text-base-content/70">{{ t('uip.storage.RaidSection.drivesActive', { p0: r.active, p1: r.total }) }}</span>
-              <span class="inline-flex items-center gap-1.5 text-2xs font-medium" :class="isRaidHealthy(r) ? 'text-success' : 'text-error'">
-                <span class="w-1.5 h-1.5 rounded-full shrink-0" :class="isRaidHealthy(r) ? 'bg-success' : 'bg-error animate-pulse'" />
-                {{ isRaidHealthy(r) ? t('ui.storage.RaidSection.healthy') : syncLabel(r) }}
-              </span>
-              <!-- Cross-nav: RAID used as LVM PV -->
-              <Button variant="outline" size="xs" v-if="raidPvVg(r.name)" @click="emit('navigate', { kind: 'vg', name: raidPvVg(r.name)! })"
-                class="text-2xs bg-secondary/10 text-secondary border-secondary/20 hover:bg-secondary/20">
-                {{ t('uip.storage.RaidSection.lvm', { p0: raidPvVg(r.name) }) }}
-              </Button>
-              <!-- ⋯ menu -->
-              <DropdownMenu>
-                <DropdownMenuTrigger as-child>
-                  <Button variant="ghost" size="icon-sm" class="text-base-content/70" :aria-label="t('ui.storage.RaidSection.arrayActions')">
-                    <EllipsisVerticalIcon />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" class="min-w-[176px]">
-                  <DropdownMenuLabel class="text-2xs font-semibold uppercase tracking-caps text-base-content/70">{{ t('ui.storage.RaidSection.dangerZone') }}</DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem variant="destructive" @select="openDestroy(r)">
-                    <Trash2Icon />
-                    {{ t('ui.storage.RaidSection.destroyArray') }}
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-          </div>
-          <p v-if="raidDescription(r.level)" class="text-2xs text-base-content/70 px-4 pb-1">{{ raidDescription(r.level) }}</p>
-          <p class="text-2xs text-base-content/80 px-4 pb-3">{{ arrayCapacityLine(r) }}</p>
-          <!-- Built from: member devices, completing the disk → RAID chain started in Devices -->
-          <p class="text-2xs text-base-content/70 px-4 pb-3 font-mono">← {{ r.devices.map(d => '/dev/' + d).join(' + ') }}</p>
-
-          <!-- Drive bay -->
-          <div class="px-4 pb-4">
-            <div class="flex items-center gap-1.5 flex-wrap">
-              <template v-for="(dev, idx) in r.devices" :key="dev">
-                <div class="flex flex-col items-center gap-1.5">
-                  <div class="relative rounded-lg border transition-colors"
-                    :class="membersOf(r)[idx]?.role !== 'faulty' ? 'border-base-300 bg-base-200' : 'border-error/40 bg-error/5'">
-                    <svg viewBox="0 0 52 68" class="w-12 h-16">
-                      <rect x="3" y="3" width="46" height="62" rx="5"
-                        :fill="membersOf(r)[idx]?.role !== 'faulty' ? 'var(--color-base-200)' : 'color-mix(in srgb, var(--color-error) 6%, transparent)'"
-                        :stroke="membersOf(r)[idx]?.role !== 'faulty' ? 'var(--color-base-300)' : 'color-mix(in srgb, var(--color-error) 50%, transparent)'" stroke-width="1.5" />
-                      <circle cx="9" cy="10" r="2" fill="var(--color-base-100)" opacity="0.8" />
-                      <circle cx="43" cy="10" r="2" fill="var(--color-base-100)" opacity="0.8" />
-                      <circle cx="9" cy="58" r="2" fill="var(--color-base-100)" opacity="0.8" />
-                      <circle cx="43" cy="58" r="2" fill="var(--color-base-100)" opacity="0.8" />
-                      <circle cx="26" cy="32" r="12" fill="none" :stroke="membersOf(r)[idx]?.role !== 'faulty' ? 'var(--color-primary)' : 'color-mix(in srgb, var(--color-error) 50%, transparent)'" stroke-width="1" opacity="0.35" />
-                      <circle cx="26" cy="32" r="6" fill="none" :stroke="membersOf(r)[idx]?.role !== 'faulty' ? 'var(--color-primary)' : 'color-mix(in srgb, var(--color-error) 50%, transparent)'" stroke-width="1" opacity="0.35" />
-                      <line x1="26" y1="32" x2="35" y2="21" :stroke="membersOf(r)[idx]?.role !== 'faulty' ? 'var(--color-primary)' : 'color-mix(in srgb, var(--color-error) 60%, transparent)'" stroke-width="1.5" opacity="0.5" stroke-linecap="round" />
-                      <circle cx="26" cy="32" r="2.5" :fill="membersOf(r)[idx]?.role !== 'faulty' ? 'var(--color-primary)' : 'color-mix(in srgb, var(--color-error) 70%, transparent)'" opacity="0.8" />
-                      <circle cx="40" cy="50" r="2" :fill="membersOf(r)[idx]?.role !== 'faulty' ? 'var(--color-success)' : 'var(--color-error)'" opacity="0.9" />
-                      <rect x="15" y="60" width="22" height="2.5" rx="1" fill="color-mix(in oklab, var(--color-base-content) 70%, transparent)" opacity="0.25" />
-                    </svg>
-                  </div>
-                  <Button variant="link" @click="emit('navigate', { kind: 'disk', name: dev })"
-                    class="h-auto p-0 text-2xs font-mono"
-                    :class="membersOf(r)[idx]?.role !== 'faulty' ? 'text-base-content/70 hover:text-base-content' : 'text-error'">
-                    /dev/{{ dev }}
-                  </Button>
-                </div>
-                <ChevronRightIcon v-if="idx < r.devices.length - 1" class="w-3.5 h-3.5 text-base-content/70 self-center mb-5 shrink-0" aria-hidden="true" />
-              </template>
-              <div class="flex items-center self-center mb-5 gap-2 ml-1">
-                <ZapIcon class="w-3.5 h-3.5 text-base-content/70 shrink-0" aria-hidden="true" />
-                <div>
-                  <div class="text-2xs font-semibold text-base-content/80">{{ raidLevelLabel(r.level) }}</div>
-                  <div class="text-2xs text-base-content/70 font-mono">{{ raidBlockDev(r.name)?.mountpoint || (raidPvVg(r.name) ? `LVM ${raidPvVg(r.name)}` : t('ui.storage.RaidSection.notMountedShort')) }}</div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Disks: identify, fail, remove, add a replacement -->
-          <div class="px-4 pb-4">
-            <div v-if="r.resyncPercent != null" class="mb-3">
-              <div class="flex justify-between text-2xs text-base-content/80 mb-1">
-                <span>{{ syncLabel(r) }}</span>
-                <span v-if="r.syncAction === 'recovery'" class="text-base-content/70">{{ t('ui.storage.RaidSection.redundancyReturnsWhenItFinishes') }}</span>
-              </div>
-              <Progress class="h-1.5 rounded-full bg-base-200" :model-value="r.resyncPercent" indicator-class="bg-primary transition-all" />
-            </div>
-            <div class="rounded-lg border border-base-300 divide-y divide-base-300">
-              <div v-for="m in membersOf(r)" :key="m.name" class="flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2">
-                <span class="text-2xs font-semibold uppercase px-1.5 py-0.5 rounded-sm shrink-0"
-                  :class="m.role === 'faulty' ? 'bg-error/10 text-error' : m.role === 'spare' ? 'bg-info/10 text-info' : m.role === 'rebuilding' ? 'bg-warning/10 text-warning' : 'bg-success/10 text-success'">
-                  {{ m.role === 'faulty' ? t('ui.storage.RaidSection.memberFailed') : m.role === 'spare' ? t('ui.storage.RaidSection.memberSpare') : m.role === 'rebuilding' ? t('ui.storage.RaidSection.memberRebuilding') : t('ui.storage.RaidSection.memberActive') }}
-                </span>
-                <div class="min-w-0 flex-1 basis-40">
-                  <span class="font-mono text-xs text-base-content">/dev/{{ m.name }}</span>
-                  <span v-if="memberSize(m.name)" class="text-2xs text-base-content/70 ml-2 whitespace-nowrap">{{ fmtBytes(memberSize(m.name)) }}</span>
-                  <p v-if="memberIdentity(m.name)" class="text-2xs text-base-content/70 truncate">{{ memberIdentity(m.name) }}</p>
-                </div>
-                <Button variant="ghost" size="xs" v-if="m.role === 'active' && !raidBlockDev(r.name)?.isSystem" type="button" class="shrink-0"
-                  :disabled="memberBusy !== null" @click="failMember(r, m)">{{ t('ui.storage.RaidSection.markAsFailed') }}</Button>
-                <Button variant="outline" size="xs" v-else-if="m.role === 'faulty' || m.role === 'spare'" type="button" class="shrink-0"
-                  :disabled="memberBusy !== null" @click="removeMember(r, m)">
-                  {{ memberBusy === `${r.name}:${m.name}` ? t('ui.storage.RaidSection.removing') : t('ui.storage.RaidSection.remove') }}
-                </Button>
-              </div>
-              <div v-if="emptySlots(r) > 0" class="px-3 py-2 text-2xs text-error">
-                {{ t('uip.storage.RaidSection.emptySlotAddAReplacement', { p0: emptySlots(r), p1: emptySlots(r) > 1 ? 's' : '' }) }}
-              </div>
-            </div>
-
-            <div class="mt-2">
-              <Button variant="ghost" size="xs" v-if="addPicker !== r.name" type="button" :disabled="memberBusy !== null"
-                @click="addPicker = r.name">{{ t('ui.storage.RaidSection.addADisk') }}</Button>
-              <div v-else class="rounded-lg border border-base-300 p-2 space-y-1">
-                <p class="text-2xs text-base-content/70 px-1">{{ t('ui.storage.RaidSection.freeDisksAtLeastAs') }}</p>
-                <p v-if="!replacementCandidates(r).length" class="text-2xs text-base-content/70 px-1 py-1">{{ t('ui.storage.RaidSection.noSuitableDiskIsFree') }}</p>
-                <Item v-for="d in replacementCandidates(r)" :key="d.name" as="button" type="button" size="sm"
-                  class="w-full flex-nowrap gap-2 px-2 py-1.5 text-left hover:bg-base-200 disabled:opacity-50"
-                  :disabled="memberBusy !== null" @click="addMember(r, d)">
-                  <span class="font-mono text-xs text-base-content">/dev/{{ d.name }}</span>
-                  <span class="text-2xs text-base-content/70">{{ fmtBytes(d.size) }}</span>
-                  <span v-if="memberIdentity(d.name)" class="text-2xs text-base-content/70 truncate">{{ memberIdentity(d.name) }}</span>
-                </Item>
-                <Button variant="ghost" size="xs" type="button" @click="addPicker = null">{{ t('ui.storage.RaidSection.cancel') }}</Button>
-              </div>
-            </div>
-          </div>
-
-          <!-- Usage & mount actions -->
-          <template v-if="raidBlockDev(r.name)">
-            <div class="border-t border-base-300 px-4 py-3 flex items-center gap-3">
-              <div class="flex-1 min-w-0">
-                <div v-if="raidBlockDev(r.name)!.mountpoint">
-                  <div class="flex justify-between items-baseline mb-1.5">
-                    <span class="text-2xs font-mono text-base-content/70">{{ raidBlockDev(r.name)!.mountpoint }}</span>
-                    <span class="text-2xs text-base-content/70">{{ fmtBytes(raidBlockDev(r.name)!.usageUsed) }} / {{ fmtBytes(raidBlockDev(r.name)!.usageTotal) }}</span>
-                  </div>
-                  <Progress class="h-1 bg-base-200 rounded-full" :model-value="usagePct(raidBlockDev(r.name)!)" :indicator-class="['rounded-full', usageBarClass(usagePct(raidBlockDev(r.name)!))]" />
-                  <div class="text-2xs text-base-content/70 mt-1">{{ t('uip.storage.RaidSection.free', { p0: fmtBytes(raidBlockDev(r.name)!.usageFree), p1: usagePct(raidBlockDev(r.name)!).toFixed(1) }) }}</div>
-                </div>
-                <div v-else-if="raidBlockDev(r.name)!.fstype" class="text-2xs text-base-content/70">
-                  {{ t('ui.storage.RaidSection.formatted') }} <span class="text-base-content/80">{{ raidBlockDev(r.name)!.fstype }}</span>{{ t('ui.storage.RaidSection.notMounted') }}
-                </div>
-                <div v-else class="text-2xs text-base-content/70">{{ t('ui.storage.RaidSection.noFilesystemFormatBeforeMounting') }}</div>
-              </div>
-              <div class="flex gap-1.5 shrink-0">
-                <Button variant="outline" size="xs" v-if="!raidBlockDev(r.name)!.mountpoint" @click="openFormat(raidBlockDev(r.name)!)"
-                  class="text-base-content/80 hover:border-primary/50 hover:text-primary">
-                  {{ t('ui.storage.RaidSection.format') }}
-                </Button>
-                <Button variant="outline" size="xs" v-if="raidBlockDev(r.name)!.fstype && !raidBlockDev(r.name)!.mountpoint" @click="openMount(raidBlockDev(r.name)!)"
-                  class="text-base-content/80 hover:border-success/50 hover:text-success">
-                  {{ t('ui.storage.RaidSection.mount') }}
-                </Button>
-                <Button variant="outline" size="xs" v-if="raidBlockDev(r.name)!.mountpoint" @click="openUmount(raidBlockDev(r.name)!)"
-                  class="text-base-content/80 hover:border-warning/50 hover:text-warning">
-                  {{ t('ui.storage.RaidSection.unmount') }}
-                </Button>
-              </div>
-            </div>
-          </template>
+    <template v-if="!wizard">
+      <div v-if="!only" class="flex flex-wrap items-start justify-between gap-x-4 gap-y-2 mb-4">
+        <div class="min-w-0 flex-1 basis-56">
+          <h2 class="text-lg font-semibold text-base-content flex items-center gap-1.5">{{ t('ui.storage.RaidSection.arrays') }}<TermHelp term="array" /></h2>
+          <p class="text-sm text-base-content/70 mt-0.5">{{ t('ui.storage.RaidSection.manageSoftwareRaidArraysMdadm') }}</p>
         </div>
-      </Card>
-    </div>
+        <div class="flex items-center gap-2">
+          <Tip :text="isMissing('mdadm') ? t('ui.storage.RaidSection.toolsNotInstalled') : undefined" wrap>
+            <Button variant="outline" size="sm" @click="openRaidWizard()" :disabled="isMissing('mdadm')">
+              <PlusIcon class="w-3.5 h-3.5" aria-hidden="true" />
+              {{ t('ui.storage.RaidSection.createRaid') }}
+            </Button>
+          </Tip>
+          <Button variant="ghost" size="icon-sm" @click="refresh" :disabled="loading" :tooltip="t('ui.storage.RaidSection.refresh')" :aria-label="t('ui.storage.RaidSection.refresh')" class="text-base-content/70 hover:text-base-content">
+            <LoadingSpinner v-if="loading" class="text-base" />
+            <RefreshCwIcon v-else class="w-4 h-4" aria-hidden="true" />
+          </Button>
+        </div>
+      </div>
 
-    <!-- Shared device dialogs (format / mount / unmount) -->
-    <DeviceFormatWizard ref="formatWiz" @done="refresh" @mount="d => mountDlg?.open(d)" />
-    <DeviceMountDialog ref="mountDlg" @done="refresh" />
-    <DeviceUnmountDialog ref="umountDlg" @done="refresh" />
+      <ImportFound v-if="!only" kind="raid" @imported="refresh" />
+
+      <LoadingState v-if="loading && !raids.length" variant="block" />
+      <Alert variant="destructive" v-else-if="error" class="mt-4"><AlertDescription>{{ error }}</AlertDescription></Alert>
+
+      <!-- RAID arrays list -->
+      <div v-if="!only" class="flex items-center justify-between mb-3">
+        <div class="flex items-center gap-2">
+          <span v-if="raids.length" class="text-2xs px-1.5 py-0.5 rounded-sm bg-base-200 text-base-content/70 tabular-nums">{{ t('uip.storage.RaidSection.arrayCount', { count: raids.length }, raids.length) }}</span>
+        </div>
+      </div>
+
+      <div v-if="!only && raids.length === 0 && !loading" class="rounded-xl border border-dashed border-base-300 bg-base-100 px-4 py-6 text-center text-sm text-base-content/70">
+        {{ t('ui.storage.RaidSection.noRaidArraysConfiguredCreate') }}
+      </div>
+
+      <div v-else class="space-y-3">
+        <Card v-for="r in shown" :key="r.name"
+          class="gap-0 py-0 shadow-none overflow-hidden flex flex-row"
+          :class="isRaidHealthy(r) ? 'border-base-300' : 'border-error/20'">
+          <!-- Left accent stripe -->
+          <div class="w-0.5 shrink-0" :class="isRaidHealthy(r) ? 'bg-primary/50' : 'bg-error'" />
+          <div class="flex-1 min-w-0">
+            <!-- Header -->
+            <div class="flex flex-wrap items-center gap-x-3 gap-y-1.5 px-4 pt-3.5 pb-2">
+              <span class="text-2xs font-bold px-2 py-0.5 rounded-sm tracking-wide shrink-0"
+                :class="isRaidHealthy(r) ? 'bg-primary/10 text-primary' : 'bg-error/10 text-error'">
+                {{ raidLevelLabel(r.level) }}
+              </span>
+              <Button variant="link" v-if="!only" class="h-auto p-0 font-mono text-base-content" @click="emit('navigate', { kind: 'array', name: r.name })">/dev/{{ r.name }}</Button>
+              <span v-else class="font-mono text-sm text-base-content">/dev/{{ r.name }}</span>
+              <div class="ml-auto flex flex-wrap items-center justify-end gap-x-3 gap-y-1">
+                <span class="text-2xs text-base-content/70">{{ t('uip.storage.RaidSection.drivesActive', { p0: r.active, p1: r.total }) }}</span>
+                <span class="inline-flex items-center gap-1.5 text-2xs font-medium" :class="isRaidHealthy(r) ? 'text-success' : 'text-error'">
+                  <span class="w-1.5 h-1.5 rounded-full shrink-0" :class="isRaidHealthy(r) ? 'bg-success' : 'bg-error animate-pulse'" />
+                  {{ isRaidHealthy(r) ? t('ui.storage.RaidSection.healthy') : syncLabel(r) }}
+                </span>
+                <!-- Cross-nav: RAID used as LVM PV -->
+                <Button variant="outline" size="xs" v-if="raidPvVg(r.name)" @click="emit('navigate', { kind: 'vg', name: raidPvVg(r.name)! })"
+                  class="text-2xs bg-secondary/10 text-secondary border-secondary/20 hover:bg-secondary/20">
+                  {{ t('uip.storage.RaidSection.lvm', { p0: raidPvVg(r.name) }) }}
+                </Button>
+                <!-- ⋯ menu -->
+                <DropdownMenu>
+                  <DropdownMenuTrigger as-child>
+                    <Button variant="ghost" size="icon-sm" class="text-base-content/70" :aria-label="t('ui.storage.RaidSection.arrayActions')">
+                      <EllipsisVerticalIcon />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" class="min-w-[176px]">
+                    <DropdownMenuLabel class="text-2xs font-semibold uppercase tracking-caps text-base-content/70">{{ t('ui.storage.RaidSection.dangerZone') }}</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem variant="destructive" @select="openDestroy(r)">
+                      <Trash2Icon />
+                      {{ t('ui.storage.RaidSection.destroyArray') }}
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            </div>
+            <p v-if="raidDescription(r.level)" class="text-2xs text-base-content/70 px-4 pb-1">{{ raidDescription(r.level) }}</p>
+            <p class="text-2xs text-base-content/80 px-4 pb-3">{{ arrayCapacityLine(r) }}</p>
+            <!-- Built from: member devices, completing the disk → RAID chain started in Devices -->
+            <p class="text-2xs text-base-content/70 px-4 pb-3 font-mono">← {{ r.devices.map(d => '/dev/' + d).join(' + ') }}</p>
+
+            <!-- Drive bay -->
+            <div class="px-4 pb-4">
+              <div class="flex items-center gap-1.5 flex-wrap">
+                <template v-for="(dev, idx) in r.devices" :key="dev">
+                  <div class="flex flex-col items-center gap-1.5">
+                    <div class="relative rounded-lg border transition-colors"
+                      :class="membersOf(r)[idx]?.role !== 'faulty' ? 'border-base-300 bg-base-200' : 'border-error/40 bg-error/5'">
+                      <svg viewBox="0 0 52 68" class="w-12 h-16">
+                        <rect x="3" y="3" width="46" height="62" rx="5"
+                          :fill="membersOf(r)[idx]?.role !== 'faulty' ? 'var(--color-base-200)' : 'color-mix(in srgb, var(--color-error) 6%, transparent)'"
+                          :stroke="membersOf(r)[idx]?.role !== 'faulty' ? 'var(--color-base-300)' : 'color-mix(in srgb, var(--color-error) 50%, transparent)'" stroke-width="1.5" />
+                        <circle cx="9" cy="10" r="2" fill="var(--color-base-100)" opacity="0.8" />
+                        <circle cx="43" cy="10" r="2" fill="var(--color-base-100)" opacity="0.8" />
+                        <circle cx="9" cy="58" r="2" fill="var(--color-base-100)" opacity="0.8" />
+                        <circle cx="43" cy="58" r="2" fill="var(--color-base-100)" opacity="0.8" />
+                        <circle cx="26" cy="32" r="12" fill="none" :stroke="membersOf(r)[idx]?.role !== 'faulty' ? 'var(--color-primary)' : 'color-mix(in srgb, var(--color-error) 50%, transparent)'" stroke-width="1" opacity="0.35" />
+                        <circle cx="26" cy="32" r="6" fill="none" :stroke="membersOf(r)[idx]?.role !== 'faulty' ? 'var(--color-primary)' : 'color-mix(in srgb, var(--color-error) 50%, transparent)'" stroke-width="1" opacity="0.35" />
+                        <line x1="26" y1="32" x2="35" y2="21" :stroke="membersOf(r)[idx]?.role !== 'faulty' ? 'var(--color-primary)' : 'color-mix(in srgb, var(--color-error) 60%, transparent)'" stroke-width="1.5" opacity="0.5" stroke-linecap="round" />
+                        <circle cx="26" cy="32" r="2.5" :fill="membersOf(r)[idx]?.role !== 'faulty' ? 'var(--color-primary)' : 'color-mix(in srgb, var(--color-error) 70%, transparent)'" opacity="0.8" />
+                        <circle cx="40" cy="50" r="2" :fill="membersOf(r)[idx]?.role !== 'faulty' ? 'var(--color-success)' : 'var(--color-error)'" opacity="0.9" />
+                        <rect x="15" y="60" width="22" height="2.5" rx="1" fill="color-mix(in oklab, var(--color-base-content) 70%, transparent)" opacity="0.25" />
+                      </svg>
+                    </div>
+                    <Button variant="link" @click="emit('navigate', { kind: 'disk', name: dev })"
+                      class="h-auto p-0 text-2xs font-mono"
+                      :class="membersOf(r)[idx]?.role !== 'faulty' ? 'text-base-content/70 hover:text-base-content' : 'text-error'">
+                      /dev/{{ dev }}
+                    </Button>
+                  </div>
+                  <ChevronRightIcon v-if="idx < r.devices.length - 1" class="w-3.5 h-3.5 text-base-content/70 self-center mb-5 shrink-0" aria-hidden="true" />
+                </template>
+                <div class="flex items-center self-center mb-5 gap-2 ml-1">
+                  <ZapIcon class="w-3.5 h-3.5 text-base-content/70 shrink-0" aria-hidden="true" />
+                  <div>
+                    <div class="text-2xs font-semibold text-base-content/80">{{ raidLevelLabel(r.level) }}</div>
+                    <div class="text-2xs text-base-content/70 font-mono">{{ raidBlockDev(r.name)?.mountpoint || (raidPvVg(r.name) ? `LVM ${raidPvVg(r.name)}` : t('ui.storage.RaidSection.notMountedShort')) }}</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Disks: identify, fail, remove, add a replacement -->
+            <div class="px-4 pb-4">
+              <div v-if="r.resyncPercent != null" class="mb-3">
+                <div class="flex justify-between text-2xs text-base-content/80 mb-1">
+                  <span>{{ syncLabel(r) }}</span>
+                  <span v-if="r.syncAction === 'recovery'" class="text-base-content/70">{{ t('ui.storage.RaidSection.redundancyReturnsWhenItFinishes') }}</span>
+                </div>
+                <Progress class="h-1.5 rounded-full bg-base-200" :model-value="r.resyncPercent" indicator-class="bg-primary transition-all" />
+              </div>
+              <div class="rounded-lg border border-base-300 divide-y divide-base-300">
+                <div v-for="m in membersOf(r)" :key="m.name" class="flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2">
+                  <span class="text-2xs font-semibold uppercase px-1.5 py-0.5 rounded-sm shrink-0"
+                    :class="m.role === 'faulty' ? 'bg-error/10 text-error' : m.role === 'spare' ? 'bg-info/10 text-info' : m.role === 'rebuilding' ? 'bg-warning/10 text-warning' : 'bg-success/10 text-success'">
+                    {{ m.role === 'faulty' ? t('ui.storage.RaidSection.memberFailed') : m.role === 'spare' ? t('ui.storage.RaidSection.memberSpare') : m.role === 'rebuilding' ? t('ui.storage.RaidSection.memberRebuilding') : t('ui.storage.RaidSection.memberActive') }}
+                  </span>
+                  <div class="min-w-0 flex-1 basis-40">
+                    <span class="font-mono text-xs text-base-content">/dev/{{ m.name }}</span>
+                    <span v-if="memberSize(m.name)" class="text-2xs text-base-content/70 ml-2 whitespace-nowrap">{{ fmtBytes(memberSize(m.name)) }}</span>
+                    <p v-if="memberIdentity(m.name)" class="text-2xs text-base-content/70 truncate">{{ memberIdentity(m.name) }}</p>
+                  </div>
+                  <Button variant="ghost" size="xs" v-if="m.role === 'active' && !raidBlockDev(r.name)?.isSystem" type="button" class="shrink-0"
+                    :disabled="memberBusy !== null" @click="failMember(r, m)">{{ t('ui.storage.RaidSection.markAsFailed') }}</Button>
+                  <Button variant="outline" size="xs" v-else-if="m.role === 'faulty' || m.role === 'spare'" type="button" class="shrink-0"
+                    :disabled="memberBusy !== null" @click="removeMember(r, m)">
+                    {{ memberBusy === `${r.name}:${m.name}` ? t('ui.storage.RaidSection.removing') : t('ui.storage.RaidSection.remove') }}
+                  </Button>
+                </div>
+                <div v-if="emptySlots(r) > 0" class="px-3 py-2 text-2xs text-error">
+                  {{ t('uip.storage.RaidSection.emptySlotAddAReplacement', { p0: emptySlots(r), p1: emptySlots(r) > 1 ? 's' : '' }) }}
+                </div>
+              </div>
+
+              <div class="mt-2">
+                <Button variant="ghost" size="xs" v-if="addPicker !== r.name" type="button" :disabled="memberBusy !== null"
+                  @click="addPicker = r.name">{{ t('ui.storage.RaidSection.addADisk') }}</Button>
+                <div v-else class="rounded-lg border border-base-300 p-2 space-y-1">
+                  <p class="text-2xs text-base-content/70 px-1">{{ t('ui.storage.RaidSection.freeDisksAtLeastAs') }}</p>
+                  <p v-if="!replacementCandidates(r).length" class="text-2xs text-base-content/70 px-1 py-1">{{ t('ui.storage.RaidSection.noSuitableDiskIsFree') }}</p>
+                  <Item v-for="d in replacementCandidates(r)" :key="d.name" as="button" type="button" size="sm"
+                    class="w-full flex-nowrap gap-2 px-2 py-1.5 text-left hover:bg-base-200 disabled:opacity-50"
+                    :disabled="memberBusy !== null" @click="addMember(r, d)">
+                    <span class="font-mono text-xs text-base-content">/dev/{{ d.name }}</span>
+                    <span class="text-2xs text-base-content/70">{{ fmtBytes(d.size) }}</span>
+                    <span v-if="memberIdentity(d.name)" class="text-2xs text-base-content/70 truncate">{{ memberIdentity(d.name) }}</span>
+                  </Item>
+                  <Button variant="ghost" size="xs" type="button" @click="addPicker = null">{{ t('ui.storage.RaidSection.cancel') }}</Button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Usage & mount actions -->
+            <template v-if="raidBlockDev(r.name)">
+              <div class="border-t border-base-300 px-4 py-3 flex items-center gap-3">
+                <div class="flex-1 min-w-0">
+                  <div v-if="raidBlockDev(r.name)!.mountpoint">
+                    <div class="flex justify-between items-baseline mb-1.5">
+                      <span class="text-2xs font-mono text-base-content/70">{{ raidBlockDev(r.name)!.mountpoint }}</span>
+                      <span class="text-2xs text-base-content/70">{{ fmtBytes(raidBlockDev(r.name)!.usageUsed) }} / {{ fmtBytes(raidBlockDev(r.name)!.usageTotal) }}</span>
+                    </div>
+                    <Progress class="h-1 bg-base-200 rounded-full" :model-value="usagePct(raidBlockDev(r.name)!)" :indicator-class="['rounded-full', usageBarClass(usagePct(raidBlockDev(r.name)!))]" />
+                    <div class="text-2xs text-base-content/70 mt-1">{{ t('uip.storage.RaidSection.free', { p0: fmtBytes(raidBlockDev(r.name)!.usageFree), p1: usagePct(raidBlockDev(r.name)!).toFixed(1) }) }}</div>
+                  </div>
+                  <div v-else-if="raidBlockDev(r.name)!.fstype" class="text-2xs text-base-content/70">
+                    {{ t('ui.storage.RaidSection.formatted') }} <span class="text-base-content/80">{{ raidBlockDev(r.name)!.fstype }}</span>{{ t('ui.storage.RaidSection.notMounted') }}
+                  </div>
+                  <div v-else class="text-2xs text-base-content/70">{{ t('ui.storage.RaidSection.noFilesystemFormatBeforeMounting') }}</div>
+                </div>
+                <div class="flex gap-1.5 shrink-0">
+                  <Button variant="outline" size="xs" v-if="!raidBlockDev(r.name)!.mountpoint" @click="openFormat(raidBlockDev(r.name)!)"
+                    class="text-base-content/80 hover:border-primary/50 hover:text-primary">
+                    {{ t('ui.storage.RaidSection.format') }}
+                  </Button>
+                  <Button variant="outline" size="xs" v-if="raidBlockDev(r.name)!.fstype && !raidBlockDev(r.name)!.mountpoint" @click="openMount(raidBlockDev(r.name)!)"
+                    class="text-base-content/80 hover:border-success/50 hover:text-success">
+                    {{ t('ui.storage.RaidSection.mount') }}
+                  </Button>
+                  <Button variant="outline" size="xs" v-if="raidBlockDev(r.name)!.mountpoint" @click="openUmount(raidBlockDev(r.name)!)"
+                    class="text-base-content/80 hover:border-warning/50 hover:text-warning">
+                    {{ t('ui.storage.RaidSection.unmount') }}
+                  </Button>
+                </div>
+              </div>
+            </template>
+          </div>
+        </Card>
+      </div>
+
+      <!-- Shared device dialogs (format / mount / unmount) -->
+      <DeviceFormatWizard ref="formatWiz" @done="refresh" @mount="d => mountDlg?.open(d)" />
+      <DeviceMountDialog ref="mountDlg" @done="refresh" />
+      <DeviceUnmountDialog ref="umountDlg" @done="refresh" />
 
     <!-- ════════════════════════════════════════════════════════════════════ -->
     <!-- CREATE RAID WIZARD                                                   -->
     <!-- ════════════════════════════════════════════════════════════════════ -->
+    </template>
     <Modal :label="t('ui.storage.RaidSection.createRaid3')" v-if="raidWiz" panel-class="w-full max-w-lg" :show-close="false" :prevent-close="!!raidWiz.busy" @close="raidWiz = null">
 
       <!-- Step indicator -->
@@ -713,27 +720,29 @@ const shown = computed(() => props.only ? raids.value.filter(x => x.name === pro
       </div>
 
     </Modal>
+    <template v-if="!wizard">
 
-    <!-- Destroy RAID array -->
-    <ConfirmDestroyDialog
-      v-if="destroyDlg"
-      :title="t('ui.storage.RaidSection.destroyRaidArray')"
-      :subtitle="t('ui.storage.RaidSection.destroySubtitle')"
-      :confirm-word="destroyDlg.raid.name"
-      :action-label="t('ui.storage.RaidSection.destroyAction')"
-      :busy-label="t('ui.storage.RaidSection.destroying')"
-      :busy="destroyDlg.busy"
-      :error="destroyDlg.err"
-      @confirm="doDestroyRaid"
-      @close="destroyDlg = null"
-    >
-      <template #warning>{{ t('ui.storage.RaidSection.allDataOn') }} <span class="font-bold">/dev/{{ destroyDlg.raid.name }}</span> {{ t('ui.storage.RaidSection.willBePermanentlyLostMake') }}</template>
-      <template #details>
-        <div class="flex gap-2"><span class="w-16 text-base-content/80">{{ t('ui.storage.RaidSection.array') }}</span><span class="font-mono">/dev/{{ destroyDlg.raid.name }}</span></div>
-        <div class="flex gap-2"><span class="w-16 text-base-content/80">{{ t('ui.storage.RaidSection.level') }}</span><span>{{ raidLevelLabel(destroyDlg.raid.level) }}</span></div>
-        <div class="flex gap-2"><span class="w-16 text-base-content/80">{{ t('ui.storage.RaidSection.members') }}</span><span class="font-mono">{{ destroyDlg.raid.devices.join(', ') }}</span></div>
-      </template>
-    </ConfirmDestroyDialog>
+      <!-- Destroy RAID array -->
+      <ConfirmDestroyDialog
+        v-if="destroyDlg"
+        :title="t('ui.storage.RaidSection.destroyRaidArray')"
+        :subtitle="t('ui.storage.RaidSection.destroySubtitle')"
+        :confirm-word="destroyDlg.raid.name"
+        :action-label="t('ui.storage.RaidSection.destroyAction')"
+        :busy-label="t('ui.storage.RaidSection.destroying')"
+        :busy="destroyDlg.busy"
+        :error="destroyDlg.err"
+        @confirm="doDestroyRaid"
+        @close="destroyDlg = null"
+      >
+        <template #warning>{{ t('ui.storage.RaidSection.allDataOn') }} <span class="font-bold">/dev/{{ destroyDlg.raid.name }}</span> {{ t('ui.storage.RaidSection.willBePermanentlyLostMake') }}</template>
+        <template #details>
+          <div class="flex gap-2"><span class="w-16 text-base-content/80">{{ t('ui.storage.RaidSection.array') }}</span><span class="font-mono">/dev/{{ destroyDlg.raid.name }}</span></div>
+          <div class="flex gap-2"><span class="w-16 text-base-content/80">{{ t('ui.storage.RaidSection.level') }}</span><span>{{ raidLevelLabel(destroyDlg.raid.level) }}</span></div>
+          <div class="flex gap-2"><span class="w-16 text-base-content/80">{{ t('ui.storage.RaidSection.members') }}</span><span class="font-mono">{{ destroyDlg.raid.devices.join(', ') }}</span></div>
+        </template>
+      </ConfirmDestroyDialog>
 
+    </template>
   </div>
 </template>

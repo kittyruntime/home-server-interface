@@ -1,4 +1,8 @@
 <script setup lang="ts">
+import TypeBadge from './TypeBadge.vue'
+import { useStorageData } from './store'
+import { poolRows } from './storage-model'
+import type { StorageLocation, StorageSection } from '../../lib/storage-nav'
 import { loadZfs, zfs } from './zfs-data'
 import MaintenanceCalendar from './MaintenanceCalendar.vue'
 import TermHelp from './TermHelp.vue'
@@ -109,6 +113,15 @@ const statusClass: Record<string, string> = {
   error:   'bg-error/10 text-error',
   failed:  'bg-error/10 text-error',
 }
+
+// In progress, for every type: an array rebuilding or checked, a scrub, a
+// resilver or a raidz expansion. The schedules come after.
+const emit = defineEmits<{ navigate: [target: StorageSection | StorageLocation] }>()
+const { raids, devices, lvmPVs, lvmVGs } = useStorageData()
+const inProgress = computed(() => poolRows({
+  raids: raids.value, devices: devices.value, pvs: lvmPVs.value, vgs: lvmVGs.value,
+  pools: zfs.value?.pools ?? [], datasets: zfs.value?.datasets ?? [],
+}).filter(r => r.progress != null))
 </script>
 
 <template>
@@ -121,6 +134,24 @@ const statusClass: Record<string, string> = {
     </div>
 
     <StorageIntro tab="maintenance" />
+
+    <section v-if="inProgress.length" class="mb-6">
+      <h3 class="mb-2 text-sm font-semibold text-base-content">{{ $t('ui.storage.Maintenance.running') }}</h3>
+      <Card class="block gap-0 py-0 shadow-none">
+        <ul class="divide-y divide-base-300">
+          <li v-for="r in inProgress" :key="`${r.type}:${r.name}`">
+            <button type="button" class="block w-full px-4 py-3 text-left hover:bg-base-200/50" @click="emit('navigate', r.location)">
+              <span class="flex flex-wrap items-center gap-2 text-sm">
+                <span class="font-medium">{{ $t(`ui.storage.Maintenance.what.${r.type}`) }}</span>
+                <span class="font-mono">{{ r.name }}</span><TypeBadge :type="r.type" />
+                <span class="ml-auto text-xs tabular-nums text-base-content/70">{{ r.progress }} %</span>
+              </span>
+              <span class="mt-2 block h-1.5 overflow-hidden rounded-full bg-base-300"><span class="block h-full rounded-full bg-info" :style="{ width: `${r.progress}%` }" /></span>
+            </button>
+          </li>
+        </ul>
+      </Card>
+    </section>
 
     <MaintenanceCalendar v-if="data" :schedules="savedSchedules" :server-offset="data.serverOffset" />
 

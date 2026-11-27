@@ -22,7 +22,7 @@ import ConfirmDestroyDialog from './dialogs/ConfirmDestroyDialog.vue'
 // LVM > Partitions & formatting: the disks no array, volume group, pool or
 // the system uses, with the tools to partition, format, mount and unmount
 // them. The Disks tab only shows hardware.
-const emit = defineEmits<{ navigate: [target: 'raid' | 'lvm' | 'pools' | StorageLocation] }>()
+const emit = defineEmits<{ navigate: [target: 'pools' | StorageLocation] }>()
 const { t } = useI18n()
 const { loading, error, devices, lvmLVs, refresh } = useStorageData()
 
@@ -121,8 +121,9 @@ function openUmount(dev: BlockDev) { umountDlg.value?.open(dev) }
   <div>
     <div class="flex flex-wrap items-start justify-between gap-x-4 gap-y-2 mb-4">
       <div class="min-w-0 flex-1 basis-56">
-        <h2 class="text-lg font-semibold text-base-content">{{ t('ui.storage.PartitionsSection.title') }}</h2>
-        <p class="text-sm text-base-content/70 mt-0.5">{{ t('ui.storage.PartitionsSection.subtitle') }}</p>
+        <!-- Inside Disks, under the disks: a sub-heading. -->
+        <h3 class="text-sm font-semibold text-base-content">{{ t('ui.storage.PartitionsSection.title') }}</h3>
+        <p class="text-xs text-base-content/70 mt-0.5">{{ t('ui.storage.PartitionsSection.subtitle') }}</p>
       </div>
       <Button variant="ghost" size="icon-sm" @click="refresh" :disabled="loading" :tooltip="t('ui.storage.PhysicalDisksSection.refresh')" :aria-label="t('ui.storage.PhysicalDisksSection.refresh')" class="text-base-content/70 hover:text-base-content">
         <LoadingSpinner v-if="loading" class="text-base" />
