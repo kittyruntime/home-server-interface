@@ -340,6 +340,9 @@
   /* ZFS in Storage (bays, pools): a violet that stays apart from every
      theme's secondary (LVM) and reads on light and dark backgrounds. */
   --color-engine-zfs: oklch(62% 0.16 300);
+  /* LVM keeps the theme's secondary (bays, badges); mdadm a teal apart from both. */
+  --color-engine-lvm: var(--color-secondary);
+  --color-engine-md: oklch(64% 0.11 190);
 
   --font-sans:   "Inter", system-ui, sans-serif;
   --font-mono:   "JetBrains Mono", "SF Mono", ui-monospace, monospace;

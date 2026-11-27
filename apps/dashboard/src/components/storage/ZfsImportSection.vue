@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import TypeBadge from './TypeBadge.vue'
 import { useI18n } from 'vue-i18n'
 import { onMounted, ref } from 'vue'
 import { Card } from '@/components/ui/card'
@@ -15,6 +16,8 @@ import { loadZfs } from './zfs-data'
 // Pools found on the disks but not imported (disks from another machine, or
 // after a reinstall). Importing changes no data and mounts only in the data
 // folders; the pool is then watched like any HSI volume.
+// `embedded`: inside Pools > Import, under its own heading: a sub-heading here.
+defineProps<{ embedded?: boolean }>()
 const emit = defineEmits<{ navigate: [target: StorageSection | StorageLocation] }>()
 const { t } = useI18n()
 const toast = useToast()
@@ -60,7 +63,8 @@ async function importPool(p: Scan['pools'][number]) {
 <template>
   <div>
     <div class="mb-4">
-      <h2 class="text-lg font-semibold text-base-content">{{ t('ui.storage.Zfs.import') }}</h2>
+      <h3 v-if="embedded" class="flex items-center gap-2 text-sm font-semibold text-base-content">{{ t('ui.storage.Zfs.import') }}<TypeBadge type="zfs" /></h3>
+      <h2 v-else class="text-lg font-semibold text-base-content">{{ t('ui.storage.Zfs.import') }}</h2>
       <p class="mt-0.5 text-sm text-base-content/70">{{ t('ui.storage.Zfs.importSubtitle') }}</p>
     </div>
     <Alert v-if="lowMemory" variant="warning" class="mb-4 block" role="note">{{ t('ui.storage.Zfs.lowMemory') }}</Alert>

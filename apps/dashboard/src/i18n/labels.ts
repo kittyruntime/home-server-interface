@@ -1,7 +1,7 @@
 import { watchEffect } from 'vue'
 import { i18n } from '.'
 import { APP_LABEL, type AppId } from '../lib/desktop'
-import { NAV_TEXT, SECTION_LABELS, TAB_LABELS, type StorageSection, type StorageTab } from '../lib/storage-nav'
+import { NAV_TEXT, SECTION_LABELS, type StorageSection } from '../lib/storage-nav'
 import { setTranslator } from '../lib/tr'
 import { LOADING } from '../lib/loading'
 import { ROLE_LABELS } from '../components/storage/disk-list'
@@ -20,8 +20,8 @@ watchEffect(() => {
   const t = i18n.global.t
   for (const [id, key] of Object.entries(APPS)) APP_LABEL[id as AppId] = t(`apps.${key}`)
   for (const s of Object.keys(SECTION_LABELS) as StorageSection[]) SECTION_LABELS[s] = t(`storage.nav.${s}`)
-  for (const k of Object.keys(TAB_LABELS) as StorageTab[]) TAB_LABELS[k] = t(`storage.tabs.${k}`)
   NAV_TEXT.createVolume = t('storage.createVolume')
+  NAV_TEXT.import = t('storage.importPools')
   for (const k of Object.keys(LOADING) as (keyof typeof LOADING)[]) LOADING[k] = t(`lib.loading.${k}`)
   for (const r of Object.keys(ROLE_LABELS) as (keyof typeof ROLE_LABELS)[]) ROLE_LABELS[r] = t(`storage.roles.${r}`)
 })

@@ -2,7 +2,10 @@ import { reactive } from 'vue'
 // Where the Storage app is (#40): a section, or an object shown in its
 // section. Each Storage panel keeps its own stack of locations.
 
-export type StorageSection = 'volumes' | 'disks' | 'raid' | 'lvm' | 'partitions' | 'mounts' | 'maintenance' | 'pools' | 'datasets' | 'snapshots' | 'zfs-import'
+// Menus by function: ZFS, LVM and mdadm are types shown on the objects, not
+// entries of the navigation.
+export type StorageSection = 'overview' | 'disks' | 'pools' | 'volumes' | 'mounts' | 'snapshots' | 'maintenance'
+export const SECTIONS: StorageSection[] = ['overview', 'disks', 'pools', 'volumes', 'mounts', 'snapshots', 'maintenance']
 export type StorageLocation =
   | { kind: 'section'; section: StorageSection }
   | { kind: 'volume'; id: string }
@@ -11,13 +14,13 @@ export type StorageLocation =
   | { kind: 'array'; name: string }
   | { kind: 'vg'; name: string }
   | { kind: 'pool'; name: string }
+  | { kind: 'import' }
 
 // English names; i18n/labels.ts puts them in the interface language.
 export const SECTION_LABELS = reactive<Record<StorageSection, string>>({
-  'volumes': 'Volumes', 'disks': 'Disks', 'raid': 'Arrays', 'lvm': 'Volume groups', 'partitions': 'Partitions & formatting', 'mounts': 'Mounts', 'maintenance': 'Maintenance',
-  'pools': 'Pools', 'datasets': 'Datasets', 'snapshots': 'Snapshots', 'zfs-import': 'Import',
+  overview: 'Overview', disks: 'Disks', pools: 'Pools', volumes: 'Volumes', mounts: 'Mounts', snapshots: 'Snapshots', maintenance: 'Maintenance',
 })
-export const NAV_TEXT = reactive({ createVolume: 'Create volume' })
+export const NAV_TEXT = reactive({ createVolume: 'Create volume', import: 'Import' })
 
 export function sectionOf(loc: StorageLocation): StorageSection {
   switch (loc.kind) {
@@ -25,9 +28,10 @@ export function sectionOf(loc: StorageLocation): StorageSection {
     case 'volume':  return 'volumes'
     case 'create-volume': return 'volumes'
     case 'disk':    return 'disks'
-    case 'array':   return 'raid'
-    case 'vg':      return 'lvm'
-    case 'pool':    return 'pools'
+    case 'array':
+    case 'vg':
+    case 'pool':
+    case 'import':  return 'pools'
   }
 }
 
@@ -37,6 +41,7 @@ export type LocationNames = Record<string, string>
 export function locationLabel(loc: StorageLocation, names: LocationNames = {}): string {
   if (loc.kind === 'section') return SECTION_LABELS[loc.section]
   if (loc.kind === 'create-volume') return NAV_TEXT.createVolume
+  if (loc.kind === 'import') return NAV_TEXT.import
   const key = loc.kind === 'volume' ? loc.id : loc.name
   return names[`${loc.kind}:${key}`] ?? key
 }
@@ -46,7 +51,7 @@ export interface StorageNav { stack: StorageLocation[]; current: StorageLocation
 const same = (a: StorageLocation, b: StorageLocation) => JSON.stringify(a) === JSON.stringify(b)
 const make = (stack: StorageLocation[]): StorageNav => ({ stack, current: stack[stack.length - 1]! })
 
-export function createNav(initial: StorageLocation = { kind: 'section', section: 'volumes' }): StorageNav {
+export function createNav(initial: StorageLocation = { kind: 'section', section: 'overview' }): StorageNav {
   return navOpen(make([{ kind: 'section', section: sectionOf(initial) }]), initial)
 }
 
@@ -75,75 +80,7 @@ export function leavesWizard(from: StorageNav, to: StorageNav): boolean {
   return from.current.kind === 'create-volume' && to.current.kind !== 'create-volume'
 }
 
-// ── Tabs ─────────────────────────────────────────────────────────────────────
-// The Storage app is in tabs, one per engine plus the shared ones (Disks,
-// Maintenance). Each tab keeps its own stack of locations.
-
-export type StorageTab = 'disks' | 'lvm' | 'zfs' | 'maintenance'
-
-export const TAB_SECTIONS: Record<StorageTab, StorageSection[]> = {
-  disks: ['disks'],
-  lvm: ['volumes', 'raid', 'lvm', 'partitions', 'mounts'],
-  zfs: ['pools', 'datasets', 'snapshots', 'zfs-import'],
-  maintenance: ['maintenance'],
-}
-
-// English names; i18n/labels.ts puts them in the interface language.
-export const TAB_LABELS = reactive<Record<StorageTab, string>>({
-  disks: 'Disks', lvm: 'LVM', zfs: 'ZFS', maintenance: 'Maintenance',
-})
-
-export function tabOf(loc: StorageLocation): StorageTab {
-  const section = sectionOf(loc)
-  return (Object.keys(TAB_SECTIONS) as StorageTab[]).find(t => TAB_SECTIONS[t].includes(section))!
-}
-
-/** The tabs shown: ZFS only on a host that has it. */
-export function visibleTabs(o: { zfs: boolean }): StorageTab[] {
-  return o.zfs ? ['disks', 'lvm', 'zfs', 'maintenance'] : ['disks', 'lvm', 'maintenance']
-}
-
-/** The tab Storage opens on: Disks until a volume exists, then the engine
- *  holding most of them (`volumes` counts the LVM ones). */
-export function defaultTab(o: { volumes: number; zfsVolumes?: number }): StorageTab {
-  const zfs = o.zfsVolumes ?? 0
-  if (o.volumes === 0 && zfs === 0) return 'disks'
-  return zfs > o.volumes ? 'zfs' : 'lvm'
-}
-
-export interface TabbedNav { tab: StorageTab; navs: Partial<Record<StorageTab, StorageNav>> }
-
-const firstOf = (tab: StorageTab): StorageNav => createNav({ kind: 'section', section: TAB_SECTIONS[tab][0]! })
-
-export function createTabbedNav(tab: StorageTab): TabbedNav {
-  return { tab, navs: { [tab]: firstOf(tab) } }
-}
-
-export function currentNav(t: TabbedNav): StorageNav {
-  return t.navs[t.tab] ?? firstOf(t.tab)
-}
-
-/** Opens `loc` in its own tab, which becomes the current one. Within the
- *  current tab it goes on top of the stack; a link into another tab starts that
- *  tab from its section, as the breadcrumb leads there from the link. */
-export function tabbedOpen(t: TabbedNav, loc: StorageLocation): TabbedNav {
-  const tab = tabOf(loc)
-  const base = tab === t.tab ? (t.navs[tab] ?? firstOf(tab)) : createNav({ kind: 'section', section: sectionOf(loc) })
-  const nav = navOpen(base, loc)
-  return { tab, navs: { ...t.navs, [tab]: nav } }
-}
-
-/** Shows `tab` where it was left; a tab never opened starts on its first
- *  section. The Create volume wizard is a step, not a place: leaving its tab
- *  drops it. */
-export function switchTab(t: TabbedNav, tab: StorageTab): TabbedNav {
-  const navs = { ...t.navs }
-  const left = navs[t.tab]
-  if (left && left.current.kind === 'create-volume' && left.stack.length > 1) navs[t.tab] = navTo(left, left.stack.length - 2)
-  return { tab, navs: { ...navs, [tab]: navs[tab] ?? firstOf(tab) } }
-}
-
-/** Replaces the current tab's stack (breadcrumbs). */
-export function withNav(t: TabbedNav, nav: StorageNav): TabbedNav {
-  return { tab: t.tab, navs: { ...t.navs, [t.tab]: nav } }
+/** The sections shown: Snapshots only when a type that has them is there. */
+export function visibleSections(o: { snapshots: boolean }): StorageSection[] {
+  return SECTIONS.filter(s => s !== 'snapshots' || o.snapshots)
 }

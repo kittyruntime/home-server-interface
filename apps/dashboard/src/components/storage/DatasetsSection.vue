@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import TypeBadge from './TypeBadge.vue'
 import { useToast } from '../../lib/toast'
 import { applyPlanned } from '../../lib/plan'
 import DatasetDialog from './DatasetDialog.vue'
@@ -14,6 +15,8 @@ import { loadZfs, zfs, type ZfsDataset } from './zfs-data'
 
 // Every filesystem dataset of the imported pools. Those ZFS mounts on a folder
 // of their own are volumes; the others say why they are not.
+// `embedded`: under Volumes, as the settings of the ZFS datasets: a sub-heading.
+defineProps<{ embedded?: boolean }>()
 const emit = defineEmits<{ navigate: [target: StorageSection | StorageLocation] }>()
 const { t } = useI18n()
 type Overview = Awaited<ReturnType<typeof trpc.storage.volumes.overview.query>>
@@ -57,7 +60,8 @@ const isVolume = (d: ZfsDataset) => d.mountPoint.startsWith('/') && (d.canMount 
 <template>
   <div>
     <div class="mb-4">
-      <h2 class="text-lg font-semibold text-base-content">{{ t('ui.storage.Zfs.datasets') }}</h2>
+      <h3 v-if="embedded" class="flex items-center gap-2 text-sm font-semibold text-base-content">{{ t('ui.storage.Zfs.datasets') }}<TypeBadge type="zfs" /></h3>
+      <h2 v-else class="text-lg font-semibold text-base-content">{{ t('ui.storage.Zfs.datasets') }}</h2>
       <p class="mt-0.5 text-sm text-base-content/70">{{ t('ui.storage.Zfs.datasetsSubtitle') }}</p>
     </div>
     <LoadingState v-if="loading" variant="block" />

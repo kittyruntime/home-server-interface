@@ -1,12 +1,12 @@
 ---
 title: Disks
-description: The Disks tab of Storage, its bays, colors, health and free disks.
+description: The Disks section of Storage, its bays, colors, health and free disks.
 sidebar:
   label: 'Storage: Disks'
   order: 1.1
 ---
 
-The **Disks** tab shows every disk of the server as a bay of a chassis. A bay's
+The **Disks** section shows every disk of the server as a bay of a chassis. A bay's
 color says what uses the disk:
 
 - **Solid colored border**: a volume. LVM volumes (directly or through a RAID array) take the theme's color, ZFS pools a violet of their own; the legend under the bays names them.
@@ -24,6 +24,6 @@ the array, volume group or ZFS pool built on it, as a link to its page, or Free,
 System. A filter shows only the disks of one use. Select a disk to open its page:
 identity, SMART details, self-tests and its label.
 
-Partitioning, formatting and mounting are not in this tab: they are in
-**LVM > Partitions & formatting**, which lists only the disks nothing uses. See
+Below the disks, **Partitions & formatting** lists only the disks nothing uses,
+so nothing in use can be erased from there. See
 [LVM volumes](/home-server-interface/guide/features/storage-lvm/).

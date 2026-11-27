@@ -37,7 +37,7 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  navigate:    [target: 'raid' | 'lvm' | 'pools' | StorageLocation]
+  navigate:    [target: 'pools' | StorageLocation]
   toggleSmart: []
   format:      [dev: BlockDev]
   mount:       [dev: BlockDev]
@@ -67,7 +67,7 @@ function roleOf(dev: BlockDev): DeviceRole | null {
 function openRole(role: DeviceRole) {
   if (role.kind === 'zfs') { emit('navigate', role.owner ? { kind: 'pool', name: role.owner } : 'pools'); return }
   if (role.owner) emit('navigate', role.kind === 'raid' ? { kind: 'array', name: role.owner } : { kind: 'vg', name: role.owner })
-  else emit('navigate', role.kind)
+  else emit('navigate', 'pools')
 }
 
 function diskLocked(disk: BlockDev): boolean {

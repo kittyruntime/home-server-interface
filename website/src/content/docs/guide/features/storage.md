@@ -7,20 +7,31 @@ sidebar:
 ---
 
 The Storage app manages the server's real disks: S.M.A.R.T. health, `mdadm` RAID,
-LVM and mounts. It is organized in tabs:
+LVM, ZFS and mounts. Its menus follow what you do, not the technology: `mdadm`,
+LVM and ZFS are types, shown as a badge on each pool and volume, and their own
+actions are on the page of each object.
 
-- **Disks**: every disk of the server, drawn as the bays of a chassis and colored
-  by what uses it. See [Disks](/home-server-interface/guide/features/storage-disks/).
-- **LVM**: the volumes, RAID arrays, volume groups and mounts. See
-  [LVM volumes](/home-server-interface/guide/features/storage-lvm/).
-- **ZFS**, on a server that has ZFS: pools, datasets and import. See
+disks -> partitions (optional) -> pools (optional) -> volumes -> filesystems -> mount points
+
+- **Overview**: usable capacity, disk health, what is in progress, counts from
+  the disks to the mounts, capacity by pool and what needs attention.
+- **Disks**: every disk, drawn as the bays of a chassis and colored by what uses
+  it, then partitioning and formatting of the disks nothing uses. See
+  [Disks](/home-server-interface/guide/features/storage-disks/).
+- **Pools**: `mdadm` arrays, LVM volume groups and ZFS pools in one list, with
+  what each sits on and holds (a volume group can sit on an array). **Create a
+  pool** starts with the type; **Import** gathers the pools found on the disks.
+  See [LVM volumes](/home-server-interface/guide/features/storage-lvm/) and
   [ZFS](/home-server-interface/guide/features/storage-zfs/).
-- **Maintenance**: scheduled SMART self-tests and RAID checks, with a calendar of
-  the next two weeks. See [Maintenance](/home-server-interface/guide/features/maintenance/).
+- **Volumes**: every volume with its type, and the ZFS dataset settings.
+- **Mounts**: where each filesystem appears, and whether it comes back at boot.
+- **Snapshots**, on a server with ZFS.
+- **Maintenance**: what is in progress, then the scheduled SMART self-tests, RAID
+  checks and ZFS scrubs. See [Maintenance](/home-server-interface/guide/features/maintenance/).
 
-Storage opens on Disks until a volume exists, then on LVM. Each tab keeps its
-place: switching tabs and coming back shows the same page. Technical terms have a
-help icon that leads to the [glossary](/home-server-interface/guide/features/storage-glossary/).
+Storage opens on the Overview. A single disk can hold a volume with no pool.
+Technical terms have a help icon that leads to the
+[glossary](/home-server-interface/guide/features/storage-glossary/).
 
 ![Storage, with its volumes, arrays and disks](../../../../assets/storage.png)
 

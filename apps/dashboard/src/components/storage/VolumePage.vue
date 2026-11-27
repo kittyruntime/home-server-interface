@@ -137,7 +137,7 @@ function openLayer(kind: string, name: string) {
   else if (kind === 'vg') emit('navigate', { kind: 'vg', name })
   else if (kind === 'lv') {
     const vg = volume.value?.stack.find(l => l.kind === 'vg')?.name
-    emit('navigate', vg ? { kind: 'vg', name: vg } : 'lvm')
+    emit('navigate', vg ? { kind: 'vg', name: vg } : 'pools')
   }
 }
 

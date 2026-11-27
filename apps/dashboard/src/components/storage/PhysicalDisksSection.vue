@@ -33,7 +33,7 @@ const { t } = useI18n()
 
 const emit = defineEmits<{
   open:     [disk: string]
-  navigate: [target: 'raid' | 'lvm' | 'pools' | StorageLocation]
+  navigate: [target: 'pools' | StorageLocation]
   // Start creating a volume on these free disks.
   create:   [kind: 'raid' | 'lvm' | 'volume', devices: string[]]
 }>()

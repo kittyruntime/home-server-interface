@@ -74,8 +74,8 @@ const roleText = computed(() => {
 })
 function openOwner() {
   const r = row.value
-  if (r?.role === 'raid') emit('navigate', r.raidOwners[0] ? { kind: 'array', name: r.raidOwners[0] } : 'raid')
-  else if (r?.role === 'lvm') emit('navigate', r.vgOwners[0] ? { kind: 'vg', name: r.vgOwners[0] } : 'lvm')
+  if (r?.role === 'raid') emit('navigate', r.raidOwners[0] ? { kind: 'array', name: r.raidOwners[0] } : 'pools')
+  else if (r?.role === 'lvm') emit('navigate', r.vgOwners[0] ? { kind: 'vg', name: r.vgOwners[0] } : 'pools')
 }
 
 // Volumes this disk carries.

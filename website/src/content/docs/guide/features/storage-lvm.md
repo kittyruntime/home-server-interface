@@ -1,13 +1,13 @@
 ---
 title: LVM volumes
-description: The LVM tab of Storage, volumes, RAID arrays, volume groups and mounts.
+description: 'LVM and mdadm in Storage: arrays and volume groups in Pools, their volumes and mounts.'
 sidebar:
   label: 'Storage: LVM'
   order: 1.2
 ---
 
-The **LVM** tab holds the volumes HSI builds with the standard Linux tools, and
-the layers they are made of. Each volume shows how it is built, from the disks to
+`mdadm` arrays and LVM volume groups are pools (Storage > Pools, with the type
+badge `mdadm` or `LVM`); the volumes HSI builds on them are in Storage > Volumes. Each volume shows how it is built, from the disks to
 its folder:
 
 disks -> [array](/home-server-interface/guide/features/storage-glossary/#array) ->
@@ -20,7 +20,7 @@ group, and is marked as such.
 
 ## Partitions & formatting
 
-This section lists the disks no array, volume group, ZFS pool or the system uses,
+This part of Storage > Disks lists the disks no array, volume group, ZFS pool or the system uses,
 with the tools to create a partition table, add or delete partitions, format,
 mount and unmount. Disks in use are left out, so nothing in use can be erased
 from here.
@@ -38,7 +38,7 @@ free space. Each volume has its own page with Overview, Structure and Activity
 tabs: what it is made of from the folder down to the disks, and the operations
 recorded on it.
 
-- **Create a volume**: Storage > LVM > Volumes > Create volume goes from free disks to a
+- **Create a volume**: Storage > Volumes > Create volume goes from free disks to a
   ready-to-use volume in one flow: choose the disks, the redundancy (mirror,
   RAID 5, 6, 10, or none), the LVM layout, the filesystem label and the folder,
   who owns it, and, for admins, a Place and an SMB share.
@@ -53,7 +53,7 @@ recorded on it.
   they serve only this volume), then erases the disks so they show as free again.
   Remove stays disabled until the volume name is typed; a volume an app stores
   data on cannot be removed.
-- **Mount**: an unmounted volume can be mounted from the LVM tab's Volumes page, with its
+- **Mount**: an unmounted volume can be mounted from its page in Volumes, with its
   owner, an optional Place, and "Persist across reboots" (an `/etc/fstab` entry).
 
 ## Arrays and volume groups

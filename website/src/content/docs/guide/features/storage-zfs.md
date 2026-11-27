@@ -6,9 +6,9 @@ sidebar:
   order: 1.25
 ---
 
-HSI uses ZFS when the server already has it. It never installs it: the ZFS tab
-appears once the `zfs` kernel module is loaded and the `zpool` and `zfs` commands
-are installed. Without ZFS, Storage looks the same as before.
+HSI uses ZFS when the server already has it. It never installs it: ZFS pools
+appear in Pools (with the type badge `ZFS`), and Snapshots in the menu, once the
+`zfs` kernel module is loaded and the `zpool` and `zfs` commands are installed.
 
 To install ZFS, follow the [OpenZFS getting started guide](https://openzfs.github.io/openzfs-docs/Getting%20Started/index.html)
 for your distribution. On Ubuntu the module comes with the kernel (`zfsutils-linux`);
@@ -24,7 +24,7 @@ layout drawn as a tree (the pool, its [vdevs](/home-server-interface/guide/featu
 their disks, with read, write and checksum errors), and the last
 [scrub](/home-server-interface/guide/features/storage-glossary/#scrub) or
 [resilver](/home-server-interface/guide/features/storage-glossary/#resilver).
-The Disks tab colors the disks of a pool with their own color.
+The Disks section colors the disks of a pool with their own color.
 
 ## Create a pool
 
@@ -66,7 +66,7 @@ import at boot does not stop anything. The list is kept in
 
 A watched pool that is gone (destroyed, or its disks removed for good) stays
 listed under **Pools** as missing, with **Stop watching** to release its holds.
-The ZFS tab stays while a pool is watched, even when the ZFS module did not load
+A watched pool stays listed in Pools, even when the ZFS module did not load
 after a kernel update. If the units that import and mount pools at boot
 (`zfs-import-cache`, `zfs-mount`) are disabled, Pools says so.
 
@@ -108,7 +108,7 @@ every 5 seconds. Once the cause of read, write or checksum errors is fixed,
 
 ## Snapshots
 
-ZFS > Snapshots lists the snapshots of each dataset, with when it was taken and
+Storage > Snapshots lists the snapshots of each dataset, with when it was taken and
 the space it alone holds (the data changed or deleted since).
 
 - **Take a snapshot** freezes a dataset now (`hsi-manual-<date>`).

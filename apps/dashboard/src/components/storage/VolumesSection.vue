@@ -1,11 +1,14 @@
 <script setup lang="ts">
+import TypeBadge from './TypeBadge.vue'
+import DatasetsSection from './DatasetsSection.vue'
+import { volumeType } from './storage-model'
+import { zfs } from './zfs-data'
 import StackChain from './StackChain.vue'
-import StorageIntro from './StorageIntro.vue'
 import { useI18n } from 'vue-i18n'
 import { Alert } from '@/components/ui/alert'
 import { Progress } from '@/components/ui/progress'
 import { Card } from '@/components/ui/card'
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { trpc } from '../../lib/trpc'
 import LoadingState from '../ui/LoadingState.vue'
 import DeviceMountDialog from './dialogs/DeviceMountDialog.vue'
@@ -123,8 +126,13 @@ const sortKey = ref<SortKey>('health')
 const HEALTH_RANK: Record<Health, number> = { danger: 0, warning: 1, idle: 2, ok: 3 }
 const unlisted = computed(() => unlistedDrift(descriptions.value, (overview.value?.volumes ?? []).map(v => v.mountPoint ?? '')))
 
-// The LVM tab: ZFS datasets are in the ZFS tab.
-const lvmVolumes = computed(() => (overview.value?.volumes ?? []).filter(v => v.engine !== 'zfs'))
+// Every volume, whatever holds it; a filter narrows them to one type.
+type VType = ReturnType<typeof volumeType>
+const typeFilter = ref<VType | 'all'>('all')
+const presentTypes = computed(() => [...new Set((overview.value?.volumes ?? []).map(volumeType))] as VType[])
+// A type that is gone (its last volume removed) no longer filters the list.
+watch(presentTypes, types => { if (typeFilter.value !== 'all' && !types.includes(typeFilter.value)) typeFilter.value = 'all' })
+const lvmVolumes = computed(() => (overview.value?.volumes ?? []).filter(v => typeFilter.value === 'all' || volumeType(v) === typeFilter.value))
 
 const volumes = computed(() => {
   const vs = [...lvmVolumes.value]
@@ -181,14 +189,16 @@ async function mount(v: Volume) {
       </Tip>
     </div>
 
-    <StorageIntro tab="lvm" />
+    <div v-if="presentTypes.length > 1" class="mb-3 flex flex-wrap gap-1.5" role="group" :aria-label="t('ui.storage.Volumes.filter')">
+      <Button v-for="k in ['all', ...presentTypes]" :key="k" size="xs" :variant="typeFilter === k ? 'secondary' : 'ghost'" :aria-pressed="typeFilter === k" @click="typeFilter = k as VType | 'all'">{{ t(`ui.storage.Volumes.type.${k}`) }}</Button>
+    </div>
 
     <Alert variant="info" v-if="found.arrays || found.vgs" class="mb-4 flex flex-wrap items-center justify-between gap-3" role="note">
       <p class="text-sm text-base-content">
         {{ t('ui.storage.VolumesSection.existingStorageWasFoundOn') }}
         <template v-if="found.arrays">{{ found.arrays }} {{ found.arrays === 1 ? 'array' : 'arrays' }}</template><template v-if="found.arrays && found.vgs"> and </template><template v-if="found.vgs">{{ found.vgs }} inactive {{ found.vgs === 1 ? 'volume group' : 'volume groups' }}</template>{{ t('ui.storage.VolumesSection.importingKeepsItsData') }}
       </p>
-      <Button variant="outline" size="sm" class="shrink-0" @click="emit('navigate', found.arrays ? 'raid' : 'lvm')">{{ t('ui.storage.VolumesSection.reviewAndImport') }}</Button>
+      <Button variant="outline" size="sm" class="shrink-0" @click="emit('navigate', { kind: 'import' })">{{ t('ui.storage.VolumesSection.reviewAndImport') }}</Button>
     </Alert>
 
     <div v-for="d in unlisted" :key="d.mountPoint" class="mb-4">
@@ -217,7 +227,7 @@ async function mount(v: Volume) {
           <!-- Row (wide) -->
           <div class="hidden @3xl/content:grid vol-grid gap-3 items-center px-4 py-3 text-xs cursor-pointer hover:bg-base-200 transition-colors" @click="openVolume(v)">
             <span class="min-w-0">
-              <span class="block truncate text-sm font-medium text-base-content">{{ v.name }}</span>
+              <span class="flex min-w-0 items-center gap-2"><span class="truncate text-sm font-medium text-base-content">{{ v.name }}</span><TypeBadge :type="volumeType(v)" /></span>
               <span class="block truncate font-mono text-2xs text-base-content/70">{{ v.mountPoint ?? `/dev/${v.device}` }}</span>
             </span>
             <span class="text-base-content/80">{{ REDUNDANCY[v.redundancy] }}</span>
@@ -241,7 +251,7 @@ async function mount(v: Volume) {
           <div class="@3xl/content:hidden px-4 py-3 cursor-pointer" @click="openVolume(v)">
             <div class="flex items-center justify-between gap-2">
               <span class="min-w-0">
-                <span class="block truncate text-sm font-medium text-base-content">{{ v.name }}</span>
+                <span class="flex min-w-0 items-center gap-2"><span class="truncate text-sm font-medium text-base-content">{{ v.name }}</span><TypeBadge :type="volumeType(v)" /></span>
                 <span class="block truncate font-mono text-2xs text-base-content/70">{{ v.mountPoint ?? `/dev/${v.device}` }}</span>
               </span>
               <span class="flex items-center gap-1.5 text-xs shrink-0" :class="HEALTH_TEXT[health(v).level]">
@@ -274,6 +284,9 @@ async function mount(v: Volume) {
     </template>
 
     <DeviceMountDialog ref="mountDlg" @done="load" />
+    <div v-if="zfs?.available && zfs.datasets.length" class="mt-10 border-t border-base-300 pt-6">
+      <DatasetsSection embedded @navigate="l => emit('navigate', l)" />
+    </div>
   </div>
 </template>
 
