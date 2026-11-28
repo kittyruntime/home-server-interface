@@ -566,7 +566,7 @@ export const storageRouter = router({
   // dashboard's calendar puts each run on the day the server runs it.
   maintenance: storageProcedure.query(async () => ({ serverOffset: new Date().getTimezoneOffset(), ...await requestSync<{
     timerInstalled: boolean
-    tasks: Record<'smartShort' | 'smartLong' | 'raidCheck' | 'zfsScrub', {
+    tasks: Record<'smartShort' | 'smartLong' | 'raidCheck' | 'zfsScrub' | 'trim', {
       schedule: MaintenanceSchedule
       lastRun: string | null
       nextRun: string | null
@@ -577,11 +577,11 @@ export const storageRouter = router({
   }>('root.sys.maintenance.get', {}, 10_000) })),
 
   setMaintenance: storageProcedure
-    .input(z.object({ smartShort: zMaintenanceSchedule, smartLong: zMaintenanceSchedule, raidCheck: zMaintenanceSchedule, zfsScrub: zMaintenanceSchedule.optional() }))
+    .input(z.object({ smartShort: zMaintenanceSchedule, smartLong: zMaintenanceSchedule, raidCheck: zMaintenanceSchedule, zfsScrub: zMaintenanceSchedule.optional(), trim: zMaintenanceSchedule.optional() }))
     .mutation(async ({ input }) => requestSync('root.sys.maintenance.set', input, 10_000)),
 
   runMaintenanceNow: storageProcedure
-    .input(z.object({ task: z.enum(['smartShort', 'smartLong', 'raidCheck', 'zfsScrub']) }))
+    .input(z.object({ task: z.enum(['smartShort', 'smartLong', 'raidCheck', 'zfsScrub', 'trim']) }))
     .mutation(async ({ input }) => requestSync('root.sys.maintenance.runNow', input, 120_000)),
   // Import existing storage without formatting: arrays found in superblocks
   // that are not running, and volume groups with no active logical volume.

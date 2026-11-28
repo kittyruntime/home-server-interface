@@ -28,7 +28,7 @@ func envOr(key, def string) string {
 	return def
 }
 
-var maintenanceTasks = []string{"smartShort", "smartLong", "raidCheck", "zfsScrub"}
+var maintenanceTasks = []string{"smartShort", "smartLong", "raidCheck", "zfsScrub", "trim"}
 
 type taskResult struct {
 	Device  string `json:"device"`
@@ -140,6 +140,8 @@ func (c maintenanceConfig) schedule(task string) taskSchedule {
 		return c.SmartLong
 	case "zfsScrub":
 		return c.ZfsScrub
+	case "trim":
+		return c.Trim
 	default:
 		return c.RaidCheck
 	}
@@ -273,6 +275,8 @@ var runMaintenanceTask = func(task string) []taskResult {
 		return runSmartTests("long")
 	case "zfsScrub":
 		return runZfsScrubs()
+	case "trim":
+		return runTrim()
 	default:
 		return runRaidChecks()
 	}
@@ -365,8 +369,11 @@ func runMaintenanceCLI() int {
 // refreshResults reads back what a run started: SMART self-tests from the
 // disks, scrubs from zpool status.
 func refreshResults(task string, results []taskResult) []taskResult {
-	if task == "zfsScrub" {
+	switch task {
+	case "zfsScrub":
 		return refreshScrubResults(results)
+	case "trim":
+		return results // fstrim reports when it ends; a pool trim is not followed
 	}
 	return refreshSelfTests(results)
 }
@@ -405,6 +412,9 @@ func withKeptSchedules(next, prev maintenanceConfig) maintenanceConfig {
 	if next.ZfsScrub.Every == "" {
 		next.ZfsScrub = prev.ZfsScrub
 	}
+	if next.Trim.Every == "" {
+		next.Trim = prev.Trim
+	}
 	return next
 }
 
@@ -434,6 +444,17 @@ func handleMaintenanceRunNow(nc *nats.Conn, msg *nats.Msg) {
 	}
 	if err := json.Unmarshal(msg.Data, &req); err != nil || !containsString(maintenanceTasks, req.Task) {
 		replyErr(nc, msg.Reply, &fsError{Code: "ERR", Message: "unknown maintenance task"})
+		return
+	}
+	// A TRIM of large filesystems outlasts the dashboard's request: it goes on
+	// in the background, and the page reads its results later.
+	if req.Task == "trim" {
+		go func() {
+			if err := runMaintenance(time.Now(), "trim"); err != nil {
+				logger.Warn("maintenance: trim not run", "error", err.Error())
+			}
+		}()
+		replyOk(nc, msg.Reply, map[string]any{"ok": true, "background": true, "state": loadMaintenanceState()["trim"]})
 		return
 	}
 	if err := runMaintenance(time.Now(), req.Task); err != nil {

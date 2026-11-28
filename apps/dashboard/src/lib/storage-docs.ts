@@ -18,12 +18,12 @@ export const GUIDE_PAGES: Record<DocPage, string> = {
 
 export type TermId =
   | 'raidLevel' | 'array' | 'volumeGroup' | 'logicalVolume' | 'filesystem' | 'smart' | 'raidCheck'
-  | 'vdev' | 'raidz' | 'scrub' | 'resilver' | 'snapshot' | 'arc'
+  | 'vdev' | 'raidz' | 'scrub' | 'resilver' | 'snapshot' | 'arc' | 'trim'
 
 export const TERM_ANCHORS: Record<TermId, string> = {
   raidLevel: 'raid-level', array: 'array', volumeGroup: 'volume-group', logicalVolume: 'logical-volume',
   filesystem: 'filesystem', smart: 'smart', raidCheck: 'raid-check', vdev: 'vdev', raidz: 'raidz',
-  scrub: 'scrub', resilver: 'resilver', snapshot: 'snapshot', arc: 'arc',
+  scrub: 'scrub', resilver: 'resilver', snapshot: 'snapshot', arc: 'arc', trim: 'trim',
 }
 
 export function guideUrl(page: DocPage, anchor?: string): string {

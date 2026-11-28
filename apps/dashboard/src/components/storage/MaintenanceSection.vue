@@ -26,7 +26,7 @@ const { t } = useI18n()
    alerts, which notification rules can forward. */
 
 type Data = Awaited<ReturnType<typeof trpc.storage.maintenance.query>>
-type TaskId = 'smartShort' | 'smartLong' | 'raidCheck' | 'zfsScrub'
+type TaskId = 'smartShort' | 'smartLong' | 'raidCheck' | 'zfsScrub' | 'trim'
 type Schedule = Data['tasks'][TaskId]['schedule']
 
 const ALL_TASKS: Array<{ id: TaskId; title: string; desc: string }> = [
@@ -34,10 +34,11 @@ const ALL_TASKS: Array<{ id: TaskId; title: string; desc: string }> = [
   { id: 'smartLong',  title: t('uis.storage.MaintenanceSection.smartExtendedSelfTest'), desc: t('ui.storage.MaintenanceSection.descSmartLong') },
   { id: 'raidCheck',  title: t('uis.storage.MaintenanceSection.raidConsistencyCheck'), desc: t('ui.storage.MaintenanceSection.descRaidCheck') },
   { id: 'zfsScrub',   title: t('ui.storage.MaintenanceSection.zfsScrub'), desc: t('ui.storage.MaintenanceSection.descZfsScrub') },
+  { id: 'trim',       title: t('ui.storage.MaintenanceSection.trim'), desc: t('ui.storage.MaintenanceSection.descTrim') },
 ]
 // The scrub only on a server with ZFS.
 const TASKS = computed(() => ALL_TASKS.filter(x => x.id !== 'zfsScrub' || !!zfs.value?.available))
-const TERM: Record<TaskId, 'smart' | 'raidCheck' | 'scrub'> = { smartShort: 'smart', smartLong: 'smart', raidCheck: 'raidCheck', zfsScrub: 'scrub' }
+const TERM: Record<TaskId, 'smart' | 'raidCheck' | 'scrub' | 'trim'> = { smartShort: 'smart', smartLong: 'smart', raidCheck: 'raidCheck', zfsScrub: 'scrub', trim: 'trim' }
 const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
 
 const data = ref<Data | null>(null)
@@ -60,6 +61,7 @@ async function load() {
       smartLong:  { ...data.value.tasks.smartLong.schedule },
       raidCheck:  { ...data.value.tasks.raidCheck.schedule },
       zfsScrub:   { ...data.value.tasks.zfsScrub.schedule },
+      trim:       { ...data.value.tasks.trim.schedule },
     }
   } catch (e: any) {
     error.value = e?.message ?? t('uis.storage.MaintenanceSection.failedToLoadTheMaintenance')
@@ -172,6 +174,9 @@ const inProgress = computed(() => poolRows({
               <p v-if="t.id === 'raidCheck'" class="text-2xs text-base-content/70 mt-1">
                 {{ $t('ui.storage.MaintenanceSection.ubuntuSMdadmPackageAlready') }}<code class="font-mono">mdcheck_start.timer</code>{{ $t('ui.storage.MaintenanceSection.ifYouScheduleOneHere') }} <code class="font-mono">sudo systemctl disable --now mdcheck_start.timer</code>.
               </p>
+              <p v-if="t.id === 'trim'" class="text-2xs text-base-content/70 mt-1">
+                {{ $t('ui.storage.MaintenanceSection.fstrimTimer') }} <code class="font-mono">fstrim.timer</code>
+              </p>
               <p v-if="t.id === 'zfsScrub'" class="text-2xs text-base-content/70 mt-1">
                 {{ $t('ui.storage.MaintenanceSection.zfsutilsAlready') }} <code class="font-mono">/etc/cron.d/zfsutils-linux</code>
               </p>
@@ -219,7 +224,7 @@ const inProgress = computed(() => poolRows({
           <div v-if="data.tasks[t.id].results?.length" class="mt-2 rounded-lg border border-base-300 divide-y divide-base-300">
             <div v-for="(r, i) in data.tasks[t.id].results!" :key="i" class="flex items-start gap-2 px-3 py-1.5 text-2xs">
               <span class="shrink-0 rounded-sm px-1.5 py-0.5 font-semibold uppercase" :class="statusClass[r.status]">{{ r.status }}</span>
-              <span :class="['shrink-0 text-base-content', r.device && 'font-mono']">{{ r.device ? (t.id === 'zfsScrub' ? r.device : '/dev/' + r.device) : 'all' }}</span>
+              <span :class="['shrink-0 text-base-content', r.device && 'font-mono']">{{ r.device ? (t.id === 'zfsScrub' || t.id === 'trim' ? r.device : '/dev/' + r.device) : 'all' }}</span>
               <span v-if="r.serial" class="shrink-0 text-base-content/70">{{ r.serial }}</span>
               <span class="min-w-0 break-words text-base-content/70">{{ r.message }}</span>
             </div>

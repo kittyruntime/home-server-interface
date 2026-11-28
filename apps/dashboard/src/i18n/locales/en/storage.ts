@@ -13,6 +13,9 @@ export default {
     member: 'Member',
   },
   MaintenanceSection: {
+    trim: 'TRIM',
+    descTrim: 'Tells SSDs and NVMe drives which blocks are free (fstrim on every filesystem, zpool trim on ZFS pools). Hard disks are left alone.',
+    fstrimTimer: 'Most systems already trim weekly with util-linux’s timer:',
     zfsScrub: 'ZFS scrub',
     descSmartShort: 'A quick electrical and mechanical test run by each disk (about 2 minutes). Disks in standby are not woken up.',
     descSmartLong: 'A full surface scan run by each disk (hours on large disks). Disks keep working normally meanwhile.',
@@ -140,7 +143,7 @@ export default {
   },
   MaintenanceCalendar: {
     nextTwoWeeks: 'The next two weeks',
-    kind: { smart: 'SMART self-test', raid: 'RAID check', scrub: 'ZFS scrub' },
+    kind: { smart: 'SMART self-test', raid: 'RAID check', scrub: 'ZFS scrub', trim: 'TRIM' },
     nothing: 'nothing scheduled',
   },
   Zfs: {
@@ -489,6 +492,7 @@ export default {
     vdev: 'In ZFS, a group of disks with its own redundancy, part of a pool.',
     raidz: 'ZFS redundancy surviving one, two or three failed disks (raidz1, 2, 3).',
     scrub: 'A ZFS check of every block of a pool against its checksum.',
+    trim: 'Telling an SSD which blocks are free, so it stays fast and wears evenly.',
     resilver: 'ZFS rebuilding the data of a replaced disk.',
     snapshot: 'A read-only image of a dataset at one moment, to restore files from.',
     arc: 'The ZFS read cache in memory.',
