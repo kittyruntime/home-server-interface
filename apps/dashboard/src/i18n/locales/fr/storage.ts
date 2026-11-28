@@ -12,6 +12,9 @@ export default {
     member: 'Membre',
   },
   MaintenanceSection: {
+    trim: 'TRIM',
+    descTrim: 'Indique aux SSD et NVMe quels blocs sont libres (fstrim sur chaque système de fichiers, zpool trim sur les pools ZFS). Les disques durs ne sont pas concernés.',
+    fstrimTimer: 'La plupart des systèmes font déjà un TRIM hebdomadaire avec le minuteur d’util-linux :',
     zfsScrub: 'Scrub ZFS',
     descSmartShort: 'Un test électrique et mécanique rapide lancé par chaque disque (environ 2 minutes). Les disques en veille ne sont pas réveillés.',
     descSmartLong: 'Un balayage complet de la surface par chaque disque (des heures sur les gros disques). Les disques continuent de fonctionner normalement.',
@@ -139,7 +142,7 @@ export default {
   },
   MaintenanceCalendar: {
     nextTwoWeeks: 'Les deux prochaines semaines',
-    kind: { smart: 'Autotest SMART', raid: 'Vérification RAID', scrub: 'Scrub ZFS' },
+    kind: { smart: 'Autotest SMART', raid: 'Vérification RAID', scrub: 'Scrub ZFS', trim: 'TRIM' },
     nothing: 'rien de prévu',
   },
   Zfs: {
@@ -488,6 +491,7 @@ export default {
     vdev: 'En ZFS, un groupe de disques avec sa propre redondance, qui fait partie d’un pool.',
     raidz: 'La redondance ZFS qui supporte une, deux ou trois pannes de disque (raidz1, 2, 3).',
     scrub: 'Une vérification ZFS de chaque bloc d’un pool contre sa somme de contrôle.',
+    trim: 'Indiquer à un SSD quels blocs sont libres, pour qu’il reste rapide et s’use régulièrement.',
     resilver: 'La reconstruction par ZFS des données d’un disque remplacé.',
     snapshot: 'Une image en lecture seule d’un dataset à un instant, pour en restaurer des fichiers.',
     arc: 'Le cache de lecture de ZFS en mémoire.',

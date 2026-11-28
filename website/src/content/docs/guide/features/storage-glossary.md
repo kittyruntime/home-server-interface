@@ -60,6 +60,12 @@ two or three failed disks of their vdev.
 A ZFS check that reads every block of a pool and verifies its checksum, repairing
 what it can from the redundancy.
 
+## TRIM
+
+Telling an SSD or NVMe drive which blocks no longer hold data, so it can erase
+them ahead of time: it stays fast and wears evenly. `fstrim` does it for a
+filesystem, `zpool trim` for a ZFS pool; hard disks have no use for it.
+
 ## Resilver
 
 What ZFS does after a disk is replaced: it rebuilds the missing data onto the new

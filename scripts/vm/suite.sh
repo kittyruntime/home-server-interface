@@ -1306,6 +1306,18 @@ case "$scenario" in
     api storage.runMaintenanceNow '{"task":"zfsScrub"}' | python3 -c 'import json,sys; r=json.load(sys.stdin)["state"]["results"]; assert any(x["device"]=="tank" and x["status"] in ("started","skipped") for x in r), r' \
       || fail "the scheduled scrub task did not start on tank"
     log "Scrub, disk replacement and clear through HSI"
+    # TRIM: started in the background from Run now; its results come back
+    # with each filesystem (trimmed, or not supported on these virtual disks)
+    # and the ZFS pools, never an error.
+    api storage.runMaintenanceNow '{"task":"trim"}' | python3 -c 'import json,sys; assert json.load(sys.stdin)["background"]' || fail "TRIM did not start in the background"
+    for i in $(seq 1 30); do
+      out=$(api_query storage.maintenance)
+      python3 -c 'import json,sys; r=json.loads(sys.argv[1])["tasks"]["trim"]["results"] or []; sys.exit(0 if r else 1)' "$out" && break
+      sleep 2
+    done
+    python3 -c 'import json,sys; r=json.loads(sys.argv[1])["tasks"]["trim"]["results"]; assert r and any(x["device"]=="tank" for x in r) and all(x["status"]!="error" for x in r), r' "$out" \
+      || fail "the TRIM results are wrong: $out"
+    log "TRIM run through HSI"
     # Lot 4: a snapshot taken by hand; a deleted file found in it and restored
     # next to where it was; a later change undone by a roll back; a schedule
     # taken by the hourly maintenance, which never deletes the manual one.

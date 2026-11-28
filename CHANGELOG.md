@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Scheduled TRIM in Storage > Maintenance: fstrim on every filesystem that
+  supports it and zpool trim on ZFS pools, with each one's result; off by
+  default, as most systems already run util-linux's weekly fstrim.timer.
+
 ### Changed
 
 - Storage is organized by function instead of by technology: Overview, Disks,

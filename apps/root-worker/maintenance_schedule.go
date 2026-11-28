@@ -21,6 +21,8 @@ type maintenanceConfig struct {
 	RaidCheck  taskSchedule `json:"raidCheck"`
 	// ZfsScrub (ZFS lot 3): absent from older files, which keep the default.
 	ZfsScrub taskSchedule `json:"zfsScrub"`
+	// Trim (storage phase 2): absent from older files, which keep the default.
+	Trim taskSchedule `json:"trim"`
 }
 
 // Defaults: a short SMART test every week and a long one every month, at
@@ -33,6 +35,8 @@ func defaultMaintenanceConfig() maintenanceConfig {
 		RaidCheck:  taskSchedule{Every: "off", Day: 1, Hour: 1},
 		// Off: zfsutils already scrubs every pool monthly from cron.
 		ZfsScrub: taskSchedule{Every: "off", Day: 8, Hour: 2},
+		// Off: util-linux's fstrim.timer already trims weekly on most systems.
+		Trim: taskSchedule{Every: "off", Weekday: 6, Day: 1, Hour: 4},
 	}
 }
 
